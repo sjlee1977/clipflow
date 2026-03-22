@@ -1,0 +1,37 @@
+{
+  "name": "clipflow",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "remotion:studio": "npx remotion studio src/remotion/index.ts",
+    "remotion:deploy": "npx remotion lambda sites create src/remotion/index.ts --site-name=clipflow"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@clerk/nextjs": "^7.0.6",
+    "@google/genai": "^1.46.0",
+    "@remotion/lambda": "^4.0.438",
+    "@supabase/supabase-js": "^2.99.3",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "elevenlabs": "^1.59.0",
+    "next": "^16.2.1",
+    "openai": "^6.32.0",
+    "postcss": "^8.5.8",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.438",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
+  }
+}
