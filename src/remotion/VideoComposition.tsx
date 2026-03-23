@@ -11,6 +11,7 @@ export const SubtitleWordSchema = z.object({
 
 export const SceneSchema = z.object({
   imageUrl: z.string(),
+  videoUrl: z.string().optional(),
   audioUrl: z.string(),
   durationInFrames: z.number(),
   subtitles: z.array(SubtitleWordSchema),
