@@ -126,11 +126,17 @@ export async function generateSpeech(
     throw new Error(`MiniMax API 에러: ${data.base_resp?.status_msg}`);
   }
 
-  // 여러 필드 후보 체크 (V2는 보통 data.data 또는 data)
-  const audioData = data.data || data.audio || data.base64;
-  if (!audioData) {
-    console.error('[minimax-tts] No audio data field found:', data);
-    throw new Error('응답에서 오디오 데이터를 찾을 수 없습니다.');
+  // 여러 필드 후보 체크 (V2는 보통 data.data 또는 data 구조)
+  // data.data가 객체 { audio: "...", status: 2 } 일 수 있음
+  let audioData = data.data?.audio || data.data || data.audio || data.base64;
+  
+  if (typeof audioData === 'object' && audioData !== null) {
+    audioData = audioData.audio || audioData.content;
+  }
+
+  if (!audioData || typeof audioData !== 'string') {
+    console.error('[minimax-tts] Invalid or missing audio data:', data);
+    throw new Error('응답에서 유효한 오디오 데이터를 찾을 수 없습니다.');
   }
 
   let buffer: Buffer;
