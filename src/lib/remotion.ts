@@ -6,7 +6,7 @@ import {
 
 const REGION = (process.env.AWS_REGION ?? 'ap-northeast-2') as Parameters<typeof renderMediaOnLambda>[0]['region'];
 const SERVE_URL = process.env.REMOTION_SERVE_URL ?? 'https://remotionlambda-apnortheast2-17lxfxukvf.s3.ap-northeast-2.amazonaws.com/sites/clipflow/index.html';
-const FUNCTION_NAME = process.env.REMOTION_FUNCTION_NAME ?? speculateFunctionName({ memorySizeInMb: 2048, diskSizeInMb: 2048, timeoutInSeconds: 120 });
+const FUNCTION_NAME = process.env.REMOTION_FUNCTION_NAME || speculateFunctionName({ memorySizeInMb: 3008, diskSizeInMb: 2048, timeoutInSeconds: 900 });
 
 export type RenderInput = {
   compositionId: string;
@@ -25,8 +25,8 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     inputProps,
     codec: 'h264',
     outName: `${compositionId}-${Date.now()}.mp4`,
-    concurrencyPerLambda: 1,
-    framesPerLambda: 100,
+    concurrencyPerLambda: 4,  // 3008MB 메모리에 맞춰 동시성 상향 (CPU 활용도 극대화)
+    framesPerLambda: 30,     // 프레임당 분할 단위를 늘려 람다 기동 오버헤드 감소
   });
 
   return { renderId, bucketName };
@@ -55,4 +55,24 @@ export async function waitForRender(renderId: string, bucketName: string): Promi
 
     await new Promise((r) => setTimeout(r, 2000));
   }
+}
+
+/**
+ * 렌더링 상태를 한 번 확인합니다. (비동기 폴링용)
+ */
+export async function getRenderStatus(renderId: string, bucketName: string) {
+  const progress = await getRenderProgress({
+    renderId,
+    bucketName,
+    functionName: FUNCTION_NAME,
+    region: REGION,
+  });
+
+  return {
+    done: progress.done,
+    overallProgress: progress.overallProgress,
+    outputFile: progress.outputFile,
+    fatalErrorEncountered: progress.fatalErrorEncountered,
+    errors: progress.errors,
+  };
 }

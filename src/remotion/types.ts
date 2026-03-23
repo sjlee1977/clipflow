@@ -6,6 +6,7 @@ export type SubtitleWord = {
 
 export type Scene = {
   imageUrl: string;
+  videoUrl?: string; // AI generated video
   audioUrl: string;
   durationInFrames: number;
   subtitles: SubtitleWord[];

@@ -1,50 +1,143 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { IMAGE_MODELS, LLM_MODELS } from '@/lib/openrouter';
+import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
+type Format = 'shorts' | 'landscape';
+
+const IMAGE_STYLES = [
+  { id: 'cinematic', label: '영화' },
+  { id: 'realistic', label: '실사' },
+  { id: 'anime', label: '애니' },
+  { id: 'documentary', label: '다큐' },
+  { id: '3d', label: '3D' },
+  { id: 'watercolor', label: '수채화' },
+  { id: 'cartoon', label: '카툰' },
+  { id: 'noir', label: '누아르' },
+] as const;
+
+type ImageStyle = typeof IMAGE_STYLES[number]['id'];
 
 type PreviewScene = {
   text: string;
   imageUrl: string;
+  imagePrompt: string;
+  videoUrl?: string;
 };
 
-const VOICES = [
-  { id: 'Kore', label: '코레 (한국어 여성)' },
-  { id: 'Charon', label: '카론 (남성, 차분)' },
-  { id: 'Fenrir', label: '펜리르 (남성, 강인)' },
-  { id: 'Aoede', label: '아오에데 (여성, 부드러움)' },
-  { id: 'Puck', label: '퍽 (중성, 활발)' },
-  { id: 'Orbit', label: '오빗 (남성, 전문적)' },
-];
+/* ── 오른쪽 패널 섹션 (일반) ── */
+function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-white/5 pb-4 mb-4">
+      <p className="text-white/20 text-[12px] tracking-widest uppercase mb-3">{label}</p>
+      {children}
+    </div>
+  );
+}
 
-const IMAGE_STYLES = [
-  { id: 'cinematic', label: '🎬 실사 영화', prompt: 'cinematic photography, photorealistic, dramatic lighting, film grain' },
-  { id: 'anime', label: '🎨 애니메이션', prompt: 'anime illustration style, vibrant colors, cel shading, manga inspired' },
-  { id: 'watercolor', label: '🖌️ 수채화', prompt: 'watercolor painting style, soft brushstrokes, artistic, dreamy' },
-  { id: '3d', label: '✨ 3D 렌더링', prompt: '3D rendered, octane render, volumetric lighting, highly detailed' },
-  { id: 'documentary', label: '📹 다큐멘터리', prompt: 'documentary photography style, natural light, realistic, journalistic' },
-];
+/* ── 오른쪽 패널 섹션 (아코디언) ── */
+function PanelAccordion({ label, value, children }: {
+  label: string;
+  value: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/5 mb-1">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between py-3 group"
+      >
+        <span className="text-white/20 text-[12px] tracking-widest uppercase">{label}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-white/50 text-[12px] font-mono truncate max-w-[120px]">{value}</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+            className={`text-white/20 group-hover:text-white/40 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      </button>
+      {open && <div className="pb-3">{children}</div>}
+    </div>
+  );
+}
+
+/* ── 가격 티어 뱃지 ── */
+function PriceBadge({ price }: { price?: string }) {
+  if (!price) return null;
+  const isFree = price.includes('무료');
+  const val = parseFloat(price.replace(/[^0-9.]/g, ''));
+  let cls = 'text-white/25 bg-white/5';
+  if (isFree)      cls = 'text-green-400/80 bg-green-400/10';
+  else if (val < 1) cls = 'text-yellow-400/70 bg-yellow-400/10';
+  else if (val < 5) cls = 'text-orange-400/70 bg-orange-400/10';
+  else              cls = 'text-red-400/60 bg-red-400/10';
+  return (
+    <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-sm whitespace-nowrap ${cls}`}>
+      {isFree ? 'FREE' : price}
+    </span>
+  );
+}
+
+/* ── 오른쪽 패널 선택 버튼 ── */
+function OptionItem({ active, onClick, children, sub }: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  sub?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-2 py-2 text-xs font-mono border-l-2 transition-colors ${
+        active
+          ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+          : 'border-transparent text-white/40 hover:text-white/70 hover:border-white/20'
+      }`}
+    >
+      <span>{children}</span>
+      <PriceBadge price={sub} />
+    </button>
+  );
+}
 
 export default function DashboardPage() {
   const [script, setScript] = useState('');
-  const [voice, setVoice] = useState('Kore');
-  const [imageStyle, setImageStyle] = useState('cinematic');
-  const [characterFile, setCharacterFile] = useState<File | null>(null);
-  const [characterPreview, setCharacterPreview] = useState('');
+  const [format, setFormat] = useState<Format>('shorts');
+  const [imageModelId, setImageModelId] = useState('black-forest-labs/flux.2-klein-4b');
+  const [llmModelId, setLlmModelId] = useState('deepseek/deepseek-chat-v3-0324');
+  const [voiceId, setVoiceId] = useState('Korean_SoothingLady');
+  const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
+  const [characterPreview, setCharacterPreview] = useState<string | null>(null);
+  const [imageStyle, setImageStyle] = useState<ImageStyle>('cinematic');
+  const characterInputRef = useRef<HTMLInputElement>(null);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
 
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [scenes, setScenes] = useState<PreviewScene[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [loadingAudioIndex, setLoadingAudioIndex] = useState<number | null>(null);
+
+  const isProcessing = status === 'previewing' || status === 'rendering';
 
   function handleCharacterUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCharacterFile(file);
-    setCharacterPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCharacterPreview(dataUrl);
+      setCharacterImageBase64(dataUrl.split(',')[1]);
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handlePreview() {
@@ -52,277 +145,469 @@ export default function DashboardPage() {
     setStatus('previewing');
     setError('');
     setScenes([]);
-
     try {
-      let characterBase64 = '';
-      let characterMimeType = '';
-      if (characterFile) {
-        const arrayBuffer = await characterFile.arrayBuffer();
-        characterBase64 = Buffer.from(arrayBuffer).toString('base64');
-        characterMimeType = characterFile.type;
-      }
-
-      const styleDef = IMAGE_STYLES.find((s) => s.id === imageStyle);
-
       const res = await fetch('/api/generate-scenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          script,
-          imageStylePrompt: styleDef?.prompt ?? '',
-          characterBase64,
-          characterMimeType,
-        }),
+        body: JSON.stringify({ script, imageModelId, llmModelId, format, characterImageBase64, imageStyle }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '장면 생성 실패');
-
       setScenes(data.scenes);
       setStatus('preview');
     } catch (err: unknown) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다');
+      setError(err instanceof Error ? err.message : '알 수 없는 오류');
+    }
+  }
+
+  /**
+   * 장면 애니메이션화 (MiniMax Video)
+   */
+  async function handleAnimateScene(index: number) {
+    const scene = scenes[index];
+    if (!scene.imageUrl) return;
+    
+    setAnimatingIndex(index);
+    try {
+      // 1. 태스크 생성
+      const res = await fetch('/api/animate-scene', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: scene.imageUrl, prompt: scene.text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '애니메이션 시작 실패');
+
+      const { taskId } = data;
+
+      // 2. 폴링
+      const poll = async () => {
+        try {
+          const sRes = await fetch(`/api/animate-scene?taskId=${taskId}`);
+          const sData = await sRes.json();
+          if (!sRes.ok) throw new Error(sData.error || '상태 확인 실패');
+
+          if (sData.task_status === 'succeed') {
+            setScenes(prev => prev.map((s, i) => i === index ? { ...s, videoUrl: sData.video_url } : s));
+            setAnimatingIndex(null);
+            return;
+          }
+
+          if (sData.task_status === 'failed') {
+            throw new Error(sData.task_status_msg || '변환 중 오류 발생');
+          }
+
+          // 계속 폴링
+          setTimeout(poll, 3000);
+        } catch (pollErr: any) {
+          console.error(pollErr);
+          setAnimatingIndex(null);
+        }
+      };
+
+      poll();
+    } catch (err: any) {
+      alert(err.message);
+      setAnimatingIndex(null);
     }
   }
 
   async function handleRender() {
+    if (scenes.length === 0) return;
     setStatus('rendering');
+    setRenderProgress(0);
     setError('');
-
     try {
       const res = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes, voice }),
+        body: JSON.stringify({ scenes, voiceId, speed: playbackRate, format }),
       });
-
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '영상 생성 실패');
+      if (!res.ok) throw new Error(data.error || '영상 생성 시작 실패');
 
-      setVideoUrl(data.videoUrl);
-      setStatus('done');
+      const { renderId, bucketName } = data;
+
+      // 비동기 폴링 상태 확인
+      const poll = async () => {
+        try {
+          const sRes = await fetch(`/api/get-render-status?renderId=${renderId}&bucketName=${bucketName}`);
+          const sData = await sRes.json();
+          if (!sRes.ok) throw new Error(sData.error || '상태 확인 실패');
+
+          if (sData.done) {
+            setVideoUrl(sData.outputFile);
+            setStatus('done');
+            setRenderProgress(1);
+            return;
+          }
+
+          if (sData.fatalErrorEncountered) {
+            throw new Error(sData.errors?.[0]?.message || '렌더링 중 오류가 발생했습니다');
+          }
+
+          setRenderProgress(sData.overallProgress);
+          setTimeout(poll, 2000);
+        } catch (pollErr: any) {
+          setStatus('error');
+          setError(pollErr.message || '렌더링 상태 확인 중 오류');
+        }
+      };
+
+      poll();
     } catch (err: unknown) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다');
+      setError(err instanceof Error ? err.message : '알 수 없는 오류');
     }
   }
 
   function updateSceneText(index: number, text: string) {
-    setScenes((prev) => prev.map((s, i) => (i === index ? { ...s, text } : s)));
+    setScenes(prev => prev.map((s, i) => (i === index ? { ...s, text } : s)));
   }
 
-  const isProcessing = status === 'previewing' || status === 'rendering';
+  const handlePlayScene = useCallback(async (index: number, text: string) => {
+    if (playingIndex === index) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setPlayingIndex(null);
+      return;
+    }
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    setPlayingIndex(null);
+    setLoadingAudioIndex(index);
+    try {
+      const res = await fetch('/api/preview-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceId }),
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.playbackRate = playbackRate;
+      audioRef.current = audio;
+      setPlayingIndex(index);
+      audio.play();
+      audio.onended = () => { URL.revokeObjectURL(url); setPlayingIndex(null); audioRef.current = null; };
+    } catch {
+      setPlayingIndex(null);
+    } finally {
+      setLoadingAudioIndex(null);
+    }
+  }, [playingIndex, voiceId, playbackRate]);
+
+  const selectedImageModel = IMAGE_MODELS.find(m => m.id === imageModelId);
+  const selectedVoice = MINIMAX_VOICES.find(v => v.id === voiceId);
 
   return (
-    <main className="min-h-screen px-4 py-10">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <a href="/" className="text-gray-500 hover:text-white transition-colors text-sm">← 홈</a>
-          <h1 className="text-2xl font-bold text-white">영상 만들기</h1>
-        </div>
+    /* 전체: 왼쪽 콘텐츠 + 오른쪽 패널 (w-56) */
+    <div className="flex gap-0 -m-6 min-h-full">
 
-        {/* 설정 영역 — 미리보기 전에만 표시 */}
+      {/* ─── 왼쪽: 메인 콘텐츠 ─── */}
+      <div className="flex-1 min-w-0 p-6 border-r border-white/5">
+
+        {/* ── 입력 단계 ── */}
         {(status === 'idle' || status === 'previewing' || status === 'error') && (
           <>
-            {/* 대본 입력 */}
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <label className="block text-white font-semibold mb-3">대본 또는 주제 입력</label>
-              <textarea
-                value={script}
-                onChange={(e) => setScript(e.target.value)}
-                placeholder="예: 인공지능이 세상을 바꾸고 있습니다. 의료, 교육, 교통 분야에서 AI는..."
-                className="w-full h-40 bg-gray-800 text-white rounded-lg p-4 border border-gray-700 focus:border-blue-500 focus:outline-none resize-none text-sm"
-                disabled={isProcessing}
-              />
-              <p className="text-gray-500 text-sm mt-2">{script.length}자</p>
-            </div>
+            <textarea
+              value={script}
+              onChange={e => setScript(e.target.value)}
+              placeholder="대본 또는 주제를 입력하세요..."
+              className="w-full h-52 bg-transparent text-white border-0 border-b border-white/10 focus:border-white/30 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/20 pb-3"
+              disabled={isProcessing}
+            />
+            <p className="text-white/15 text-xs font-mono mt-2 mb-8">{script.length}자</p>
 
-            {/* 이미지 스타일 */}
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <label className="block text-white font-semibold mb-3">이미지 스타일</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {IMAGE_STYLES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setImageStyle(s.id)}
-                    disabled={isProcessing}
-                    className={`p-3 rounded-lg border text-sm text-left transition-colors ${
-                      imageStyle === s.id
-                        ? 'border-purple-500 bg-purple-950 text-purple-300'
-                        : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+            {status === 'error' && (
+              <div className="border-l-2 border-red-500 pl-4 mb-8">
+                <p className="text-red-400 text-xs font-mono">{error}</p>
+                <button onClick={() => setStatus('idle')} className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
               </div>
-            </div>
+            )}
 
-            {/* 캐릭터 업로드 */}
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <label className="block text-white font-semibold mb-1">캐릭터 업로드 (선택)</label>
-              <p className="text-gray-500 text-sm mb-4">업로드하면 모든 장면에 해당 캐릭터가 일관되게 등장해요</p>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessing}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 hover:border-gray-500 text-gray-300 rounded-lg text-sm transition-colors"
-                >
-                  이미지 선택
-                </button>
-                {characterPreview && (
-                  <div className="relative">
-                    <img src={characterPreview} alt="캐릭터" className="w-16 h-16 rounded-lg object-cover border border-gray-600" />
-                    <button
-                      onClick={() => { setCharacterFile(null); setCharacterPreview(''); }}
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 rounded-full text-white text-xs flex items-center justify-center"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                {!characterPreview && <span className="text-gray-600 text-sm">선택된 파일 없음</span>}
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCharacterUpload} className="hidden" />
-            </div>
-
-            {/* 장면 미리보기 생성 버튼 */}
             <button
               onClick={handlePreview}
               disabled={!script.trim() || isProcessing}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors text-lg"
+              className="w-full bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-black py-3.5 transition-colors text-xs tracking-widest uppercase font-mono"
             >
               {status === 'previewing' ? (
                 <span className="flex items-center justify-center gap-3">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                  장면 분석 및 이미지 생성 중...
+                  <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin inline-block" />
+                  장면 생성 중...
                 </span>
-              ) : '장면 미리보기 생성'}
+              ) : '장면 미리보기 →'}
             </button>
           </>
         )}
 
-        {/* 오류 */}
-        {status === 'error' && (
-          <div className="bg-red-950 rounded-xl p-6 border border-red-800">
-            <p className="text-red-400">{error}</p>
-            <button onClick={() => setStatus('idle')} className="mt-3 text-red-400 hover:text-red-300 text-sm underline">
-              다시 시도
-            </button>
-          </div>
-        )}
-
-        {/* 미리보기 + 편집 단계 */}
+        {/* ── 미리보기 단계 ── */}
         {(status === 'preview' || status === 'rendering' || status === 'done') && scenes.length > 0 && (
           <>
-            <div className="flex items-center justify-between">
-              <h2 className="text-white font-semibold text-lg">장면 미리보기 ({scenes.length}개)</h2>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+              <span className="text-white/25 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
               {status === 'preview' && (
                 <button
                   onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); }}
-                  className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-                >
-                  ← 처음으로
-                </button>
+                  className="text-white/20 hover:text-white/50 text-xs font-mono transition-colors"
+                >← 처음으로</button>
               )}
             </div>
 
-            <div className="space-y-4">
+            {/* 장면 리스트 */}
+            <div>
               {scenes.map((scene, i) => (
-                <div key={i} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex gap-0 flex-col sm:flex-row">
-                  {/* 이미지 */}
-                  <div className="sm:w-48 shrink-0">
-                    <img
-                      src={scene.imageUrl}
-                      alt={`장면 ${i + 1}`}
-                      className="w-full h-40 sm:h-full object-cover"
-                    />
+                <div key={i} className="flex gap-4 py-4 border-b border-white/5">
+                  <span className="text-white/15 text-xs font-mono pt-0.5 w-5 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                  <div className="w-16 h-16 shrink-0 overflow-hidden bg-white/5">
+                    <img src={scene.imageUrl} alt={`장면 ${i + 1}`} className="w-full h-full object-cover" />
                   </div>
-                  {/* 텍스트 편집 */}
-                  <div className="flex-1 p-4 flex flex-col justify-between gap-3">
-                    <div>
-                      <p className="text-gray-500 text-xs mb-2">장면 {i + 1} — 자막 텍스트</p>
-                      <textarea
-                        value={scene.text}
-                        onChange={(e) => updateSceneText(i, e.target.value)}
-                        disabled={status !== 'preview'}
-                        className="w-full h-24 bg-gray-800 text-white rounded-lg p-3 border border-gray-700 focus:border-blue-500 focus:outline-none resize-none text-sm disabled:opacity-60"
-                      />
+                  <div className="flex-1 min-w-0">
+                    <textarea
+                      value={scene.text}
+                      onChange={e => updateSceneText(i, e.target.value)}
+                      disabled={status !== 'preview'}
+                      rows={3}
+                      className="w-full bg-transparent text-white/80 text-xs font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
+                    />
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-white/15 text-xs font-mono">{scene.text.length}자</span>
+                      <button
+                        onClick={() => handlePlayScene(i, scene.text)}
+                        disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || animatingIndex === i}
+                        className="text-white/25 hover:text-yellow-400 text-xs font-mono transition-colors disabled:opacity-20"
+                      >
+                        {loadingAudioIndex === i ? '로딩...' : playingIndex === i ? '■ 정지' : '▶ 미리듣기'}
+                      </button>
+                      <button
+                        onClick={() => handleAnimateScene(i)}
+                        disabled={animatingIndex !== null || status !== 'preview' || !!scene.videoUrl}
+                        className={`text-xs font-mono transition-colors ${
+                          scene.videoUrl 
+                            ? 'text-yellow-400/50 cursor-default' 
+                            : 'text-white/25 hover:text-yellow-400 disabled:opacity-20'
+                        }`}
+                      >
+                        {animatingIndex === i ? '변환 중...' : scene.videoUrl ? '✓ AI 비디오' : '✧ AI 애니메이션'}
+                      </button>
                     </div>
-                    <p className="text-gray-600 text-xs">{scene.text.length}자</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 목소리 선택 */}
-            {status === 'preview' && (
-              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-                <label className="block text-white font-semibold mb-3">목소리 선택</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {VOICES.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setVoice(v.id)}
-                      className={`p-3 rounded-lg border text-sm text-left transition-colors ${
-                        voice === v.id
-                          ? 'border-blue-500 bg-blue-950 text-blue-300'
-                          : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
-                      }`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* 영상 생성 버튼 */}
             {status === 'preview' && (
               <button
                 onClick={handleRender}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-colors text-lg"
+                className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 transition-colors text-xs tracking-widest uppercase font-mono"
               >
-                영상 생성
+                영상 생성 →
               </button>
             )}
 
-            {/* 렌더링 중 */}
             {status === 'rendering' && (
-              <div className="bg-gray-900 rounded-xl p-6 border border-blue-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-blue-400">음성 생성 및 영상 렌더링 중... (수 분 소요될 수 있습니다)</p>
+              <div className="mt-8 border-l-2 border-yellow-400/40 pl-4 py-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-3.5 h-3.5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                  <div>
+                    <p className="text-yellow-400/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
+                    <p className="text-white/20 text-[11px] tracking-widest uppercase font-mono mt-0.5">TTS → AWS Lambda 렌더링 진행 중</p>
+                  </div>
+                </div>
+                {/* 미니 프로그레스 바 */}
+                <div className="w-full h-0.5 bg-white/5 overflow-hidden rounded-full">
+                  <div 
+                    className="h-full bg-yellow-400 transition-all duration-500 ease-out" 
+                    style={{ width: `${renderProgress * 100}%` }}
+                  />
                 </div>
               </div>
             )}
           </>
         )}
 
-        {/* 완성 영상 */}
+        {/* ── 완성 ── */}
         {status === 'done' && videoUrl && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-green-800">
-            <h2 className="text-white font-semibold mb-4">완성 영상</h2>
-            <video src={videoUrl} controls className="w-full rounded-lg" />
+          <div className="mt-2">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+              <span className="text-white/25 text-xs tracking-widest uppercase font-mono">완성 영상</span>
+            </div>
+            <video src={videoUrl} controls className="w-full" />
             <div className="flex gap-3 mt-4">
-              <a
-                href={videoUrl}
-                download
-                className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-              >
+              <a href={videoUrl} download className="flex-1 text-center bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3 transition-colors text-xs tracking-widest uppercase font-mono">
                 다운로드
               </a>
               <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
-                className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-xs font-mono transition-colors"
               >
-                새 영상 만들기
+                새 영상
               </button>
             </div>
           </div>
         )}
       </div>
-    </main>
+
+      {/* ─── 오른쪽: 설정 패널 (w-56, 왼쪽 nav와 동일 너비) ─── */}
+      <aside className="w-96 shrink-0 flex flex-col border-l border-white/5 overflow-y-auto">
+        <div className="flex-1 px-4 py-5 space-y-0">
+
+          {/* 입력 단계 설정 */}
+          {(status === 'idle' || status === 'previewing' || status === 'error') && (
+            <>
+              <PanelSection label="스타일">
+                <div className="flex flex-wrap gap-1">
+                  {IMAGE_STYLES.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setImageStyle(s.id)}
+                      disabled={isProcessing}
+                      className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
+                        imageStyle === s.id
+                          ? 'border-yellow-400 text-yellow-400'
+                          : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </PanelSection>
+
+              <PanelSection label="비율">
+                <div className="space-y-0.5">
+                  {([['shorts', '쇼츠 / 릴스'], ['landscape', '유튜브']] as const).map(([val, label]) => (
+                    <OptionItem key={val} active={format === val} onClick={() => setFormat(val)}>
+                      <span className="flex items-center gap-2">
+                        <span className={`border border-current inline-block shrink-0 ${val === 'shorts' ? 'w-2.5 h-4' : 'w-4 h-2.5'}`} />
+                        {label}
+                      </span>
+                    </OptionItem>
+                  ))}
+                </div>
+              </PanelSection>
+
+              <PanelSection label="캐릭터">
+                <div
+                  onClick={() => !isProcessing && characterInputRef.current?.click()}
+                  className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-white/10 text-white/30 transition-colors ${
+                    !isProcessing ? 'hover:border-white/30 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                  }`}
+                >
+                  {characterPreview
+                    ? <img src={characterPreview} alt="캐릭터" className="w-5 h-5 object-cover" />
+                    : <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
+                  }
+                  <span>{characterPreview ? '변경' : '이미지 선택'}</span>
+                  {characterPreview && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setCharacterPreview(null); setCharacterImageBase64(null); }}
+                      className="ml-auto text-white/20 hover:text-red-400 transition-colors"
+                    >✕</button>
+                  )}
+                </div>
+                <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
+              </PanelSection>
+
+              <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''}>
+                <div className="space-y-0.5">
+                  {LLM_MODELS.map(m => (
+                    <OptionItem key={m.id} active={llmModelId === m.id} onClick={() => setLlmModelId(m.id)} sub={m.price}>
+                      {m.name}
+                    </OptionItem>
+                  ))}
+                </div>
+              </PanelAccordion>
+
+              <PanelAccordion label="이미지 AI" value={IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? ''}>
+                <div className="space-y-0.5">
+                  {IMAGE_MODELS.map(m => (
+                    <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => setImageModelId(m.id)} sub={m.price}>
+                      {m.name}
+                    </OptionItem>
+                  ))}
+                </div>
+              </PanelAccordion>
+            </>
+          )}
+
+          {/* 미리보기 단계 설정 */}
+          {(status === 'preview' || status === 'rendering') && (
+            <>
+              <PanelAccordion label="목소리" value={MINIMAX_VOICES.find(v => v.id === voiceId)?.name ?? ''}>
+                <div className="space-y-0.5">
+                  {MINIMAX_VOICES.map(v => (
+                    <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
+                      {v.name}
+                    </OptionItem>
+                  ))}
+                </div>
+              </PanelAccordion>
+
+              <PanelSection label="나레이션 속도">
+                <div className="px-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white/30 text-[11px] font-mono">속도</span>
+                    <span className="text-yellow-400 text-xs font-mono">{playbackRate.toFixed(2)}x</span>
+                  </div>
+                  <input
+                    type="range" min={0.5} max={2.0} step={0.25} value={playbackRate}
+                    onChange={e => setPlaybackRate(parseFloat(e.target.value))}
+                    className="w-full accent-yellow-400 h-0.5"
+                  />
+                  <div className="flex justify-between text-white/15 text-[9px] font-mono mt-2">
+                    <span>0.5x</span><span>1.0x</span><span>2.0x</span>
+                  </div>
+                </div>
+              </PanelSection>
+
+              {/* 현재 설정 요약 */}
+              <div className="mt-4 space-y-1.5">
+                <p className="text-white/15 text-[11px] tracking-widest uppercase mb-2">설정 요약</p>
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-white/20">스타일</span>
+                  <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
+                </div>
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-white/20">비율</span>
+                  <span className="text-white/40">{format === 'shorts' ? '9:16' : '16:9'}</span>
+                </div>
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-white/20">이미지 AI</span>
+                  <span className="text-white/40">{selectedImageModel?.name?.split(' ').slice(0, 2).join(' ')}</span>
+                </div>
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-white/20">목소리</span>
+                  <span className="text-white/40">{selectedVoice?.name}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 완성 단계 */}
+          {status === 'done' && (
+            <div className="space-y-1.5">
+              <p className="text-white/15 text-[11px] tracking-widest uppercase mb-3">생성 완료</p>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-white/20">장면 수</span>
+                <span className="text-white/40">{scenes.length}개</span>
+              </div>
+              <div className="flex justify-between text-[10px] font-mono">
+                <span className="text-white/20">스타일</span>
+                <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
+              </div>
+              <div className="flex justify-between text-[10px] font-mono">
+                <span className="text-white/20">비율</span>
+                <span className="text-white/40">{format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}</span>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </aside>
+
+    </div>
   );
 }
