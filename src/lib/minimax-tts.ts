@@ -111,43 +111,50 @@ export async function generateSpeech(
   }
 
   const rawText = await res.text();
-  let data: any;
-  try {
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found');
-    data = JSON.parse(jsonMatch[0]);
-  } catch (e) {
-    console.error('[minimax-tts] JSON Parse Error:', rawText);
-    throw new Error(`TTS API 응답 파싱 실패: ${rawText.slice(0, 100)}`);
-  }
-
-  if (data.base_resp?.status_code !== 0) {
-    console.error('[minimax-tts] API Error Resp:', data);
-    throw new Error(`MiniMax API 에러: ${data.base_resp?.status_msg}`);
-  }
-
-  // 여러 필드 후보 체크 (V2는 보통 data.data 또는 data 구조)
-  // data.data가 객체 { audio: "...", status: 2 } 일 수 있음
-  let audioData = data.data?.audio || data.data || data.audio || data.base64;
+  const lines = rawText.split('\n');
+  let fullAudioString = '';
   
-  if (typeof audioData === 'object' && audioData !== null) {
-    audioData = audioData.audio || audioData.content;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    let jsonStr = trimmed;
+    if (trimmed.startsWith('data:')) {
+      jsonStr = trimmed.slice(5).trim();
+    }
+    
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.base_resp?.status_code !== 0 && parsed.base_resp?.status_code !== undefined) {
+        console.error('[minimax-tts] API Error Resp in line:', parsed);
+        // 전체 실패가 아니면 계속 진행
+      }
+      const audio = parsed.data?.audio || parsed.data || parsed.audio || parsed.base64;
+      if (typeof audio === 'string') {
+        fullAudioString += audio;
+      } else if (typeof audio === 'object' && audio !== null) {
+        fullAudioString += (audio.audio || audio.content || '');
+      }
+    } catch (e) {
+      // JSON이 아니면 무시 (SSE 공백 등)
+    }
   }
 
-  if (!audioData || typeof audioData !== 'string') {
-    console.error('[minimax-tts] Invalid or missing audio data:', data);
-    throw new Error('응답에서 유효한 오디오 데이터를 찾을 수 없습니다.');
+  if (!fullAudioString) {
+    throw new Error('응답에서 오디오 데이터를 찾을 수 없습니다.');
   }
 
   let buffer: Buffer;
-  try {
-    // V2는 보통 base64 string
-    buffer = Buffer.from(audioData, 'base64');
-    if (buffer.length < 100) {
-      buffer = Buffer.from(audioData, 'hex');
-    }
-  } catch (e) {
-    buffer = Buffer.from(audioData, 'hex');
+  // HEX vs Base64 판별
+  // 494433(ID3) 또는 fffb(MP3)로 시작하는지 체크 (Hex 기준)
+  const isHex = /^[0-9a-fA-F]+$/.test(fullAudioString) && fullAudioString.length % 2 === 0;
+  
+  if (isHex) {
+    console.log('[minimax-tts] Detected HEX encoding');
+    buffer = Buffer.from(fullAudioString, 'hex');
+  } else {
+    console.log('[minimax-tts] Detected Base64 encoding');
+    buffer = Buffer.from(fullAudioString, 'base64');
   }
   
   if (!buffer || buffer.length === 0) {
