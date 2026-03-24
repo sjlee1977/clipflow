@@ -361,7 +361,7 @@ export default function DashboardPage() {
               value={script}
               onChange={e => setScript(e.target.value)}
               placeholder="대본 또는 주제를 입력하세요..."
-              className="w-full h-52 bg-transparent text-white border-0 border-b border-white/10 focus:border-white/30 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/20 pb-3"
+              className="w-full h-52 bg-transparent text-white border-0 border-b border-white/10 focus:border-white/30 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/40 pb-3"
               disabled={isProcessing}
             />
             <p className="text-white/15 text-xs font-mono mt-2 mb-8">{script.length}자</p>
