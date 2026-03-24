@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase-browser';
 
 const NAV_ITEMS = [
   {
@@ -22,6 +24,25 @@ const NAV_ITEMS = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email ?? null);
+        setUserName(user.user_metadata?.full_name ?? user.user_metadata?.name ?? null);
+      }
+    });
+  }, []);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  }
 
   return (
     <div className="flex h-screen bg-black text-white font-mono overflow-hidden">
@@ -70,9 +91,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* 하단 */}
-        <div className="px-5 py-4 border-t border-white/10">
-          <div className="text-white/20 text-xs tracking-widest">
-            <p>v1.0.0</p>
+        <div className="px-5 py-4 border-t border-white/10 space-y-2">
+          {userName && (
+            <p className="text-white/50 text-[11px] font-mono truncate">{userName}</p>
+          )}
+          {userEmail && (
+            <p className="text-white/25 text-[10px] font-mono truncate">{userEmail}</p>
+          )}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-white/15 text-[10px] tracking-widest">v1.0.0</span>
+            <button
+              onClick={handleLogout}
+              className="text-white/25 hover:text-white/60 text-[10px] font-mono transition-colors"
+            >
+              로그아웃
+            </button>
           </div>
         </div>
       </aside>
