@@ -29,6 +29,8 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "autoprefixer": "^10.4.27",
     "elevenlabs": "^1.59.0",
     "fluent-ffmpeg": "^2.1.3",

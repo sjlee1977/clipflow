@@ -59,7 +59,7 @@ export async function generateImage(prompt: string): Promise<string> {
     n: 1,
   });
 
-  const url = response.data[0].url;
+  const url = response.data?.[0]?.url;
   if (!url) throw new Error('이미지 생성 실패');
   return url;
 }
