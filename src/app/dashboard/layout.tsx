@@ -9,7 +9,7 @@ const NAV_ITEMS = [
     items: [
       { href: '/dashboard/script', label: '대본 만들기', icon: '✎' },
       { href: '/dashboard', label: '영상 만들기', icon: '▶' },
-      { href: '/dashboard/history', label: '내 영상', icon: '◫', soon: true },
+      { href: '/dashboard/history', label: '내 영상', icon: '◫' },
     ],
   },
   {
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   const active = pathname === item.href;
                   return (
                     <div key={item.href} className="relative">
-                      {item.soon ? (
+                      {'soon' in item && item.soon ? (
                         <div className="flex items-center gap-2.5 px-3 py-2.5 text-white/20 cursor-not-allowed select-none">
                           <span className="text-xs w-4">{item.icon}</span>
                           <span className="text-xs tracking-wide">{item.label}</span>

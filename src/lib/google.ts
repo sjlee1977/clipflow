@@ -21,6 +21,22 @@ function getAI() {
   return ai;
 }
 
+export type GoogleVoice = {
+  id: string;
+  name: string;
+  gender: 'female' | 'male';
+};
+
+export const GOOGLE_VOICES: GoogleVoice[] = [
+  { id: 'Kore',   name: 'Kore (차분한 여성)',  gender: 'female' },
+  { id: 'Aoede',  name: 'Aoede (밝은 여성)',   gender: 'female' },
+  { id: 'Leda',   name: 'Leda (부드러운 여성)', gender: 'female' },
+  { id: 'Charon', name: 'Charon (중후한 남성)', gender: 'male'   },
+  { id: 'Fenrir', name: 'Fenrir (강한 남성)',   gender: 'male'   },
+  { id: 'Puck',   name: 'Puck (밝은 남성)',     gender: 'male'   },
+  { id: 'Orus',   name: 'Orus (안정적 남성)',   gender: 'male'   },
+];
+
 export type ScriptScene = {
   text: string;
   imagePrompt: string;
@@ -113,6 +129,31 @@ export async function generateImage(prompt: string, options: GenerateImageOption
   }));
 
   return `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+}
+
+/** TTS 버퍼만 반환 (S3 업로드 없음, preview용) */
+export async function generateSpeechBuffer(
+  text: string,
+  voiceName = 'Kore'
+): Promise<{ buffer: Buffer; durationMs: number }> {
+  const response = await getAI().models.generateContent({
+    model: 'gemini-2.5-flash-preview-tts',
+    contents: [{ role: 'user', parts: [{ text }] }],
+    config: {
+      responseModalities: ['AUDIO'],
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+    },
+  });
+
+  const audioPart = response.candidates?.[0]?.content?.parts?.find(
+    (p) => p.inlineData?.mimeType?.includes('audio')
+  );
+  if (!audioPart?.inlineData?.data) throw new Error('TTS 생성 실패');
+
+  const pcmData = Buffer.from(audioPart.inlineData.data, 'base64');
+  const buffer = pcmToWav(pcmData, 24000, 1, 16);
+  const durationMs = Math.round((pcmData.length / (24000 * 2)) * 1000);
+  return { buffer, durationMs };
 }
 
 /**

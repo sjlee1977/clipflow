@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSpeechToS3 } from '@/lib/minimax-tts';
+import { generateSpeech as googleTTSToS3 } from '@/lib/google';
 import { startRender, waitForRender } from '@/lib/remotion';
 
 const FPS = 30;
@@ -8,9 +9,10 @@ export async function POST(req: NextRequest) {
   try {
     const {
       scenes: inputScenes,
-      voiceId = 'female-yujie',
+      voiceId = 'Korean_SoothingLady',
       speed = 1.0,
       format = 'shorts',
+      ttsProvider = 'minimax',
     } = await req.json();
 
     if (!Array.isArray(inputScenes) || inputScenes.length === 0) {
@@ -22,11 +24,19 @@ export async function POST(req: NextRequest) {
     // 1. TTS 병렬 생성 (MiniMax는 병렬 요청 성능이 우수함)
     const scenes = await Promise.all(
       inputScenes.map(async (s: { text: string; imageUrl: string; videoUrl?: string }, i: number) => {
-        const { url: audioUrl, durationMs } = await generateSpeechToS3(
-          s.text,
-          `scene-${ts}-${i}`,
-          { voiceId, speed }
-        );
+        let audioUrl: string;
+        let durationMs: number;
+
+        if (ttsProvider === 'google') {
+          audioUrl = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId);
+          durationMs = s.text.length * 80; // 대략적인 추정
+        } else {
+          ({ url: audioUrl, durationMs } = await generateSpeechToS3(
+            s.text,
+            `scene-${ts}-${i}`,
+            { voiceId, speed }
+          ));
+        }
 
         const durationInFrames = Math.max(30, Math.round((durationMs / 1000) * FPS));
 

@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { IMAGE_MODELS, LLM_MODELS } from '@/lib/openrouter';
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
+import { GOOGLE_VOICES } from '@/lib/google';
+import { supabase } from '@/lib/supabase';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
 type Format = 'shorts' | 'landscape';
@@ -108,6 +110,7 @@ export default function DashboardPage() {
   const [format, setFormat] = useState<Format>('shorts');
   const [imageModelId, setImageModelId] = useState('black-forest-labs/flux.2-klein-4b');
   const [llmModelId, setLlmModelId] = useState('deepseek/deepseek-chat-v3-0324');
+  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('minimax');
   const [voiceId, setVoiceId] = useState('Korean_SoothingLady');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
@@ -151,10 +154,33 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script, imageModelId, llmModelId, format, characterImageBase64, imageStyle }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '장면 생성 실패');
-      setScenes(data.scenes);
-      setStatus('preview');
+      if (!res.ok || !res.body) throw new Error('장면 생성 실패');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'error') throw new Error(event.message);
+          if (event.type === 'scene') {
+            setScenes(prev => {
+              const next = [...prev];
+              next[event.index] = { text: event.text, imagePrompt: event.imagePrompt, imageUrl: event.imageUrl };
+              return next;
+            });
+          }
+          if (event.type === 'done') setStatus('preview');
+        }
+      }
     } catch (err: unknown) {
       setStatus('error');
       setError(err instanceof Error ? err.message : '알 수 없는 오류');
@@ -222,7 +248,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes, voiceId, speed: playbackRate, format }),
+        body: JSON.stringify({ scenes, voiceId, speed: playbackRate, format, ttsProvider }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '영상 생성 시작 실패');
@@ -240,6 +266,26 @@ export default function DashboardPage() {
             setVideoUrl(sData.outputFile);
             setStatus('done');
             setRenderProgress(1);
+            // 파일명 생성: clipflow260324001
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(2);
+            const mmdd = String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const { count } = await supabase.from('videos').select('*', { count: 'exact', head: true }).gte('created_at', todayStart);
+            const seq = String((count ?? 0) + 1).padStart(3, '0');
+            const fileName = `clipflow${yy}${mmdd}${seq}`;
+
+            await supabase.from('videos').insert({
+              title: script.slice(0, 50) || '제목 없음',
+              video_url: sData.outputFile,
+              format,
+              scene_count: scenes.length,
+              voice_id: voiceId,
+              image_style: imageStyle,
+              image_model: imageModelId,
+              tts_provider: ttsProvider,
+              file_name: fileName,
+            });
             return;
           }
 
@@ -280,7 +326,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/preview-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voiceId }),
+        body: JSON.stringify({ text, voiceId, ttsProvider }),
       });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -320,7 +366,7 @@ export default function DashboardPage() {
             />
             <p className="text-white/15 text-xs font-mono mt-2 mb-8">{script.length}자</p>
 
-            {status === 'error' && (
+            {status === 'error' && scenes.length === 0 && (
               <div className="border-l-2 border-red-500 pl-4 mb-8">
                 <p className="text-red-400 text-xs font-mono">{error}</p>
                 <button onClick={() => setStatus('idle')} className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
@@ -343,7 +389,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── 미리보기 단계 ── */}
-        {(status === 'preview' || status === 'rendering' || status === 'done') && scenes.length > 0 && (
+        {(status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <span className="text-white/25 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
@@ -407,6 +453,18 @@ export default function DashboardPage() {
               </button>
             )}
 
+            {status === 'error' && error && (
+              <div className="mt-8 border-l-2 border-red-500 pl-4 py-1">
+                <p className="text-red-400 text-xs font-mono">영상 생성 실패: {error}</p>
+                <button
+                  onClick={() => { setStatus('preview'); setError(''); }}
+                  className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors"
+                >
+                  다시 시도 →
+                </button>
+              </div>
+            )}
+
             {status === 'rendering' && (
               <div className="mt-8 border-l-2 border-yellow-400/40 pl-4 py-1">
                 <div className="flex items-center gap-3 mb-3">
@@ -436,9 +494,34 @@ export default function DashboardPage() {
             </div>
             <video src={videoUrl} controls className="w-full" />
             <div className="flex gap-3 mt-4">
-              <a href={videoUrl} download className="flex-1 text-center bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3 transition-colors text-xs tracking-widest uppercase font-mono">
+              <button
+                onClick={async () => {
+                  const proxyUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=clipflow`;
+                  if ('showSaveFilePicker' in window) {
+                    try {
+                      const handle = await (window as any).showSaveFilePicker({
+                        suggestedName: 'clipflow.mp4',
+                        types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }],
+                      });
+                      const res = await fetch(proxyUrl);
+                      const blob = await res.blob();
+                      const writable = await handle.createWritable();
+                      await writable.write(blob);
+                      await writable.close();
+                      return;
+                    } catch (e: any) {
+                      if (e.name === 'AbortError') return;
+                    }
+                  }
+                  const a = document.createElement('a');
+                  a.href = proxyUrl;
+                  a.download = 'clipflow.mp4';
+                  a.click();
+                }}
+                className="flex-1 text-center bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3 transition-colors text-xs tracking-widest uppercase font-mono"
+              >
                 다운로드
-              </a>
+              </button>
               <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
                 className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-xs font-mono transition-colors"
@@ -536,13 +619,42 @@ export default function DashboardPage() {
           {/* 미리보기 단계 설정 */}
           {(status === 'preview' || status === 'rendering') && (
             <>
-              <PanelAccordion label="목소리" value={MINIMAX_VOICES.find(v => v.id === voiceId)?.name ?? ''}>
+              <PanelAccordion
+                label="목소리"
+                value={
+                  ttsProvider === 'google'
+                    ? GOOGLE_VOICES.find(v => v.id === voiceId)?.name ?? ''
+                    : MINIMAX_VOICES.find(v => v.id === voiceId)?.name ?? ''
+                }
+              >
+                {/* Provider 토글 */}
+                <div className="flex gap-1 mb-2">
+                  <button
+                    onClick={() => { setTtsProvider('minimax'); setVoiceId('Korean_SoothingLady'); }}
+                    className={`flex-1 py-1 text-[11px] rounded ${ttsProvider === 'minimax' ? 'bg-yellow-400 text-black font-bold' : 'bg-white/10 text-white/50'}`}
+                  >
+                    MiniMax (유료)
+                  </button>
+                  <button
+                    onClick={() => { setTtsProvider('google'); setVoiceId('Kore'); }}
+                    className={`flex-1 py-1 text-[11px] rounded ${ttsProvider === 'google' ? 'bg-yellow-400 text-black font-bold' : 'bg-white/10 text-white/50'}`}
+                  >
+                    Google (무료)
+                  </button>
+                </div>
                 <div className="space-y-0.5">
-                  {MINIMAX_VOICES.map(v => (
-                    <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
-                      {v.name}
-                    </OptionItem>
-                  ))}
+                  {ttsProvider === 'google'
+                    ? GOOGLE_VOICES.map(v => (
+                        <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
+                          {v.name}
+                        </OptionItem>
+                      ))
+                    : MINIMAX_VOICES.map(v => (
+                        <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
+                          {v.name}
+                        </OptionItem>
+                      ))
+                  }
                 </div>
               </PanelAccordion>
 

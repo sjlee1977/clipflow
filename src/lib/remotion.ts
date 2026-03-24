@@ -25,8 +25,8 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     inputProps,
     codec: 'h264',
     outName: `${compositionId}-${Date.now()}.mp4`,
-    concurrencyPerLambda: 4,  // 3008MB 메모리에 맞춰 동시성 상향 (CPU 활용도 극대화)
-    framesPerLambda: 30,     // 프레임당 분할 단위를 늘려 람다 기동 오버헤드 감소
+    concurrencyPerLambda: 2,
+    framesPerLambda: 30,
   });
 
   return { renderId, bucketName };
