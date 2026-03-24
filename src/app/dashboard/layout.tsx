@@ -60,23 +60,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
           {NAV_ITEMS.map((group) => (
             <div key={group.group}>
-              <p className="text-white/20 text-xs tracking-widest px-2 mb-2">{group.group}</p>
+              <p className="text-[#17BEBB]/60 text-[13px] tracking-widest px-2 mb-2">{group.group}</p>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const active = pathname === item.href;
                   return (
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
-                        <div className="flex items-center gap-2.5 px-3 py-2.5 text-white/20 cursor-not-allowed select-none">
-                          <span className="text-xs w-4">{item.icon}</span>
-                          <span className="text-xs tracking-wide">{item.label}</span>
-                          <span className="ml-auto text-[11px] border border-white/10 px-1.5 py-0.5 text-white/20">SOON</span>
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 text-white/50 cursor-not-allowed select-none">
+                          <span className="text-[13px] w-4">{item.icon}</span>
+                          <span className="text-[13px] tracking-wide">{item.label}</span>
+                          <span className="ml-auto text-[12px] border border-white/20 px-1.5 py-0.5 text-white/50">SOON</span>
                         </div>
                       ) : (
                         <Link href={item.href}
-                          className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors text-xs tracking-wide ${active
+                          className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors text-[13px] tracking-wide ${active
                             ? 'bg-yellow-400 text-black font-bold'
-                            : 'text-white/60 hover:text-white hover:bg-white/5'
+                            : 'text-white/75 hover:text-white hover:bg-white/5'
                             }`}>
                           <span className="w-4">{item.icon}</span>
                           <span>{item.label}</span>
@@ -93,16 +93,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* 하단 */}
         <div className="px-5 py-4 border-t border-white/10 space-y-2">
           {userName && (
-            <p className="text-white/50 text-[11px] font-mono truncate">{userName}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-white/80 text-[13.5px] font-mono truncate">{userName}</p>
+              <span className="text-[10.5px] font-mono px-1.5 py-0.5 border border-yellow-400/40 text-yellow-400/70 shrink-0">ADMIN</span>
+            </div>
           )}
           {userEmail && (
-            <p className="text-white/25 text-[10px] font-mono truncate">{userEmail}</p>
+            <p className="text-[#17BEBB]/60 text-[12.5px] font-mono truncate">{userEmail}</p>
           )}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-white/15 text-[10px] tracking-widest">v1.0.0</span>
+            <span className="text-white/30 text-[12.5px] tracking-widest">v1.0.0</span>
             <button
               onClick={handleLogout}
-              className="text-white/25 hover:text-white/60 text-[10px] font-mono transition-colors"
+              className="text-[#E4572E]/60 hover:text-[#E4572E] text-[12.5px] font-mono transition-colors"
             >
               로그아웃
             </button>
@@ -114,12 +117,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto bg-[#0a0a0a]">
         {/* 상단 바 */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-sm">
-          <div className="text-white/30 text-xs tracking-widest uppercase">
+          <div className="text-white/60 text-[13px] tracking-widest uppercase">
             {NAV_ITEMS.flatMap(g => g.items).find(i => i.href === pathname)?.label ?? 'Dashboard'}
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-white/30 text-xs tracking-widest">LIVE</span>
+            <div className="w-1.5 h-1.5 bg-[#76B041] rounded-full animate-pulse" />
+            <span className="text-[#76B041] text-xs tracking-widest">LIVE</span>
           </div>
         </div>
 

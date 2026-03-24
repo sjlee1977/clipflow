@@ -33,7 +33,7 @@ type PreviewScene = {
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-white/20 text-[12px] tracking-widest uppercase mb-3">{label}</p>
+      <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">{label}</p>
       {children}
     </div>
   );
@@ -52,9 +52,9 @@ function PanelAccordion({ label, value, children }: {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between py-3 group"
       >
-        <span className="text-white/20 text-[12px] tracking-widest uppercase">{label}</span>
+        <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase">{label}</span>
         <span className="flex items-center gap-2">
-          <span className="text-white/50 text-[12px] font-mono truncate max-w-[120px]">{value}</span>
+          <span className="text-white/70 text-[13px] font-mono truncate max-w-[120px]">{value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
             className={`text-white/20 group-hover:text-white/40 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -93,10 +93,10 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-xs font-mono border-l-2 transition-colors ${
+      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
         active
           ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
-          : 'border-transparent text-white/40 hover:text-white/70 hover:border-white/20'
+          : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
       }`}
     >
       <span>{children}</span>
@@ -364,7 +364,7 @@ export default function DashboardPage() {
               className="w-full h-52 bg-transparent text-white border-0 border-b border-white/10 focus:border-white/30 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/40 pb-3"
               disabled={isProcessing}
             />
-            <p className="text-white/15 text-xs font-mono mt-2 mb-8">{script.length}자</p>
+            <p className="text-white/35 text-xs font-mono mt-2 mb-8">{script.length}자</p>
 
             {status === 'error' && scenes.length === 0 && (
               <div className="border-l-2 border-red-500 pl-4 mb-8">
@@ -392,7 +392,7 @@ export default function DashboardPage() {
         {(status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
-              <span className="text-white/25 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+              <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
               {status === 'preview' && (
                 <button
                   onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); }}
@@ -405,7 +405,7 @@ export default function DashboardPage() {
             <div>
               {scenes.map((scene, i) => (
                 <div key={i} className="flex gap-4 py-4 border-b border-white/5">
-                  <span className="text-white/15 text-xs font-mono pt-0.5 w-5 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="text-white/40 text-xs font-mono pt-0.5 w-5 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
                   <div className="w-16 h-16 shrink-0 overflow-hidden bg-white/5">
                     <img src={scene.imageUrl} alt={`장면 ${i + 1}`} className="w-full h-full object-cover" />
                   </div>
@@ -418,7 +418,7 @@ export default function DashboardPage() {
                       className="w-full bg-transparent text-white/80 text-xs font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
                     />
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-white/15 text-xs font-mono">{scene.text.length}자</span>
+                      <span className="text-white/35 text-xs font-mono">{scene.text.length}자</span>
                       <button
                         onClick={() => handlePlayScene(i, scene.text)}
                         disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || animatingIndex === i}
@@ -471,7 +471,7 @@ export default function DashboardPage() {
                   <span className="w-3.5 h-3.5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin shrink-0" />
                   <div>
                     <p className="text-yellow-400/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
-                    <p className="text-white/20 text-[11px] tracking-widest uppercase font-mono mt-0.5">TTS → AWS Lambda 렌더링 진행 중</p>
+                    <p className="text-[#17BEBB]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">TTS → AWS Lambda 렌더링 진행 중</p>
                   </div>
                 </div>
                 {/* 미니 프로그레스 바 */}
@@ -490,7 +490,7 @@ export default function DashboardPage() {
         {status === 'done' && videoUrl && (
           <div className="mt-2">
             <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
-              <span className="text-white/25 text-xs tracking-widest uppercase font-mono">완성 영상</span>
+              <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">완성 영상</span>
             </div>
             <video src={videoUrl} controls className="w-full" />
             <div className="flex gap-3 mt-4">

@@ -92,7 +92,7 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <p className="text-white/20 text-xs tracking-widest uppercase font-mono mb-4">
+      <p className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono mb-4">
         총 {videos.length}개
       </p>
 
@@ -100,7 +100,7 @@ export default function HistoryPage() {
         {paged.map((v) => (
           <div key={v.id} className="border border-white/10 flex flex-col">
             {/* 썸네일 / 영상 영역 */}
-            <div className="relative bg-black h-48 overflow-hidden">
+            <div className="relative bg-black h-[320px] overflow-hidden">
               {playing === v.id ? (
                 <video
                   src={v.video_url}
@@ -131,54 +131,52 @@ export default function HistoryPage() {
 
             {/* 정보 + 버튼 */}
             <div className="p-2 flex flex-col gap-1.5">
-              <p className="text-white/60 text-[11px] font-mono leading-snug line-clamp-1">{v.title}</p>
               <div className="flex flex-wrap gap-1">
-                <span className="text-[9px] font-mono text-white/30 border border-white/10 px-1 py-0.5">
+                <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                   {v.format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}
                 </span>
                 {v.image_style && (
-                  <span className="text-[9px] font-mono text-white/30 border border-white/10 px-1 py-0.5">
+                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
                   </span>
                 )}
                 {v.scene_count && (
-                  <span className="text-[9px] font-mono text-white/30 border border-white/10 px-1 py-0.5">
+                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {v.scene_count}장면
                   </span>
                 )}
                 {v.tts_provider && (
-                  <span className="text-[9px] font-mono text-white/30 border border-white/10 px-1 py-0.5">
+                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {v.tts_provider === 'google' ? 'Google TTS' : 'MiniMax TTS'}
                   </span>
                 )}
               </div>
-              <p className="text-white/30 text-[10px] font-mono">
-                {new Date(v.created_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-              </p>
-              {v.file_name && (
-                <p className="text-white/15 text-[9px] font-mono">{v.file_name}.mp4</p>
-              )}
-              <button
-                onClick={async () => {
-                  setDownloading(v.id);
-                  let fileName = v.file_name;
-                  if (!fileName) {
-                    const d = new Date(v.created_at);
-                    const yy = String(d.getFullYear()).slice(2);
-                    const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-                    const dateStr = d.toDateString();
-                    const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
-                    const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
-                    fileName = `clipflow${yy}${mmdd}${seq}`;
-                  }
-                  await downloadVideo(v.video_url, fileName);
-                  setDownloading(null);
-                }}
-                disabled={downloading === v.id}
-                className="text-center text-[10px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 py-1 transition-colors w-full"
-              >
-                {downloading === v.id ? '다운 중...' : 'MP4 다운'}
-              </button>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-white/50 text-[13px] font-mono">
+                  {new Date(v.created_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <button
+                  onClick={async () => {
+                    setDownloading(v.id);
+                    let fileName = v.file_name;
+                    if (!fileName) {
+                      const d = new Date(v.created_at);
+                      const yy = String(d.getFullYear()).slice(2);
+                      const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+                      const dateStr = d.toDateString();
+                      const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
+                      const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
+                      fileName = `clipflow${yy}${mmdd}${seq}`;
+                    }
+                    await downloadVideo(v.video_url, fileName);
+                    setDownloading(null);
+                  }}
+                  disabled={downloading === v.id}
+                  className="text-[12px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
+                >
+                  {downloading === v.id ? '다운 중...' : 'MP4 다운'}
+                </button>
+              </div>
             </div>
           </div>
         ))}
