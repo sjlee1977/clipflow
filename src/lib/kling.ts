@@ -55,16 +55,15 @@ export async function uploadImageToS3(imageBuffer: Buffer, mimeType = 'image/png
   return `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
 }
 
-/** 이미지 URL → Kling 영상 URL 변환 */
-export async function imageToVideo(
+/** 이미지 URL → Kling 영상 생성 태스크 시작 */
+export async function createKlingVideoTask(
   imageUrl: string,
   prompt: string,
   modelId = 'kling-v1-6-std-5s'
 ): Promise<string> {
   const model = KLING_MODELS.find(m => m.id === modelId) ?? KLING_MODELS[0];
 
-  // 태스크 생성
-  const createRes = await fetch('https://api.klingai.com/v1/videos/image2video', {
+  const res = await fetch('https://api.klingai.com/v1/videos/image2video', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -77,37 +76,48 @@ export async function imageToVideo(
     }),
   });
 
-  const createData = await createRes.json();
-  if (!createRes.ok || createData.code !== 0) {
-    throw new Error(createData.message || 'Kling 태스크 생성 실패');
+  const data = await res.json();
+  if (!res.ok || data.code !== 0) throw new Error(data.message || 'Kling 태스크 생성 실패');
+  if (!data.data?.task_id) throw new Error('Kling task_id 없음');
+  return data.data.task_id;
+}
+
+/** Kling 태스크 상태 확인 */
+export async function queryKlingVideoTask(taskId: string) {
+  const res = await fetch(`https://api.klingai.com/v1/videos/image2video/${taskId}`, {
+    headers: { 'Authorization': `Bearer ${getToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok || data.code !== 0) throw new Error(data.message || 'Kling 상태 확인 실패');
+  
+  const status = data.data?.task_status;
+  const result: any = {
+    task_status: status === 'succeed' ? 'succeed' : status === 'failed' ? 'failed' : 'processing',
+    task_status_msg: data.data?.task_status_msg || '',
+  };
+  
+  if (status === 'succeed') {
+    result.video_url = data.data?.task_result?.videos?.[0]?.url;
   }
+  
+  return result;
+}
 
-  const taskId = createData.data?.task_id;
-  if (!taskId) throw new Error('Kling task_id 없음');
-
-  // 완료까지 폴링 (최대 10분)
+/** (기존 호환용) 이미지 URL → 영상 URL 변환 (동기적 폴링) */
+export async function imageToVideo(
+  imageUrl: string,
+  prompt: string,
+  modelId = 'kling-v1-6-std-5s'
+): Promise<string> {
+  const taskId = await createKlingVideoTask(imageUrl, prompt, modelId);
   const maxWait = 10 * 60 * 1000;
   const start = Date.now();
 
   while (Date.now() - start < maxWait) {
     await new Promise(r => setTimeout(r, 4000));
-
-    const pollRes = await fetch(`https://api.klingai.com/v1/videos/image2video/${taskId}`, {
-      headers: { 'Authorization': `Bearer ${getToken()}` },
-    });
-    const pollData = await pollRes.json();
-    const status = pollData.data?.task_status;
-
-    if (status === 'succeed') {
-      const videoUrl = pollData.data?.task_result?.videos?.[0]?.url;
-      if (!videoUrl) throw new Error('Kling 영상 URL 없음');
-      return videoUrl;
-    }
-
-    if (status === 'failed') {
-      throw new Error(`Kling 영상 생성 실패: ${pollData.data?.task_status_msg ?? ''}`);
-    }
+    const res = await queryKlingVideoTask(taskId);
+    if (res.task_status === 'succeed') return res.video_url;
+    if (res.task_status === 'failed') throw new Error(`Kling 실패: ${res.task_status_msg}`);
   }
-
-  throw new Error('Kling 영상 생성 타임아웃');
+  throw new Error('Kling 타임아웃');
 }

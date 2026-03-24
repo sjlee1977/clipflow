@@ -116,10 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* 콘텐츠 영역 */}
       <main className="flex-1 overflow-y-auto bg-[#0a0a0a]">
         {/* 상단 바 */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-sm">
-          <div className="text-white/60 text-[13px] tracking-widest uppercase">
-            {NAV_ITEMS.flatMap(g => g.items).find(i => i.href === pathname)?.label ?? 'Dashboard'}
-          </div>
+        <div className="sticky top-0 z-10 flex items-center justify-end px-6 py-3 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-[#76B041] rounded-full animate-pulse" />
             <span className="text-[#76B041] text-xs tracking-widest">LIVE</span>

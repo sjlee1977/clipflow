@@ -9,16 +9,16 @@ export default function HomePage() {
           <div className="w-4 h-4 bg-yellow-400" />
           <span className="text-white font-bold text-lg tracking-widest uppercase">ClipFlow</span>
         </a>
-        <nav className="hidden md:flex items-center gap-8 text-xs tracking-widest uppercase text-gray-400">
+        <nav className="hidden md:flex items-center gap-8 text-[13px] tracking-widest uppercase text-gray-400">
           <a href="#features" className="hover:text-white transition-colors">기능</a>
           <a href="#how" className="hover:text-white transition-colors">작동 방식</a>
           <a href="#pricing" className="hover:text-white transition-colors">요금제</a>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="hidden md:block text-xs tracking-widest uppercase text-gray-400 hover:text-white transition-colors px-4 py-2">
+          <Link href="/dashboard" className="hidden md:block text-[13px] tracking-widest uppercase text-gray-400 hover:text-white transition-colors px-4 py-2">
             로그인
           </Link>
-          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold tracking-widest uppercase px-4 py-2 transition-colors">
+          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-[13px] font-bold tracking-widest uppercase px-4 py-2 transition-colors">
             무료 시작
           </Link>
         </div>
@@ -49,9 +49,9 @@ export default function HomePage() {
 
         {/* 메인 텍스트 */}
         <div className="relative text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-xs tracking-widest text-yellow-400 uppercase">
+          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-[13px] tracking-widest text-yellow-400 uppercase">
             <div className="w-2 h-2 bg-yellow-400 animate-pulse" />
-            지금 바로 무료로 시작 // 신용카드 불필요
+            지금 바로 무료로 시작
           </div>
 
           <h1 className="text-6xl md:text-8xl font-black uppercase leading-none tracking-tighter mb-4">
@@ -68,11 +68,11 @@ export default function HomePage() {
 
           <div className="flex items-center justify-center gap-3">
             <Link href="/dashboard"
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase px-6 py-2.5 transition-colors">
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-[13px] tracking-widest uppercase px-6 py-2.5 transition-colors">
               시작하기 — 무료
             </Link>
             <a href="#how"
-              className="text-white/40 hover:text-white/80 text-xs tracking-widest uppercase transition-colors">
+              className="text-white/40 hover:text-white/80 text-[13px] tracking-widest uppercase transition-colors">
               작동 방식 보기 →
             </a>
           </div>

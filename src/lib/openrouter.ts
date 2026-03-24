@@ -13,17 +13,12 @@ export type ImageModel = {
 
 export const IMAGE_MODELS: ImageModel[] = [
   // ── 무료 Preview 모델 ──────────────────────────────────────────
-  { id: 'black-forest-labs/flux.2-klein-4b', name: 'FLUX.2 Klein', price: '무료(Preview)', speed: 'fast',   quality: 'good',  provider: 'Black Forest Labs' },
+  { id: 'black-forest-labs/flux.2-klein-4b', name: 'FLUX.2 Klein',      price: '무료(Preview)', speed: 'fast',   quality: 'good',  provider: 'Black Forest Labs' },
   { id: 'sourceful/riverflow-v2-fast',       name: 'Riverflow V2 Fast', price: '무료(Preview)', speed: 'fast',   quality: 'good',  provider: 'Sourceful' },
-  { id: 'bytedance-seed/seedream-4.5',       name: 'Seedream 4.5',  price: '무료(Preview)', speed: 'medium', quality: 'great', provider: 'ByteDance' },
-  { id: 'black-forest-labs/flux.2-pro',      name: 'FLUX.2 Pro',   price: '무료(Preview)', speed: 'medium', quality: 'great', provider: 'Black Forest Labs' },
-  { id: 'black-forest-labs/flux.2-max',      name: 'FLUX.2 Max',   price: '무료(Preview)', speed: 'slow',   quality: 'best',  provider: 'Black Forest Labs' },
   // ── 유료 모델 (가성비 순) ─────────────────────────────────────
-  { id: 'google/gemini-2.5-flash-image',          name: 'Gemini 2.5 Flash', price: '~$0.003/장', speed: 'fast',   quality: 'great', provider: 'Google' },
-  { id: 'google/gemini-3.1-flash-image-preview',  name: 'Gemini 3.1 Flash', price: '~$0.005/장', speed: 'fast',   quality: 'great', provider: 'Google' },
-  { id: 'openai/gpt-5-image-mini',                name: 'GPT-5 Image Mini', price: '~$0.005/장', speed: 'medium', quality: 'best',  provider: 'OpenAI' },
-  { id: 'google/gemini-3-pro-image-preview',       name: 'Gemini 3 Pro',    price: '~$0.020/장', speed: 'slow',   quality: 'best',  provider: 'Google' },
-  { id: 'openai/gpt-5-image',                      name: 'GPT-5 Image',     price: '~$0.025/장', speed: 'slow',   quality: 'best',  provider: 'OpenAI' },
+  { id: 'google/gemini-2.5-flash-image',         name: 'Gemini 2.5 Flash Image', price: '~$0.003/장', speed: 'fast',   quality: 'great', provider: 'Google' },
+  { id: 'google/gemini-3.1-flash-image-preview', name: 'Gemini 3.1 Flash Image', price: '~$0.005/장', speed: 'fast',   quality: 'great', provider: 'Google' },
+  { id: 'black-forest-labs/flux.2-pro',          name: 'FLUX.2 Pro',             price: '~$0.030/장', speed: 'medium', quality: 'best',  provider: 'Black Forest Labs' },
 ];
 
 export type LlmModel = {
@@ -32,25 +27,44 @@ export type LlmModel = {
   price: string;
 };
 
+export type VideoModel = {
+  id: string;
+  name: string;
+  provider: 'minimax' | 'kling';
+  price: string;
+};
+
+export const VIDEO_MODELS: VideoModel[] = [
+  { id: 'minimax/video-01', name: 'MiniMax Video 01', provider: 'minimax', price: '$0.05/초' },
+  { id: 'kling-v1-6-std-5s', name: 'Kling 1.6 Std (5s)', provider: 'kling', price: '$0.07/클립' },
+  { id: 'kling-v1-6-pro-5s', name: 'Kling 1.6 Pro (5s)', provider: 'kling', price: '$0.14/클립' },
+];
+
 export const LLM_MODELS: LlmModel[] = [
   // ── 무료 ──────────────────────────────────────────────────────
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B',       price: '무료' },
   { id: 'google/gemma-3-27b-it:free',             name: 'Gemma 3 27B',         price: '무료' },
-  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', price: '무료' },
-  // ── 저렴 ($0.1~0.8/1M) ───────────────────────────────────────
-  { id: 'google/gemini-2.5-flash-lite',           name: 'Gemini 2.5 Flash Lite', price: '$0.40/1M' },
-  { id: 'openai/gpt-4.1-nano',                    name: 'GPT-4.1 Nano',        price: '$0.40/1M' },
-  { id: 'openai/gpt-5-nano',                      name: 'GPT-5 Nano',          price: '$0.40/1M' },
-  { id: 'deepseek/deepseek-chat-v3-0324',         name: 'DeepSeek V3',         price: '$0.77/1M' },
+  // ── 저렴 ($0.1~1/1M) ─────────────────────────────────────────
+  { id: 'qwen/qwen3.5-flash-02-23',               name: 'Qwen3.5 Flash',         price: '$0.07/1M' },
+  { id: 'google/gemini-2.5-flash-lite',           name: 'Gemini 2.5 Flash Lite', price: '$0.10/1M' },  // 🔥 실사용 1위
+  { id: 'mistralai/mistral-small-2603',           name: 'Mistral Small 4',       price: '$0.15/1M' },
+  { id: 'openai/gpt-5.4-nano',                    name: 'GPT-5.4 Nano',          price: '$0.20/1M' },
+  { id: 'qwen/qwen3.5-plus-02-15',                name: 'Qwen3.5 Plus',          price: '$0.26/1M' },
+  { id: 'qwen/qwen3-235b-a22b',                   name: 'Qwen3 235B',            price: '$0.46/1M' },
+  { id: 'deepseek/deepseek-chat-v3-0324',         name: 'DeepSeek V3',           price: '$0.77/1M' },
   // ── 보통 ($1~5/1M) ───────────────────────────────────────────
-  { id: 'openai/gpt-4.1-mini',                    name: 'GPT-4.1 Mini',        price: '$1.60/1M' },
-  { id: 'google/gemini-2.5-flash',                name: 'Gemini 2.5 Flash',    price: '$2.50/1M' },
+  { id: 'openai/gpt-4.1-mini',                    name: 'GPT-4.1 Mini',        price: '$1.60/1M' },  // 🔥 실사용 2위
+  { id: 'openai/gpt-5.4-mini',                    name: 'GPT-5.4 Mini',        price: '$1.60/1M' },
+  { id: 'google/gemini-3-flash-preview',          name: 'Gemini 3 Flash',      price: '$2.00/1M' },  // 🔥 실사용 3위
+  { id: 'google/gemini-2.5-flash',                name: 'Gemini 2.5 Flash',    price: '$2.50/1M' },  // 🔥 실사용 4위
   { id: 'deepseek/deepseek-r1',                   name: 'DeepSeek R1',         price: '$2.50/1M' },
-  { id: 'anthropic/claude-haiku-4.5',             name: 'Claude Haiku 4.5',    price: '$5.00/1M' },
-  // ── 고급 ($10+/1M) ───────────────────────────────────────────
-  { id: 'google/gemini-2.5-pro',                  name: 'Gemini 2.5 Pro',      price: '$10.0/1M' },
-  { id: 'openai/gpt-5',                           name: 'GPT-5',               price: '$10.0/1M' },
-  { id: 'anthropic/claude-sonnet-4.6',            name: 'Claude Sonnet 4.6',   price: '$15.0/1M' },
+  { id: 'moonshotai/kimi-k2.5',                   name: 'Kimi K2.5',           price: '$3.00/1M' },  // 실사용 9위
+  // ── 고급 ($3+/1M) ────────────────────────────────────────────
+  { id: 'google/gemini-3.1-flash-lite-preview',   name: 'Gemini 3.1 Flash Lite', price: '$3.00/1M' }, // 실사용 6위
+  { id: 'anthropic/claude-sonnet-4.6',            name: 'Claude Sonnet 4.6',   price: '$3.00/1M' },  // 실사용 7위
+  { id: 'anthropic/claude-opus-4.6',              name: 'Claude Opus 4.6',     price: '$5.00/1M' },
+  { id: 'openai/gpt-5.4',                         name: 'GPT-5.4',             price: '$10.0/1M' },  // 실사용 5위
+  { id: 'google/gemini-3.1-pro-preview',          name: 'Gemini 3.1 Pro',      price: '$10.0/1M' },  // 실사용 8위
 ];
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
@@ -67,21 +81,29 @@ function headers() {
 export type ScriptScene = {
   text: string;
   imagePrompt: string;
+  motionPrompt: string;
+  shouldAnimate: boolean;
 };
 
 /** 429 재시도를 포함한 fetch 헬퍼 */
-async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 5): Promise<Response> {
   let lastRes: Response | null = null;
   for (let i = 0; i < maxRetries; i++) {
     const res = await fetch(url, options);
     if (res.status !== 429) return res;
     
     lastRes = res;
-    const waitMs = Math.pow(2, i) * 2000 + Math.random() * 1000;
+    // 재시도 대기 시간 증가 (2초, 4초, 8초, 16초, 32초 + 랜덤)
+    const waitMs = Math.pow(2, i) * 2000 + Math.random() * 2000;
     console.warn(`[OpenRouter] 429 detected. Retrying in ${Math.round(waitMs)}ms... (${i + 1}/${maxRetries})`);
     await new Promise(r => setTimeout(r, waitMs));
   }
   return lastRes!;
+}
+
+/** 글자 수 기반 적정 장면 수 계산 (100자당 1장, min 5, max 30) */
+export function calcSceneCount(scriptLength: number): number {
+  return Math.min(Math.max(Math.round(scriptLength / 100), 5), 70);
 }
 
 /** 대본을 장면으로 분할 */
@@ -89,6 +111,9 @@ export async function splitScriptIntoScenes(
   script: string,
   llmModel = 'deepseek/deepseek-chat-v3-0324'
 ): Promise<ScriptScene[]> {
+  const sceneCount = calcSceneCount(script.length);
+  const sceneRange = `${sceneCount}~${Math.min(sceneCount + 2, 20)}`;
+
   const res = await fetchWithRetry(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
     headers: headers(),
@@ -97,13 +122,20 @@ export async function splitScriptIntoScenes(
       messages: [
         {
           role: 'system',
-          content: `당신은 영상 제작 전문가입니다. 입력된 대본을 5~8개의 장면으로 나누고 각 장면에 맞는 이미지 생성 프롬프트를 영어로 만들어주세요.
+          content: `당신은 영상 제작 전문가입니다. 입력된 대본을 반드시 ${sceneCount}개의 장면으로 정확히 나누고 각 장면에 맞는 이미지 생성 프롬프트(imagePrompt)와 영상 움직임 프롬프트(motionPrompt)를 영어로 만들어주세요.
+
+또한, 전체 장면의 약 10%에 해당하는 중요한 장면이나 화면 전환이 다이내믹한 장면을 선정하여 'shouldAnimate' 필드를 true로 설정해주세요. 나머지 장면은 false입니다.
+
+'motionPrompt'는 해당 장면의 주체가 수행하는 동작이나 구체적인 카메라 워킹을 묘사하는 영어 문장이어야 합니다. 배경만 살짝 움직이는 것이 아니라 실제 동영상처럼 역동적인 변화가 느껴지도록 작성하세요. 
+(예: "A person walking down the street, slow tracking shot, cinematic lighting", "Close-up of a character laughing heartily, high dynamic motion", "Distant view of a car speeding through a city, fast panning", "Waves crashing against rocks, epic drone shot")
 
 반드시 아래 JSON 형태로만 응답하세요 (다른 텍스트 없이):
 {"scenes": [
   {
     "text": "자막에 표시될 한국어 텍스트 (1~2문장)",
-    "imagePrompt": "Detailed English prompt, cinematic style, high quality, 9:16 vertical aspect ratio"
+    "imagePrompt": "Detailed English image prompt, 9:16 vertical aspect ratio",
+    "motionPrompt": "Dynamic action and camera movement description in English",
+    "shouldAnimate": true or false
   }
 ]}`,
         },
@@ -225,4 +257,15 @@ export async function generateImage(
 
   console.error('[generateImage] unexpected response:', JSON.stringify(data).slice(0, 800));
   throw new Error('생성된 이미지 데이터를 찾을 수 없습니다.');
+}
+
+/** 모델별 권장 동시 호출 수 (429 방지) */
+export function getModelConcurrency(modelId: string): number {
+  if (modelId.includes(':free') || modelId.includes('klein') || modelId.includes('riverflow')) {
+    return 1; // 무료 모델은 안전하게 1개씩
+  }
+  if (modelId.startsWith('google/')) {
+    return 5; // Google 모델은 속도가 빠르고 제한이 널널함
+  }
+  return 3; // 일반 유료 모델은 3개 정도
 }

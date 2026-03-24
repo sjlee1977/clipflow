@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { splitScriptIntoScenes, generateImage } from '@/lib/openrouter';
+import { splitScriptIntoScenes, generateImage, getModelConcurrency } from '@/lib/openrouter';
 import { uploadImageToS3 } from '@/lib/kling';
 
 export async function POST(req: NextRequest) {
@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes.`);
         send({ type: 'total', count: scriptScenes.length });
 
-        // 2. 이미지 생성 (3개씩 병렬, 완성될 때마다 스트리밍)
-        const CONCURRENCY = 3;
+        // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
+        const CONCURRENCY = getModelConcurrency(imageModelId);
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
 
         for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
               const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
               const imageBuffer = await generateImage(styledPrompt, imageModelId, aspectRatio, characterImageBase64);
               const imageUrl = await uploadImageToS3(imageBuffer);
-              const scene = { index, text: s.text, imagePrompt: s.imagePrompt, imageUrl };
+              const scene = { index, text: s.text, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, imageUrl, shouldAnimate: s.shouldAnimate };
               results.push(scene);
               send({ type: 'scene', ...scene });
             })

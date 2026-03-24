@@ -69,6 +69,19 @@ export default function HistoryPage() {
       });
   }, []);
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('진짜 삭제하시겠습니까')) return;
+    
+    try {
+      const { error } = await supabase.from('videos').delete().eq('id', id);
+      if (error) throw error;
+      setVideos(prev => prev.filter(v => v.id !== id));
+    } catch (err) {
+      alert('삭제 중 오류가 발생했습니다');
+      console.error(err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-white/20 text-xs font-mono">
@@ -155,27 +168,35 @@ export default function HistoryPage() {
                 <p className="text-white/50 text-[13px] font-mono">
                   {new Date(v.created_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </p>
-                <button
-                  onClick={async () => {
-                    setDownloading(v.id);
-                    let fileName = v.file_name;
-                    if (!fileName) {
-                      const d = new Date(v.created_at);
-                      const yy = String(d.getFullYear()).slice(2);
-                      const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-                      const dateStr = d.toDateString();
-                      const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
-                      const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
-                      fileName = `clipflow${yy}${mmdd}${seq}`;
-                    }
-                    await downloadVideo(v.video_url, fileName);
-                    setDownloading(null);
-                  }}
-                  disabled={downloading === v.id}
-                  className="text-[12px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
-                >
-                  {downloading === v.id ? '다운 중...' : 'MP4 다운'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    className="text-[13px] font-mono text-red-500/70 hover:text-red-500 px-2 py-1 transition-colors shrink-0"
+                  >
+                    삭제
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setDownloading(v.id);
+                      let fileName = v.file_name;
+                      if (!fileName) {
+                        const d = new Date(v.created_at);
+                        const yy = String(d.getFullYear()).slice(2);
+                        const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+                        const dateStr = d.toDateString();
+                        const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
+                        const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
+                        fileName = `clipflow${yy}${mmdd}${seq}`;
+                      }
+                      await downloadVideo(v.video_url, fileName);
+                      setDownloading(null);
+                    }}
+                    disabled={downloading === v.id}
+                    className="text-[12px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
+                  >
+                    {downloading === v.id ? '다운 중...' : 'MP4 다운'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

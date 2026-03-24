@@ -26,7 +26,7 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     codec: 'h264',
     outName: `${compositionId}-${Date.now()}.mp4`,
     concurrencyPerLambda: 2,
-    framesPerLambda: 30,
+    framesPerLambda: 100,
   });
 
   return { renderId, bucketName };
