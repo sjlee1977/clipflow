@@ -29,9 +29,9 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith('/api/');
 
   if (isProtected && !user) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+    const proto = req.headers.get('x-forwarded-proto') || 'http';
+    return NextResponse.redirect(new URL('/login', `${proto}://${host}`));
   }
 
   return response;
