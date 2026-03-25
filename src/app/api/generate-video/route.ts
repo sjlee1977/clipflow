@@ -4,34 +4,7 @@ import { generateSpeech as googleTTSToS3 } from '@/lib/google';
 import { startRender, waitForRender } from '@/lib/remotion';
 
 const FPS = 30;
-
-// 텍스트를 최대 N자 청크로 분할 (구두점 우선 분리)
-function splitSubtitles(text: string, durationInFrames: number, maxChars = 30) {
-  const chunks: string[] = [];
-  let remaining = text.trim();
-  while (remaining.length > maxChars) {
-    // 구두점에서 우선 분리
-    let breakAt = -1;
-    for (let i = maxChars; i >= Math.floor(maxChars / 2); i--) {
-      if (/[。、，！？,.!?\s]/.test(remaining[i])) { breakAt = i + 1; break; }
-    }
-    if (breakAt < 1) breakAt = maxChars;
-    chunks.push(remaining.slice(0, breakAt).trim());
-    remaining = remaining.slice(breakAt).trim();
-  }
-  if (remaining) chunks.push(remaining);
-
-  const totalChars = chunks.reduce((s, c) => s + c.length, 0);
-  let currentFrame = 0;
-  return chunks.map((chunk, idx) => {
-    const frames = idx === chunks.length - 1
-      ? durationInFrames - currentFrame
-      : Math.round((chunk.length / totalChars) * durationInFrames);
-    const entry = { text: chunk, startFrame: currentFrame, endFrame: currentFrame + frames };
-    currentFrame += frames;
-    return entry;
-  });
-}
+const PADDING_FRAMES = 15; // 오디오 끝 후 0.5초 여유
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,18 +28,17 @@ export async function POST(req: NextRequest) {
       let audioUrl: string;
       let durationMs: number;
       if (ttsProvider === 'google') {
-        audioUrl = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId);
-        durationMs = s.text.length * 80;
+        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId));
       } else {
         ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed }));
       }
-      const durationInFrames = Math.max(30, Math.round((durationMs / 1000) * FPS));
+      const durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
       return {
         imageUrl: s.imageUrl,
         videoUrl: s.videoUrl,
         audioUrl,
         durationInFrames,
-        subtitles: splitSubtitles(s.text, durationInFrames),
+        subtitles: [{ text: s.text, startFrame: 0, endFrame: durationInFrames }],
       };
     }
 

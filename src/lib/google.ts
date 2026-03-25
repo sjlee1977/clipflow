@@ -195,7 +195,7 @@ export async function generateSpeechBuffer(
  * Gemini 2.5 Flash TTS로 음성을 생성하고 S3 URL을 반환합니다. (무료 티어 사용 가능)
  * 반환 오디오: raw PCM (24kHz, 16-bit, mono) → WAV로 변환
  */
-export async function generateSpeech(text: string, filename: string, voiceName = 'Kore'): Promise<string> {
+export async function generateSpeech(text: string, filename: string, voiceName = 'Kore'): Promise<{ url: string; durationMs: number }> {
   const response = await getAI().models.generateContent({
     model: 'gemini-2.5-flash-preview-tts',
     contents: [{ role: 'user', parts: [{ text }] }],
@@ -216,6 +216,7 @@ export async function generateSpeech(text: string, filename: string, voiceName =
 
   const pcmData = Buffer.from(audioPart.inlineData.data, 'base64');
   const wavBuffer = pcmToWav(pcmData, 24000, 1, 16);
+  const durationMs = Math.round((pcmData.length / (24000 * 2)) * 1000);
 
   const key = `audio/${filename}.wav`;
   await s3.send(new PutObjectCommand({
@@ -225,7 +226,8 @@ export async function generateSpeech(text: string, filename: string, voiceName =
     ContentType: 'audio/wav',
   }));
 
-  return `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  const url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  return { url, durationMs };
 }
 
 /**
