@@ -38,11 +38,11 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // 1. 장면 분할 (100자당 1장면)
-        const sceneCount = Math.max(5, Math.round(script.length / 100));
+        // 1. 장면 분할 (200자당 1장면, 최대 35장면)
+        const sceneCount = Math.min(35, Math.max(5, Math.round(script.length / 200)));
         console.log('[generate-scenes] Splitting script into scenes...');
-        const scriptScenes = await splitScriptIntoScenes(script, llmModelId, sceneCount);
-        console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes.`);
+        const { scenes: scriptScenes, usage: llmUsage } = await splitScriptIntoScenes(script, llmModelId, sceneCount);
+        console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes. LLM tokens: ${llmUsage.promptTokens}+${llmUsage.completionTokens}`);
         send({ type: 'total', count: scriptScenes.length });
 
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
@@ -63,7 +63,16 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        send({ type: 'done' });
+        send({
+          type: 'done',
+          usage: {
+            promptTokens: llmUsage.promptTokens,
+            completionTokens: llmUsage.completionTokens,
+            imageCount: scriptScenes.length,
+            imageModelId,
+            llmModelId,
+          },
+        });
       } catch (err) {
         console.error('[generate-scenes] Error:', err);
         send({ type: 'error', message: err instanceof Error ? err.message : '장면 생성 중 오류가 발생했습니다' });

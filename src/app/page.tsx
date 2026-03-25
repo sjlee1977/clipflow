@@ -33,7 +33,7 @@ export default function HomePage() {
               로그인
             </Link>
           )}
-          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold tracking-widest uppercase px-3 py-1.5 transition-colors">
+          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold tracking-tight uppercase px-3 py-1.5 transition-colors">
             {user ? '대시보드 이동' : '무료 시작'}
           </Link>
         </div>

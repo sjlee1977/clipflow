@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 type Video = {
@@ -17,6 +18,7 @@ type Video = {
   tts_provider: string;
   file_name: string;
   created_at: string;
+  scenes?: any[];
 };
 
 const IMAGE_STYLE_LABELS: Record<string, string> = {
@@ -59,6 +61,21 @@ export default function HistoryPage() {
   const [playing, setPlaying] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const router = useRouter();
+
+  function handleEditScenes(v: Video) {
+    if (!v.scenes?.length) return;
+    sessionStorage.setItem('clipflow_edit_scenes', JSON.stringify({
+      scenes: v.scenes,
+      format: v.format === 'landscape' ? 'landscape' : 'shorts',
+      imageModelId: v.image_model,
+      imageStyle: v.image_style,
+      voiceId: v.voice_id,
+      ttsProvider: v.tts_provider,
+      videoUrl: v.video_url,
+    }));
+    router.push('/dashboard');
+  }
 
   useEffect(() => {
     supabase
@@ -72,11 +89,18 @@ export default function HistoryPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('진짜 삭제하시겠습니까')) return;
-    
+    if (!window.confirm('영상과 관련 파일(이미지, 오디오)이 모두 삭제됩니다. 계속하시겠습니까?')) return;
+
     try {
-      const { error } = await supabase.from('videos').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch('/api/delete-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error);
+      }
       setVideos(prev => prev.filter(v => v.id !== id));
     } catch (err) {
       alert('삭제 중 오류가 발생했습니다');
@@ -175,6 +199,14 @@ export default function HistoryPage() {
                   {new Date(v.created_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </p>
                 <div className="flex items-center gap-2">
+                  {v.scenes?.length ? (
+                    <button
+                      onClick={() => handleEditScenes(v)}
+                      className="text-[12px] 2xl:text-[11.5px] font-mono text-[#17BEBB]/70 hover:text-[#17BEBB] border border-[#17BEBB]/30 hover:border-[#17BEBB]/60 px-2 py-1 transition-colors shrink-0"
+                    >
+                      장면 편집
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => handleDelete(v.id)}
                     className="text-[13px] 2xl:text-[12.5px] font-mono text-red-500/70 hover:text-red-500 px-2 py-1 transition-colors shrink-0"

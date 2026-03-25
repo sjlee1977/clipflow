@@ -27,10 +27,12 @@ export const IMAGE_MODELS: ImageModel[] = [
 ];
 
 export const VIDEO_MODELS = [
-  { id: 'minimax/video-01', name: 'MiniMax Video-01 (고품질)', price: '$0.25/5초' },
-  { id: 'kling-v1', name: 'Kling V1.0 (최저가)', price: '$0.14/5초' },
-  { id: 'kling-v2.5-turbo', name: 'Kling V2.5 Turbo', price: '$0.21/5초' },
-  { id: 'kling-v2.6', name: 'Kling V2.6', price: '$0.21/5초' },
+  { id: 'MiniMax-Hailuo-2.3-Fast', name: 'MiniMax Hailuo 2.3 Fast', price: '$0.19/6초' },
+  { id: 'MiniMax-Hailuo-2.3',      name: 'MiniMax Hailuo 2.3',      price: '$0.28/6초' },
+  { id: 'MiniMax-Hailuo-02',       name: 'MiniMax Hailuo 02',       price: '$0.10/6초' },
+  { id: 'kling-v1',                name: 'Kling V1.0',              price: '$0.14/5초' },
+  { id: 'kling-v2.5-turbo',        name: 'Kling V2.5 Turbo',        price: '$0.21/5초' },
+  { id: 'kling-v2.6',              name: 'Kling V2.6',              price: '$0.21/5초' },
 ];
 
 export type LlmModel = {
@@ -41,38 +43,35 @@ export type LlmModel = {
 
 export const LLM_MODELS: LlmModel[] = [
   // ── 무료 ──────────────────────────────────────────────────────
-  { id: 'meta-llama/llama-3.3-70b-instruct:free',        name: 'Llama 3.3 70B',              price: '무료' },
-  { id: 'google/gemma-3-27b-it:free',                    name: 'Gemma 3 27B',                price: '무료' },
-  { id: 'google/gemma-3-12b-it:free',                    name: 'Gemma 3 12B',                price: '무료' },
-  { id: 'google/gemma-3-4b-it:free',                     name: 'Gemma 3 4B',                 price: '무료' },
-  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1',          price: '무료' },
-  { id: 'stepfun-ai/step-3.5-flash:free',                name: 'Step 3.5 Flash',             price: '무료' },
-  { id: 'nvidia/nemotron-3-nano-30b-a3b:free',           name: 'Nemotron 3 Nano 30B',        price: '무료' },
-  { id: 'nvidia/nemotron-3-super:free',                  name: 'Nemotron 3 Super',           price: '무료' },
-  { id: 'liquid/lfm-2.5-1.2b-instruct:free',             name: 'LFM2.5 1.2B Instruct',       price: '무료' },
-  { id: 'liquid/lfm-2.5-1.2b-thinking:free',             name: 'LFM2.5 1.2B Thinking',       price: '무료' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free',           name: 'Llama 3.3 70B',           price: '무료' },
+  { id: 'google/gemma-3-27b-it:free',                       name: 'Gemma 3 27B',             price: '무료' },
+  { id: 'google/gemma-3-12b-it:free',                       name: 'Gemma 3 12B',             price: '무료' },
+  { id: 'google/gemma-3-4b-it:free',                        name: 'Gemma 3 4B',              price: '무료' },
+  { id: 'mistralai/mistral-small-3.2-24b-instruct:free',    name: 'Mistral Small 3.2',       price: '무료' },
+  { id: 'stepfun/step-3.5-flash:free',                      name: 'Step 3.5 Flash',          price: '무료' },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free',              name: 'Nemotron 3 Nano 30B',     price: '무료' },
+  { id: 'liquid/lfm-2.5-1.2b-instruct:free',                name: 'LFM2.5 1.2B Instruct',    price: '무료' },
+  { id: 'liquid/lfm-2.5-1.2b-thinking:free',                name: 'LFM2.5 1.2B Thinking',    price: '무료' },
   // ── 유료 (출력 토큰 가격 오름차순) ───────────────────────────
-  { id: 'liquid/lfm-2-8b-a1b',                           name: 'LFM2 8B A1B',                price: '입$0.01/출$0.02' },
-  { id: 'mistralai/mistral-small-3',                     name: 'Mistral Small 3',            price: '입$0.05/출$0.08' },
-  { id: 'amazon/nova-micro-v1',                          name: 'Nova Micro 1.0',             price: '입$0.035/출$0.14' },
-  { id: 'qwen/qwen3.5-9b',                               name: 'Qwen3.5 9B',                 price: '입$0.05/출$0.15' },
-  { id: 'google/gemini-2.0-flash-lite',                  name: 'Gemini 2.0 Flash Lite',      price: '입$0.075/출$0.30' },
-  { id: 'google/gemini-2.5-flash-lite',                  name: 'Gemini 2.5 Flash Lite',      price: '입$0.10/출$0.40' },
-  { id: 'openai/gpt-4.1-nano',                           name: 'GPT-4.1 Nano',               price: '입$0.10/출$0.40' },
-  { id: 'openai/gpt-4o-mini',                            name: 'GPT-4o Mini',                price: '입$0.15/출$0.60' },
-  { id: 'inception/mercury-2',                           name: 'Mercury 2',                  price: '입$0.25/출$0.75' },
-  { id: 'openai/gpt-5-nano',                             name: 'GPT-5 Nano',                 price: '입$0.20/출$0.80' },
-  { id: 'deepseek/deepseek-chat-v3-0324',                name: 'DeepSeek V3',                price: '입$0.27/출$1.10' },
-  { id: 'openai/gpt-5.4-nano',                           name: 'GPT-5.4 Nano',               price: '입$0.20/출$1.25' },
-  { id: 'openai/gpt-4.1-mini',                           name: 'GPT-4.1 Mini',               price: '입$0.40/출$1.60' },
-  { id: 'mistralai/mistral-medium-3',                    name: 'Mistral Medium 3',           price: '입$0.40/출$2.00' },
-  { id: 'mistralai/mistral-medium-3.1',                  name: 'Mistral Medium 3.1',         price: '입$0.40/출$2.00' },
-  { id: 'deepseek/deepseek-r1',                          name: 'DeepSeek R1',                price: '입$0.55/출$2.19' },
-  { id: 'google/gemini-2.5-flash',                       name: 'Gemini 2.5 Flash',           price: '입$0.30/출$2.50' },
-  { id: 'anthropic/claude-haiku-4.5',                    name: 'Claude Haiku 4.5',           price: '입$1.00/출$5.00' },
-  { id: 'google/gemini-2.5-pro',                         name: 'Gemini 2.5 Pro',             price: '입$1.25/출$10.0' },
-  { id: 'openai/gpt-5',                                  name: 'GPT-5',                      price: '입$2.50/출$10.0' },
-  { id: 'anthropic/claude-sonnet-4.6',                   name: 'Claude Sonnet 4.6',          price: '입$3.00/출$15.0' },
+  { id: 'liquid/lfm-2-24b-a2b',                             name: 'LFM2 24B A2B',            price: '입$0.03/출$0.12' },
+  { id: 'amazon/nova-micro-v1',                             name: 'Nova Micro 1.0',          price: '입$0.035/출$0.14' },
+  { id: 'openai/gpt-5-nano',                                name: 'GPT-5 Nano',              price: '입$0.05/출$0.40' },
+  { id: 'qwen/qwen3.5-9b',                                  name: 'Qwen3.5 9B',              price: '입$0.05/출$0.15' },
+  { id: 'google/gemini-2.5-flash-lite',                     name: 'Gemini 2.5 Flash Lite',   price: '입$0.10/출$0.40' },
+  { id: 'openai/gpt-4.1-nano',                              name: 'GPT-4.1 Nano',            price: '입$0.10/출$0.40' },
+  { id: 'openai/gpt-4o-mini',                               name: 'GPT-4o Mini',             price: '입$0.15/출$0.60' },
+  { id: 'deepseek/deepseek-chat-v3-0324',                   name: 'DeepSeek V3',             price: '입$0.20/출$0.77' },
+  { id: 'openai/gpt-5.4-nano',                              name: 'GPT-5.4 Nano',            price: '입$0.20/출$1.25' },
+  { id: 'inception/mercury-2',                              name: 'Mercury 2',               price: '입$0.25/출$0.75' },
+  { id: 'google/gemini-2.5-flash',                          name: 'Gemini 2.5 Flash',        price: '입$0.30/출$2.50' },
+  { id: 'openai/gpt-4.1-mini',                              name: 'GPT-4.1 Mini',            price: '입$0.40/출$1.60' },
+  { id: 'mistralai/mistral-medium-3',                       name: 'Mistral Medium 3',        price: '입$0.40/출$2.00' },
+  { id: 'mistralai/mistral-medium-3.1',                     name: 'Mistral Medium 3.1',      price: '입$0.40/출$2.00' },
+  { id: 'deepseek/deepseek-r1',                             name: 'DeepSeek R1',             price: '입$0.70/출$2.50' },
+  { id: 'anthropic/claude-haiku-4.5',                       name: 'Claude Haiku 4.5',        price: '입$1.00/출$5.00' },
+  { id: 'google/gemini-2.5-pro',                            name: 'Gemini 2.5 Pro',          price: '입$1.25/출$10.0' },
+  { id: 'openai/gpt-5',                                     name: 'GPT-5',                   price: '입$1.25/출$10.0' },
+  { id: 'anthropic/claude-sonnet-4.6',                      name: 'Claude Sonnet 4.6',       price: '입$3.00/출$15.0' },
 ];
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
@@ -108,18 +107,24 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
   return lastRes!;
 }
 
+export type SceneSplitResult = {
+  scenes: ScriptScene[];
+  usage: { promptTokens: number; completionTokens: number };
+};
+
 /** 대본을 장면으로 분할 */
 export async function splitScriptIntoScenes(
   script: string,
   llmModel = 'deepseek/deepseek-chat-v3-0324',
   sceneCount?: number
-): Promise<ScriptScene[]> {
+): Promise<SceneSplitResult> {
   const count = sceneCount ?? Math.max(5, Math.round(script.length / 100));
   const res = await fetchWithRetry(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       model: llmModel,
+      max_tokens: 4096,
       messages: [
         {
           role: 'system',
@@ -186,7 +191,15 @@ export async function splitScriptIntoScenes(
 
   const scenes: ScriptScene[] = parsed.scenes ?? parsed.data ?? (Array.isArray(parsed) ? parsed : []);
   if (!scenes.length) throw new Error('장면 분할 실패');
-  return scenes;
+
+  const usage = data.usage ?? {};
+  return {
+    scenes,
+    usage: {
+      promptTokens: usage.prompt_tokens ?? 0,
+      completionTokens: usage.completion_tokens ?? 0,
+    },
+  };
 }
 
 async function parseImageUrl(url: string): Promise<Buffer> {

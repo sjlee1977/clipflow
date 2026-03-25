@@ -4,22 +4,22 @@ import { createKlingVideoTask, queryKlingVideoTask } from '@/lib/kling';
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageUrl, prompt, modelId = 'minimax/video-01' } = await req.json();
-    console.log(`[animate-scene] Creating task. Model: ${modelId}, Prompt: ${prompt}`);
+    const { imageUrl, prompt, modelId, model } = await req.json();
+    const effectiveModelId = modelId || model || 'MiniMax-Hailuo-2.3-Fast';
+    console.log(`[animate-scene] Creating task. Model: ${effectiveModelId}, Prompt: ${prompt}`);
 
     if (!imageUrl) {
       return NextResponse.json({ error: '이미지 URL이 필요합니다' }, { status: 400 });
     }
 
     let taskId: string;
-    if (modelId.startsWith('kling')) {
-      taskId = await createKlingVideoTask(imageUrl, prompt, modelId);
+    if (effectiveModelId.startsWith('kling')) {
+      taskId = await createKlingVideoTask(imageUrl, prompt, effectiveModelId);
     } else {
-      // 기본값 MiniMax
-      taskId = await createVideoTask(imageUrl, prompt);
+      taskId = await createVideoTask(imageUrl, prompt, effectiveModelId);
     }
 
-    return NextResponse.json({ taskId, provider: modelId.startsWith('kling') ? 'kling' : 'minimax' });
+    return NextResponse.json({ taskId, provider: effectiveModelId.startsWith('kling') ? 'kling' : 'minimax' });
   } catch (err: any) {
     console.error('[animate-scene]', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
