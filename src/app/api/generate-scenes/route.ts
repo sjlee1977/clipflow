@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { splitScriptIntoScenes, generateImage, getModelConcurrency } from '@/lib/openrouter';
+import { splitScriptIntoScenes as splitViaOpenRouter, generateImage as generateImageViaOpenRouter, getModelConcurrency } from '@/lib/openrouter';
+import { splitScriptIntoScenes as splitViaGemini, generateImage as generateImageViaGoogle } from '@/lib/google';
 import { uploadImageToS3 } from '@/lib/kling';
 
 export async function POST(req: NextRequest) {
@@ -41,12 +42,16 @@ export async function POST(req: NextRequest) {
         // 1. 장면 분할 (200자당 1장면, 최대 35장면)
         const sceneCount = Math.min(35, Math.max(5, Math.round(script.length / 200)));
         console.log('[generate-scenes] Splitting script into scenes...');
-        const { scenes: scriptScenes, usage: llmUsage } = await splitScriptIntoScenes(script, llmModelId, sceneCount);
+        const isGemini = llmModelId.startsWith('google/gemini-');
+        const { scenes: scriptScenes, usage: llmUsage } = isGemini
+          ? await splitViaGemini(script, llmModelId, sceneCount)
+          : await splitViaOpenRouter(script, llmModelId, sceneCount);
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes. LLM tokens: ${llmUsage.promptTokens}+${llmUsage.completionTokens}`);
         send({ type: 'total', count: scriptScenes.length });
 
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
-        const CONCURRENCY = getModelConcurrency(imageModelId);
+        const isGoogleImage = imageModelId.startsWith('google/');
+        const CONCURRENCY = isGoogleImage ? 2 : getModelConcurrency(imageModelId);
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
 
         for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
@@ -54,8 +59,17 @@ export async function POST(req: NextRequest) {
           await Promise.all(
             batch.map(async ({ s, index }) => {
               const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
-              const imageBuffer = await generateImage(styledPrompt, imageModelId, aspectRatio, characterImageBase64);
-              const imageUrl = await uploadImageToS3(imageBuffer);
+              let imageUrl: string;
+              if (isGoogleImage) {
+                imageUrl = await generateImageViaGoogle(
+                  styledPrompt,
+                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined },
+                  imageModelId
+                );
+              } else {
+                const imageBuffer = await generateImageViaOpenRouter(styledPrompt, imageModelId, aspectRatio, characterImageBase64);
+                imageUrl = await uploadImageToS3(imageBuffer);
+              }
               const scene = { index, text: s.text, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, imageUrl, shouldAnimate: s.shouldAnimate };
               results.push(scene);
               send({ type: 'scene', ...scene });

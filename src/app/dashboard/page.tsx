@@ -133,6 +133,8 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [scenes, setScenes] = useState<PreviewScene[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
+  const [genTotal, setGenTotal] = useState(0);
+  const [genCompleted, setGenCompleted] = useState(0);
 
   // 히스토리에서 장면 편집으로 넘어온 경우 복원
   useEffect(() => {
@@ -181,6 +183,8 @@ export default function DashboardPage() {
     setError('');
     setScenes([]);
     setUsageInfo(null);
+    setGenTotal(0);
+    setGenCompleted(0);
     try {
       const res = await fetch('/api/generate-scenes', {
         method: 'POST',
@@ -206,7 +210,9 @@ export default function DashboardPage() {
           if (!line.startsWith('data: ')) continue;
           const event = JSON.parse(line.slice(6));
           if (event.type === 'error') throw new Error(event.message);
+          if (event.type === 'total') setGenTotal(event.count);
           if (event.type === 'scene') {
+            setGenCompleted(prev => prev + 1);
             const sceneData = { 
               text: event.text, 
               imagePrompt: event.imagePrompt, 
@@ -539,6 +545,47 @@ export default function DashboardPage() {
               </div>
             </div>
             </div>
+
+            {/* 생성 중 프로그레스바 */}
+            {status === 'previewing' && (
+              <div className="mt-4 border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+                    <span className="text-orange-400/80 text-[11px] font-mono tracking-widest uppercase">
+                      {genTotal === 0 ? '장면 분석 중...' : `이미지 생성 중 ${genCompleted} / ${genTotal}`}
+                    </span>
+                  </div>
+                  <span className="text-white/20 text-[10px] font-mono">
+                    {genTotal > 0 ? `${Math.round((genCompleted / genTotal) * 100)}%` : ''}
+                  </span>
+                </div>
+
+                {/* 프로그레스바 */}
+                <div className="w-full h-1 bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full bg-orange-400 transition-all duration-500 ease-out"
+                    style={{ width: genTotal === 0 ? '5%' : `${Math.max(5, (genCompleted / genTotal) * 100)}%` }}
+                  />
+                </div>
+
+                {/* 장면 썸네일 미리보기 */}
+                {scenes.length > 0 && (
+                  <div className="mt-3 flex gap-1.5 flex-wrap">
+                    {scenes.map((scene, i) => scene?.imageUrl ? (
+                      <div key={i} className="relative w-10 h-14 shrink-0 overflow-hidden border border-orange-400/30">
+                        <img src={scene.imageUrl} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/20" />
+                      </div>
+                    ) : (
+                      <div key={i} className="w-10 h-14 shrink-0 border border-white/5 bg-white/[0.02] flex items-center justify-center">
+                        <span className="w-2.5 h-2.5 border border-white/20 border-t-white/50 rounded-full animate-spin" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 에러 */}
             {status === 'error' && scenes.length === 0 && (

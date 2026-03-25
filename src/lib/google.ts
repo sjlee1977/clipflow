@@ -40,28 +40,47 @@ export const GOOGLE_VOICES: GoogleVoice[] = [
 export type ScriptScene = {
   text: string;
   imagePrompt: string;
+  motionPrompt?: string;
+  shouldAnimate?: boolean;
+};
+
+export type SceneSplitResult = {
+  scenes: ScriptScene[];
+  usage: { promptTokens: number; completionTokens: number };
 };
 
 /**
- * 대본을 받아 장면별로 분할하고 이미지 프롬프트를 생성합니다. (Gemini 2.5 Flash)
+ * Google AI Studio 직접 호출로 대본을 장면 분할
+ * llmModelId: 'google/gemini-2.5-flash' → 'gemini-2.5-flash' 로 변환
  */
-export async function splitScriptIntoScenes(script: string): Promise<ScriptScene[]> {
+export async function splitScriptIntoScenes(
+  script: string,
+  llmModelId = 'gemini-2.5-flash',
+  sceneCount = 5
+): Promise<SceneSplitResult> {
+  // OpenRouter 형식(google/gemini-xxx) → AI Studio 형식(gemini-xxx) 변환
+  const model = llmModelId.startsWith('google/') ? llmModelId.slice('google/'.length) : llmModelId;
+
   const response = await getAI().models.generateContent({
-    model: 'gemini-2.5-flash',
+    model,
     contents: [
       {
         role: 'user',
         parts: [
           {
-            text: `당신은 영상 제작 전문가입니다. 입력된 대본을 5~8개의 장면으로 나누고 각 장면에 맞는 Imagen 이미지 생성 프롬프트를 영어로 만들어주세요.
+            text: `당신은 영상 제작 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 장면으로 나누어주세요.
+각 장면은 (1) 실제 영상에 들어갈 텍스트(한국어), (2) 이미지 생성 프롬프트(영어), (3) 카메라/동작 묘사 비디오 프롬프트(영어), (4) AI 비디오 변환 적합 여부(boolean)를 포함해야 합니다.
+**전체 장면 중 약 10%(최소 1개)에 "shouldAnimate": true를 설정하세요.**
 
-반드시 아래 JSON 배열 형태로만 응답하세요 (다른 텍스트 없이):
-[
+반드시 아래 JSON 형태로만 응답하세요 (다른 텍스트 없이):
+{"scenes": [
   {
-    "text": "자막에 표시될 한국어 텍스트 (1~2문장)",
-    "imagePrompt": "Detailed English prompt for Imagen 3, cinematic photography style, high quality, 9:16 vertical"
+    "text": "자막 텍스트",
+    "imagePrompt": "Detailed English image generation prompt...",
+    "motionPrompt": "Detailed English motion prompt for video generation...",
+    "shouldAnimate": true
   }
-]
+]}
 
 대본:
 ${script}`,
@@ -69,19 +88,30 @@ ${script}`,
         ],
       },
     ],
-    config: {
-      responseMimeType: 'application/json',
-    },
+    config: { responseMimeType: 'application/json' },
   });
 
   const content = response.text;
   if (!content) throw new Error('Gemini 응답이 없습니다');
 
-  const parsed = JSON.parse(content);
-  const scenes: ScriptScene[] = Array.isArray(parsed) ? parsed : parsed.scenes ?? [];
+  let parsed: any;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error('Gemini JSON 파싱 실패');
+  }
 
+  const scenes: ScriptScene[] = parsed.scenes ?? (Array.isArray(parsed) ? parsed : []);
   if (!scenes.length) throw new Error('장면 분할 실패');
-  return scenes;
+
+  const meta = (response as any).usageMetadata ?? {};
+  return {
+    scenes,
+    usage: {
+      promptTokens: meta.promptTokenCount ?? 0,
+      completionTokens: meta.candidatesTokenCount ?? 0,
+    },
+  };
 }
 
 type GenerateImageOptions = {
@@ -91,12 +121,17 @@ type GenerateImageOptions = {
 };
 
 /**
- * Gemini 2.5 Flash Image로 이미지를 생성하고 S3 URL을 반환합니다.
- * 캐릭터 이미지가 있으면 참조하여 일관성 유지.
+ * Gemini Image로 이미지를 생성하고 S3 URL을 반환합니다.
+ * modelId: 'google/gemini-2.5-flash-image' 형식 또는 'gemini-2.5-flash-image' 형식 모두 허용
  */
-export async function generateImage(prompt: string, options: GenerateImageOptions = {}): Promise<string> {
+export async function generateImage(
+  prompt: string,
+  options: GenerateImageOptions = {},
+  modelId = 'google/gemini-2.5-flash-image'
+): Promise<string> {
   const { stylePrompt = '', characterBase64, characterMimeType } = options;
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');
+  const model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
 
   const parts: Array<Record<string, unknown>> = [];
   if (characterBase64 && characterMimeType) {
@@ -107,7 +142,7 @@ export async function generateImage(prompt: string, options: GenerateImageOption
   }
 
   const response = await getAI().models.generateContent({
-    model: 'gemini-2.5-flash-image',
+    model,
     contents: [{ role: 'user', parts }],
     config: { responseModalities: ['IMAGE', 'TEXT'] },
   });
