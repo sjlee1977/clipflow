@@ -42,8 +42,23 @@ export async function generateVideoClip(
 
 /* ── Kling ─────────────────────────────────────────────────────── */
 async function generateKlingClip(imageUrl: string, prompt: string): Promise<string> {
-  const { imageToVideo } = await import('./kling');
-  return imageToVideo(imageUrl, prompt, 'kling-v1-6-std-5s');
+  const { createKlingVideoTask, queryKlingVideoTask } = await import('./kling');
+  const taskId = await createKlingVideoTask(imageUrl, prompt);
+  if (!taskId) throw new Error('Kling task_id 생성 실패');
+
+  // 완료 폴링 (최대 10분)
+  const maxWait = 10 * 60 * 1000;
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 5000));
+    const status = await queryKlingVideoTask(taskId);
+    if (status.task_status === 'succeed') {
+      if (!status.video_url) throw new Error('Kling 영상 URL 없음');
+      return status.video_url;
+    }
+    if (status.task_status === 'failed') throw new Error('Kling 영상 생성 실패');
+  }
+  throw new Error('Kling 영상 생성 타임아웃');
 }
 
 /* ── Minimax Hailuo ────────────────────────────────────────────── */

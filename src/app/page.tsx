@@ -1,158 +1,122 @@
+'use client';
+
 import Link from 'next/link';
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-black text-white font-mono overflow-hidden">
-      {/* 헤더 */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 border-b border-white/10 bg-black/80 backdrop-blur-sm">
-        <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-4 h-4 bg-yellow-400" />
-          <span className="text-white font-bold text-lg tracking-widest uppercase">ClipFlow</span>
-        </a>
-        <nav className="hidden md:flex items-center gap-8 text-xs tracking-widest uppercase text-gray-400">
-          <a href="#features" className="hover:text-white transition-colors">기능</a>
-          <a href="#how" className="hover:text-white transition-colors">작동 방식</a>
-          <a href="#pricing" className="hover:text-white transition-colors">요금제</a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="hidden md:block text-xs tracking-widest uppercase text-gray-400 hover:text-white transition-colors px-4 py-2">
-            로그인
-          </Link>
-          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold tracking-widest uppercase px-4 py-2 transition-colors">
-            무료 시작
-          </Link>
+    <div className="min-h-screen bg-black text-white font-mono selection:bg-yellow-400 selection:text-black">
+      {/* 네비게이션 */}
+      <nav className="fixed top-0 w-full z-50 px-6 py-6 flex items-center justify-between backdrop-blur-sm bg-black/50 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <div className="w-3.5 h-3.5 bg-yellow-400" />
+          <span className="font-black text-lg tracking-[0.2em] uppercase">ClipFlow</span>
+        </div>
+        <div className="flex items-center gap-8 text-[13px] tracking-widest uppercase text-white/40">
+          <Link href="/login" className="hover:text-yellow-400 transition-colors">Login</Link>
+          <Link href="/login" className="px-5 py-2 border border-white/20 hover:border-yellow-400 hover:text-yellow-400 transition-colors">Get Started</Link>
+        </div>
+      </nav>
+
+      {/* 히어로 섹션 */}
+      <header className="relative pt-40 pb-20 px-6 overflow-hidden">
+        {/* 배경 그리드 및 그라데이션 */}
+        <div className="absolute inset-0 z-0 opacity-20" 
+             style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+        <div className="absolute top-1/4 -right-1/4 w-[600px] h-[600px] bg-yellow-400/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-cyan-400/5 blur-[120px] rounded-full" />
+
+        <div className="relative z-10 max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 border border-yellow-400/30 mb-8">
+            <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse" />
+            <span className="text-yellow-400 text-[11px] tracking-[0.2em] uppercase font-bold">Next-Gen Video Generation</span>
+          </div>
+
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8">
+            AI <span className="text-yellow-400">VIDEO</span><br />
+            PRODUCTION<br />
+            REDEFINED.
+          </h1>
+
+          <p className="max-w-xl text-white/40 text-lg leading-relaxed mb-12 font-medium">
+            아이디어만 있으면 됩니다. 대본 작성부터 이미지 생성, 나레이션, 비디오 변환까지. ClipFlow가 모든 과정을 자동화합니다.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 mb-20">
+            <Link href="/login" 
+              className="group relative px-10 py-5 bg-yellow-400 text-black font-black text-sm tracking-widest uppercase transition-transform hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(250,204,21,0.3)]">
+              시작하기 →
+            </Link>
+            <Link href="#features" 
+              className="px-10 py-5 border border-white/10 text-white/40 font-black text-sm tracking-widest uppercase hover:bg-white/5 hover:text-white transition-all">
+              기능 보기
+            </Link>
+          </div>
+
+          {/* 대시보드 미리보기 등 이미지 들어갈 자리 */}
+          <div className="relative border border-white/10 bg-white/[0.02] p-4 group">
+            <div className="absolute -top-px -left-px w-10 h-10 border-t border-l border-yellow-400" />
+            <div className="absolute -bottom-px -right-px w-10 h-10 border-b border-r border-yellow-400" />
+            <div className="aspect-[16/9] w-full bg-black overflow-hidden">
+               {/* 여기에 프로덕트 이미지를 넣거나, CSS로 스켈레톤 디자인 */}
+               <div className="w-full h-full flex items-center justify-center border border-white/5">
+                 <div className="text-center">
+                    <div className="w-20 h-20 border border-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
+                      <div className="w-10 h-10 bg-yellow-400/5 transition-transform group-hover:scale-110" />
+                    </div>
+                    <p className="text-white/10 text-[11px] tracking-widest uppercase">ClipFlow Studio Interface Preview</p>
+                 </div>
+               </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* 히어로 */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 pt-20">
-        {/* 배경 그리드 */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
-
-        {/* 플로팅 태그들 */}
-        <div className="absolute top-1/4 left-16 hidden lg:flex items-center gap-1.5 bg-green-400 text-black text-xs font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
-          AI_GEN
-        </div>
-        <div className="absolute top-1/3 left-24 hidden lg:flex items-center gap-1.5 bg-blue-400 text-black text-xs font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
-          TTS_ON
-        </div>
-        <div className="absolute top-1/2 right-20 hidden lg:flex items-center gap-1.5 bg-orange-400 text-black text-xs font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
-          VIDEO_OUT
-        </div>
-        <div className="absolute top-2/3 right-32 hidden lg:flex items-center gap-1.5 bg-pink-400 text-black text-xs font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
-          AUTO_EDIT
-        </div>
-
-        {/* 메인 텍스트 */}
-        <div className="relative text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-xs tracking-widest text-yellow-400 uppercase">
-            <div className="w-2 h-2 bg-yellow-400 animate-pulse" />
-            지금 바로 무료로 시작 // 신용카드 불필요
-          </div>
-
-          <h1 className="text-6xl md:text-8xl font-black uppercase leading-none tracking-tighter mb-4">
-            <span className="block text-white">아이디어를</span>
-            <span className="block text-white">영상으로.</span>
-            <span className="block text-yellow-400">60초 안에.</span>
-          </h1>
-
-          <p className="text-gray-400 text-sm md:text-base mt-8 mb-12 max-w-xl mx-auto leading-loose">
-            편집 스킬 없이도 프로급 영상을 만드세요.<br />
-            대본만 입력하면 AI가 장면 구성부터 이미지 생성,<br />
-            나레이션, 자막까지 전부 자동으로 완성합니다.
-          </p>
-
-          <div className="flex items-center justify-center gap-3">
-            <Link href="/dashboard"
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase px-6 py-2.5 transition-colors">
-              시작하기 — 무료
-            </Link>
-            <a href="#how"
-              className="text-white/40 hover:text-white/80 text-xs tracking-widest uppercase transition-colors">
-              작동 방식 보기 →
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* 작동 방식 */}
-      <section id="how" className="py-32 px-6 border-t border-white/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <p className="text-yellow-400 text-xs tracking-widest uppercase mb-4">// HOW IT WORKS</p>
-            <h2 className="text-4xl md:text-5xl font-black uppercase">3단계로 완성</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/10">
+      {/* 프로세스 섹션 */}
+      <section id="features" className="py-32 px-6 border-t border-white/5 relative">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-12">
             {[
-              { num: '01', title: '대본 입력', desc: '주제나 대본을 입력하면 AI가 5~8개 장면으로 자동 분할합니다.', tag: 'SCRIPT' },
-              { num: '02', title: 'AI 생성', desc: '각 장면에 맞는 이미지를 AI가 생성하고 ElevenLabs TTS로 음성을 합성합니다.', tag: 'GENERATE' },
-              { num: '03', title: '영상 완성', desc: 'Ken Burns 효과 + 자막 + 오디오가 합쳐진 완성 영상을 다운로드합니다.', tag: 'EXPORT' },
-            ].map((item) => (
-              <div key={item.num} className="bg-black p-10 group hover:bg-white/5 transition-colors">
-                <div className="flex items-center justify-between mb-8">
-                  <span className="text-5xl font-black text-white/10 group-hover:text-yellow-400/30 transition-colors">{item.num}</span>
-                  <span className="text-xs text-yellow-400 tracking-widest border border-yellow-400/30 px-2 py-1">{item.tag}</span>
-                </div>
-                <h3 className="text-xl font-black uppercase mb-3">{item.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+              { step: '01', title: 'SCRIPT', desc: '주제만 입력하세요. AI가 최적의 영상 대본을 구성합니다.' },
+              { step: '02', title: 'VISUALS', desc: '대본의 각 장면에 어울리는 초고화질 이미지를 즉시 생성합니다.' },
+              { step: '03', title: 'PRODUCE', desc: '나레이션과 배경음악이 입혀진 최종 영상을 단 몇 분 만에 완성합니다.' },
+            ].map((f, i) => (
+              <div key={i} className="group">
+                <span className="block text-yellow-400 font-black text-4xl mb-6 opacity-30 group-hover:opacity-100 transition-opacity tabular-nums">{f.step}</span>
+                <h3 className="text-xl font-black tracking-widest uppercase mb-4">{f.title}</h3>
+                <p className="text-white/40 leading-relaxed text-sm">{f.desc}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* 기능 */}
-      <section id="features" className="py-32 px-6 border-t border-white/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <p className="text-yellow-400 text-xs tracking-widest uppercase mb-4">// FEATURES</p>
-            <h2 className="text-4xl md:text-5xl font-black uppercase">모든 기능</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/10">
-            {[
-              { label: '8가지 스타일', sub: '영화·애니·3D·누아르 등' },
-              { label: '캐릭터 일관성', sub: '사진 업로드로 캐릭터 유지' },
-              { label: 'Ken Burns', sub: '줌·패닝 영상 효과' },
-              { label: '자동 자막', sub: 'SRT 자막 자동 삽입' },
-              { label: 'TTS 6종 목소리', sub: 'ElevenLabs 다국어' },
-              { label: '9:16 / 16:9', sub: '쇼츠·유튜브 모두 지원' },
-              { label: 'AI 장면 분할', sub: 'DeepSeek / Gemini / GPT' },
-              { label: 'S3 자동 업로드', sub: '완성 영상 클라우드 저장' },
-            ].map((f) => (
-              <div key={f.label} className="bg-black p-6 hover:bg-white/5 transition-colors">
-                <p className="text-white font-bold text-sm mb-1">{f.label}</p>
-                <p className="text-gray-600 text-xs">{f.sub}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-32 px-6 border-t border-white/10">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl md:text-7xl font-black uppercase leading-none mb-8">
-            <span className="block">지금 바로</span>
-            <span className="block text-yellow-400">시작하세요.</span>
-          </h2>
-          <Link href="/dashboard"
-            className="inline-block bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase px-6 py-2.5 transition-colors">
-            무료로 영상 만들기
-          </Link>
         </div>
       </section>
 
       {/* 푸터 */}
-      <footer className="border-t border-white/10 px-8 py-6 flex items-center justify-between text-xs text-gray-600 tracking-widest uppercase">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-yellow-400" />
-          <span>ClipFlow</span>
+      <footer className="py-20 px-6 border-t border-white/5 bg-[#050505]">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-3 h-3 bg-yellow-400" />
+              <span className="font-black text-base tracking-[0.2em] uppercase">ClipFlow</span>
+            </div>
+            <p className="text-white/20 text-xs">© 2024 ClipFlow. All rights reserved.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-20">
+            <div className="space-y-4">
+              <h4 className="text-white/60 text-[11px] font-bold tracking-widest uppercase">Product</h4>
+              <ul className="space-y-2 text-white/30 text-[13px]">
+                <li><Link href="/dashboard" className="hover:text-yellow-400 transition-colors">Studio</Link></li>
+                <li><Link href="/dashboard/script" className="hover:text-yellow-400 transition-colors">Script Engine</Link></li>
+              </ul>
+            </div>
+            <div className="space-y-4">
+              <h4 className="text-white/60 text-[11px] font-bold tracking-widest uppercase">Legal</h4>
+              <ul className="space-y-2 text-white/30 text-[13px]">
+                <li><Link href="#" className="hover:text-yellow-400 transition-colors">Privacy</Link></li>
+                <li><Link href="#" className="hover:text-yellow-400 transition-colors">Terms</Link></li>
+              </ul>
+            </div>
+          </div>
         </div>
-        <span>© 2026 All rights reserved.</span>
       </footer>
     </div>
   );
