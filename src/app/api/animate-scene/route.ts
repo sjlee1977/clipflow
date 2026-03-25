@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     let taskId: string;
     if (modelId.startsWith('kling')) {
-      taskId = await createKlingVideoTask(imageUrl, prompt);
+      taskId = await createKlingVideoTask(imageUrl, prompt, modelId);
     } else {
       // 기본값 MiniMax
       taskId = await createVideoTask(imageUrl, prompt);

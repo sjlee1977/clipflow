@@ -1,12 +1,10 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState, useRef, useCallback } from 'react';
 import { IMAGE_MODELS, LLM_MODELS, VIDEO_MODELS } from '@/lib/openrouter';
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 import { GOOGLE_VOICES } from '@/lib/google';
-import { createClient } from '@/lib/supabase-browser';
+import { supabase } from '@/lib/supabase';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
 type Format = 'shorts' | 'landscape';
@@ -28,26 +26,28 @@ type PreviewScene = {
   text: string;
   imageUrl: string;
   imagePrompt: string;
-  motionPrompt: string;
-  videoUrl?: string;
+  motionPrompt?: string;
   shouldAnimate?: boolean;
+  videoUrl?: string;
+  isAnimating?: boolean;
 };
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">{label}</p>
+      <p className="text-[#17BEBB]/70 text-[clamp(10px,0.8vw,12px)] tracking-widest uppercase mb-3">{label}</p>
       {children}
     </div>
   );
 }
 
 /* ── 오른쪽 패널 섹션 (아코디언) ── */
-function PanelAccordion({ label, value, children }: {
+function PanelAccordion({ label, value, children, closeOnSelect = false }: {
   label: string;
   value: string;
   children: React.ReactNode;
+  closeOnSelect?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -56,16 +56,20 @@ function PanelAccordion({ label, value, children }: {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between py-3 group"
       >
-        <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase">{label}</span>
+        <span className="text-[#17BEBB]/70 text-[clamp(10px,0.8vw,12px)] tracking-widest uppercase">{label}</span>
         <span className="flex items-center gap-2">
-          <span className="text-white/70 text-[13px] font-mono truncate max-w-[120px]">{value}</span>
+          <span className="text-white/70 text-[13px] font-mono truncate max-w-[180px]">{value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
             className={`text-white/20 group-hover:text-white/40 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </span>
       </button>
-      {open && <div className="pb-3">{children}</div>}
+      {open && (
+        <div className="pb-3" onClick={closeOnSelect ? () => setOpen(false) : undefined}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -97,7 +101,7 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
+      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] 2xl:text-[12px] font-mono border-l-2 transition-colors ${
         active
           ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
           : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
@@ -114,8 +118,8 @@ export default function DashboardPage() {
   const [format, setFormat] = useState<Format>('shorts');
   const [imageModelId, setImageModelId] = useState('black-forest-labs/flux.2-klein-4b');
   const [llmModelId, setLlmModelId] = useState('deepseek/deepseek-chat-v3-0324');
-  const [videoModelId, setVideoModelId] = useState('minimax/video-01');
   const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('minimax');
+  const [videoModelId, setVideoModelId] = useState('kling-v1');
   const [voiceId, setVoiceId] = useState('Korean_SoothingLady');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
@@ -123,7 +127,7 @@ export default function DashboardPage() {
   const characterInputRef = useRef<HTMLInputElement>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [renderProgress, setRenderProgress] = useState(0);
-  const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
+  const [animatingCount, setAnimatingCount] = useState(0);
 
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
@@ -133,7 +137,6 @@ export default function DashboardPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [loadingAudioIndex, setLoadingAudioIndex] = useState<number | null>(null);
-  const [scriptFocused, setScriptFocused] = useState(false);
 
   const isProcessing = status === 'previewing' || status === 'rendering';
 
@@ -166,6 +169,8 @@ export default function DashboardPage() {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      const newScenes: PreviewScene[] = [];
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -178,23 +183,30 @@ export default function DashboardPage() {
           const event = JSON.parse(line.slice(6));
           if (event.type === 'error') throw new Error(event.message);
           if (event.type === 'scene') {
+            const sceneData = { 
+              text: event.text, 
+              imagePrompt: event.imagePrompt, 
+              imageUrl: event.imageUrl,
+              motionPrompt: event.motionPrompt,
+              shouldAnimate: event.shouldAnimate 
+            };
+            newScenes[event.index] = sceneData;
             setScenes(prev => {
               const next = [...prev];
-              next[event.index] = { 
-                text: event.text, 
-                imagePrompt: event.imagePrompt, 
-                motionPrompt: event.motionPrompt,
-                imageUrl: event.imageUrl,
-                shouldAnimate: event.shouldAnimate 
-              };
+              next[event.index] = sceneData;
               return next;
             });
-            // 10% 자동 애니메이션 트리거
-            if (event.shouldAnimate) {
-              handleAnimateScene(event.index, event.imageUrl, event.motionPrompt || event.imagePrompt);
-            }
           }
-          if (event.type === 'done') setStatus('preview');
+          if (event.type === 'done') {
+            setStatus('preview');
+            // 자동 애니메이션 시작 (shouldAnimate 장면들을 순차적으로, RPM 초과 방지)
+            const animTargets = newScenes
+              .map((s, idx) => ({ s, idx }))
+              .filter(({ s }) => s && s.shouldAnimate && !s.videoUrl);
+            animTargets.forEach(({ idx }, i) => {
+              setTimeout(() => handleAnimateScene(idx, newScenes), i * 3000);
+            });
+          }
         }
       }
     } catch (err: unknown) {
@@ -203,24 +215,33 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleAnimateScene(index: number, overrideUrl?: string, overridePrompt?: string) {
-    const scene = scenes[index] || { imageUrl: overrideUrl, motionPrompt: overridePrompt, imagePrompt: overridePrompt };
-    const imageUrl = overrideUrl || scene.imageUrl;
-    const prompt = overridePrompt || scene.motionPrompt || scene.imagePrompt || scene.text;
-
-    if (!imageUrl) return;
+  /**
+   * 장면 애니메이션화 (MiniMax Video)
+   */
+  async function handleAnimateScene(index: number, currentScenes?: PreviewScene[]) {
+    const targetScenes = currentScenes || scenes;
+    const scene = targetScenes[index];
+    if (!scene?.imageUrl || scene.isAnimating || scene.videoUrl) return;
     
-    setAnimatingIndex(index);
+    setAnimatingCount(prev => prev + 1);
+    setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: true } : s));
+
     try {
+      const provider = videoModelId.startsWith('kling') ? 'kling' : 'minimax';
       const res = await fetch('/api/animate-scene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl, prompt, modelId: videoModelId }),
+        body: JSON.stringify({ 
+          imageUrl: scene.imageUrl, 
+          prompt: scene.motionPrompt || scene.text,
+          provider,
+          model: videoModelId
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '애니메이션 시작 실패');
 
-      const { taskId, provider } = data;
+      const { taskId } = data;
 
       const poll = async () => {
         try {
@@ -229,8 +250,8 @@ export default function DashboardPage() {
           if (!sRes.ok) throw new Error(sData.error || '상태 확인 실패');
 
           if (sData.task_status === 'succeed') {
-            setScenes(prev => prev.map((s, i) => i === index ? { ...s, videoUrl: sData.video_url } : s));
-            setAnimatingIndex(null);
+            setScenes(prev => prev.map((s, i) => i === index ? { ...s, videoUrl: sData.video_url, isAnimating: false } : s));
+            setAnimatingCount(prev => Math.max(0, prev - 1));
             return;
           }
 
@@ -238,17 +259,19 @@ export default function DashboardPage() {
             throw new Error(sData.task_status_msg || '변환 중 오류 발생');
           }
 
-          setTimeout(poll, 3000);
+          setTimeout(poll, 4000);
         } catch (pollErr: any) {
           console.error(pollErr);
-          setAnimatingIndex(null);
+          setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: false } : s));
+          setAnimatingCount(prev => Math.max(0, prev - 1));
         }
       };
 
       poll();
     } catch (err: any) {
-      alert(err.message);
-      setAnimatingIndex(null);
+      setError(err.message);
+      setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: false } : s));
+      setAnimatingCount(prev => Math.max(0, prev - 1));
     }
   }
 
@@ -268,6 +291,7 @@ export default function DashboardPage() {
 
       const { renderId, bucketName } = data;
 
+      // 비동기 폴링 상태 확인
       const poll = async () => {
         try {
           const sRes = await fetch(`/api/get-render-status?renderId=${renderId}&bucketName=${bucketName}`);
@@ -278,29 +302,26 @@ export default function DashboardPage() {
             setVideoUrl(sData.outputFile);
             setStatus('done');
             setRenderProgress(1);
-            
-            // Supabase에 비디오 저장
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const now = new Date();
-              const yy = String(now.getFullYear()).slice(2);
-              const mmdd = String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-              const fileName = `clipflow${yy}${mmdd}${Date.now().toString().slice(-3)}`;
+            // 파일명 생성: clipflow260324001
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(2);
+            const mmdd = String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const { count } = await supabase.from('videos').select('*', { count: 'exact', head: true }).gte('created_at', todayStart);
+            const seq = String((count ?? 0) + 1).padStart(3, '0');
+            const fileName = `clipflow${yy}${mmdd}${seq}`;
 
-              await supabase.from('videos').insert({
-                title: script.slice(0, 50) || '제목 없음',
-                video_url: sData.outputFile,
-                format,
-                scene_count: scenes.length,
-                voice_id: voiceId,
-                image_style: imageStyle,
-                image_model: imageModelId,
-                tts_provider: ttsProvider,
-                file_name: fileName,
-                user_id: user.id
-              });
-            }
+            await supabase.from('videos').insert({
+              title: script.slice(0, 50) || '제목 없음',
+              video_url: sData.outputFile,
+              format,
+              scene_count: scenes.length,
+              voice_id: voiceId,
+              image_style: imageStyle,
+              image_model: imageModelId,
+              tts_provider: ttsProvider,
+              file_name: fileName,
+            });
             return;
           }
 
@@ -357,68 +378,96 @@ export default function DashboardPage() {
     } finally {
       setLoadingAudioIndex(null);
     }
-  }, [playingIndex, voiceId, playbackRate, ttsProvider]);
+  }, [playingIndex, voiceId, playbackRate]);
 
   const selectedImageModel = IMAGE_MODELS.find(m => m.id === imageModelId);
-  const selectedVoice = ttsProvider === 'google' 
-    ? GOOGLE_VOICES.find(v => v.id === voiceId) 
-    : MINIMAX_VOICES.find(v => v.id === voiceId);
+  const selectedVoice = MINIMAX_VOICES.find(v => v.id === voiceId);
 
   return (
+    /* 전체: 왼쪽 콘텐츠 + 오른쪽 패널 (w-56) */
     <div className="flex gap-0 -m-6 min-h-full">
+
+      {/* ─── 왼쪽: 메인 콘텐츠 ─── */}
       <div className="flex-1 min-w-0 p-6 border-r border-white/5">
+
+        {/* ── 입력 단계 ── */}
         {(status === 'idle' || status === 'previewing' || status === 'error') && (
-          <>
-            <div className="relative mt-14 mb-6">
-              <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-2 px-8 py-3 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
-                <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" />
-                <span className="text-orange-400 text-[13px] font-mono tracking-widest uppercase">영상 만들기</span>
+          <div className="flex flex-col h-full">
+            {/* 입력 카드 */}
+            <div className="relative mt-10 flex flex-col flex-1">
+              {/* 탭 레이블 */}
+              <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
+                <span className="w-1 h-1 bg-orange-400 rounded-full" />
+                <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">영상 만들기</span>
               </div>
-              <div
-                className={`relative border transition-colors duration-200 bg-white/[0.015] ${scriptFocused ? 'border-orange-400' : 'border-white/10'}`}
-                onMouseEnter={() => setScriptFocused(true)}
-                onMouseLeave={() => setScriptFocused(false)}
-              >
-                <textarea
-                  value={script}
-                  onChange={e => setScript(e.target.value)}
-                  placeholder="대본을 입력하세요..."
-                  className="w-full h-52 bg-transparent text-white border-0 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/50 p-4"
-                  disabled={isProcessing}
-                />
-                <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5">
-                  <span className="text-white/50 text-[13px] font-mono">{script.length}자</span>
-                  <span className="text-white/40 text-[13px] font-mono tracking-wide">대본 또는 주제 · 키워드 모두 가능</span>
-                </div>
+
+              <div className={`flex flex-col flex-1 border transition-colors duration-200 ${
+                isProcessing ? 'border-white/5' : 'border-white/10 hover:border-orange-400/60 focus-within:border-orange-400/60'
+              } bg-white/[0.02]`}>
+              {/* 상단 라벨 */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/5">
+                <span className="text-[10.5px] tracking-widest uppercase font-mono" style={{color:'#8B9A3A'}}>SCRIPT INPUT</span>
+                <span className={`text-[10px] font-mono tabular-nums transition-colors ${script.length > 0 ? 'text-white/40' : 'text-white/15'}`}>
+                  {script.length.toLocaleString()}자
+                </span>
+              </div>
+
+              {/* 텍스트 영역 */}
+              <textarea
+                value={script}
+                onChange={e => setScript(e.target.value)}
+                placeholder="대본 또는 주제를 입력하세요.&#10;&#10;예) '커피의 역사에 대해 60초 영상을 만들어줘'"
+                className="w-full flex-1 min-h-[160px] overflow-y-auto bg-transparent text-white/90 border-0 focus:outline-none resize-none text-[13px] leading-relaxed font-mono placeholder:text-white/20 px-4 py-3"
+                disabled={isProcessing}
+              />
+
+              {/* 하단: TIP + 버튼 */}
+              <div className="px-4 pb-3 flex items-center justify-between border-t border-white/5 pt-3">
+                <span className="text-[11px] text-white/20 font-mono">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
+                <button
+                  onClick={handlePreview}
+                  disabled={!script.trim() || isProcessing}
+                  className="flex items-center gap-2 bg-orange-400 hover:bg-orange-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[11px] tracking-wide uppercase font-mono px-3 py-1.5 transition-colors group"
+                >
+                  {status === 'previewing' ? (
+                    <>
+                      <span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin inline-block" />
+                      생성 중...
+                    </>
+                  ) : (
+                    <>
+                      장면 미리보기
+                      <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+            </div>
 
+            {/* 에러 */}
             {status === 'error' && scenes.length === 0 && (
-              <div className="border-l-2 border-red-500 pl-4 mb-6">
+              <div className="border-l-2 border-red-500 pl-4 mt-4">
                 <p className="text-red-400 text-xs font-mono">{error}</p>
                 <button onClick={() => setStatus('idle')} className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
               </div>
             )}
-
-            <button
-              onClick={handlePreview}
-              disabled={!script.trim() || isProcessing}
-              className="inline-flex items-center gap-3 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/40 font-black transition-colors text-[13px] tracking-widest uppercase font-mono"
-            >
-              {status === 'previewing' ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  장면 생성 중...
-                </>
-              ) : '장면 미리보기 →'}
-            </button>
-          </>
+          </div>
         )}
 
+        {/* ── 미리보기 단계 ── */}
         {(status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
-              <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+                {animatingCount > 0 && (
+                  <span className="flex items-center gap-2 bg-yellow-400/10 text-yellow-400 text-[10px] font-mono px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="w-1 h-1 bg-yellow-400 rounded-full" />
+                    {animatingCount}개 애니메이션 중
+                  </span>
+                )}
+              </div>
               {status === 'preview' && (
                 <button
                   onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); }}
@@ -427,6 +476,7 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* 장면 리스트 */}
             <div>
               {scenes.map((scene, i) => (
                 <div key={i} className="flex gap-4 py-4 border-b border-white/5">
@@ -440,27 +490,27 @@ export default function DashboardPage() {
                       onChange={e => updateSceneText(i, e.target.value)}
                       disabled={status !== 'preview'}
                       rows={3}
-                      className="w-full bg-transparent text-white/80 text-[13px] font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
+                      className="w-full bg-transparent text-white/80 text-xs font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
                     />
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-white/35 text-[12px] font-mono">{scene.text.length}자</span>
+                      <span className="text-white/35 text-xs font-mono">{scene.text.length}자</span>
                       <button
                         onClick={() => handlePlayScene(i, scene.text)}
-                        disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || animatingIndex === i}
-                        className="text-white/25 hover:text-yellow-400 text-[12px] font-mono transition-colors disabled:opacity-20"
+                        disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
+                        className="text-white/25 hover:text-yellow-400 text-xs font-mono transition-colors disabled:opacity-20"
                       >
                         {loadingAudioIndex === i ? '로딩...' : playingIndex === i ? '■ 정지' : '▶ 미리듣기'}
                       </button>
                       <button
                         onClick={() => handleAnimateScene(i)}
-                        disabled={animatingIndex !== null || status !== 'preview' || !!scene.videoUrl}
-                        className={`text-[12px] font-mono transition-colors ${
+                        disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
+                        className={`text-xs font-mono transition-colors ${
                           scene.videoUrl 
                             ? 'text-yellow-400/50 cursor-default' 
-                            : 'text-cyan-400/80 hover:text-cyan-300 disabled:opacity-20'
+                            : 'text-white/25 hover:text-yellow-400 disabled:opacity-20'
                         }`}
                       >
-                        {animatingIndex === i ? '변환 중...' : scene.videoUrl ? '✓ AI 비디오' : '✧ AI 애니메이션'}
+                        {scene.isAnimating ? '변환 중...' : scene.videoUrl ? '✓ AI 비디오' : '✧ AI 애니메이션'}
                       </button>
                     </div>
                   </div>
@@ -468,15 +518,14 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* 영상 생성 버튼 */}
             {status === 'preview' && (
-              <div className="mt-8">
-                <button
-                  onClick={handleRender}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black transition-colors text-xs tracking-widest uppercase font-mono"
-                >
-                  영상 생성 →
-                </button>
-              </div>
+              <button
+                onClick={handleRender}
+                className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 transition-colors text-xs tracking-widest uppercase font-mono"
+              >
+                영상 생성 →
+              </button>
             )}
 
             {status === 'error' && error && (
@@ -500,6 +549,7 @@ export default function DashboardPage() {
                     <p className="text-[#17BEBB]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">TTS → AWS Lambda 렌더링 진행 중</p>
                   </div>
                 </div>
+                {/* 미니 프로그레스 바 */}
                 <div className="w-full h-0.5 bg-white/5 overflow-hidden rounded-full">
                   <div 
                     className="h-full bg-yellow-400 transition-all duration-500 ease-out" 
@@ -511,44 +561,68 @@ export default function DashboardPage() {
           </>
         )}
 
+        {/* ── 완성 ── */}
         {status === 'done' && videoUrl && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
-              <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">완성 영상</span>
+          <div className="mt-2 flex flex-col items-center">
+            {/* 헤더 */}
+            <div className="w-full flex items-center justify-between pb-3 border-b border-white/5 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">완성 영상</span>
+              </div>
             </div>
-            <div className={`mt-2 ${format === 'shorts' ? 'w-[280px]' : 'w-full'}`}>
-              <video 
-                src={videoUrl} 
-                controls 
-                className="w-full bg-black shadow-2xl" 
-              />
+
+            {/* 비디오 */}
+            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : 'max-w-xl'} border border-white/10 overflow-hidden`}>
+              <video src={videoUrl} controls className="w-full block" />
             </div>
-            <div className="flex gap-3 mt-4">
+
+            {/* 버튼 */}
+            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : 'max-w-xl'} flex items-center justify-center gap-2 mt-4`}>
               <button
                 onClick={async () => {
                   const proxyUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=clipflow`;
+                  if ('showSaveFilePicker' in window) {
+                    try {
+                      const handle = await (window as any).showSaveFilePicker({
+                        suggestedName: 'clipflow.mp4',
+                        types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }],
+                      });
+                      const res = await fetch(proxyUrl);
+                      const blob = await res.blob();
+                      const writable = await handle.createWritable();
+                      await writable.write(blob);
+                      await writable.close();
+                      return;
+                    } catch (e: any) {
+                      if (e.name === 'AbortError') return;
+                    }
+                  }
                   const a = document.createElement('a');
                   a.href = proxyUrl;
                   a.download = 'clipflow.mp4';
                   a.click();
                 }}
-                className="flex-1 text-center bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3 transition-colors text-xs tracking-widest uppercase font-mono"
+                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
               >
-                다운로드
+                ↓ 다운로드
               </button>
               <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
-                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-xs font-mono transition-colors"
+                className="flex items-center gap-2 border border-white/15 hover:border-white/30 text-white/40 hover:text-white/70 text-xs font-mono tracking-widest uppercase px-4 py-1.5 transition-colors"
               >
-                새 영상
+                ↺ 새 영상
               </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* ─── 오른쪽: 설정 패널 (w-56, 왼쪽 nav와 동일 너비) ─── */}
       <aside className="w-96 shrink-0 flex flex-col border-l border-white/5 overflow-y-auto">
         <div className="flex-1 px-4 py-5 space-y-0">
+
+          {/* 입력 단계 설정 */}
           {(status === 'idle' || status === 'previewing' || status === 'error') && (
             <>
               <PanelSection label="스타일">
@@ -558,7 +632,7 @@ export default function DashboardPage() {
                       key={s.id}
                       onClick={() => setImageStyle(s.id)}
                       disabled={isProcessing}
-                      className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
+                      className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
                         imageStyle === s.id
                           ? 'border-yellow-400 text-yellow-400'
                           : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
@@ -572,8 +646,8 @@ export default function DashboardPage() {
 
               <PanelSection label="비율">
                 <div className="space-y-0.5">
-                  {([['shorts', '쇼츠 / 릴스 (9:16)'], ['landscape', '유튜브 (16:9)']] as const).map(([val, label]) => (
-                    <OptionItem key={val} active={format === val} onClick={() => setFormat(val)}>
+                  {([['shorts', '쇼츠 / 릴스', '9:16'], ['landscape', '유튜브', '16:9']] as const).map(([val, label, ratio]) => (
+                    <OptionItem key={val} active={format === val} onClick={() => setFormat(val)} sub={ratio}>
                       <span className="flex items-center gap-2">
                         <span className={`border border-current inline-block shrink-0 ${val === 'shorts' ? 'w-2.5 h-4' : 'w-4 h-2.5'}`} />
                         {label}
@@ -605,7 +679,7 @@ export default function DashboardPage() {
                 <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
               </PanelSection>
 
-              <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''}>
+              <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">
                   {LLM_MODELS.map(m => (
                     <OptionItem key={m.id} active={llmModelId === m.id} onClick={() => setLlmModelId(m.id)} sub={m.price}>
@@ -615,7 +689,7 @@ export default function DashboardPage() {
                 </div>
               </PanelAccordion>
 
-              <PanelAccordion label="이미지 AI" value={IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? ''}>
+              <PanelAccordion label="이미지 AI" value={IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">
                   {IMAGE_MODELS.map(m => (
                     <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => setImageModelId(m.id)} sub={m.price}>
@@ -625,7 +699,7 @@ export default function DashboardPage() {
                 </div>
               </PanelAccordion>
 
-              <PanelAccordion label="영상 AI" value={VIDEO_MODELS.find(m => m.id === videoModelId)?.name ?? ''}>
+              <PanelAccordion label="영상 AI" value={VIDEO_MODELS.find(m => m.id === videoModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">
                   {VIDEO_MODELS.map(m => (
                     <OptionItem key={m.id} active={videoModelId === m.id} onClick={() => setVideoModelId(m.id)} sub={m.price}>
@@ -637,6 +711,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          {/* 미리보기 단계 설정 */}
           {(status === 'preview' || status === 'rendering') && (
             <>
               <PanelAccordion
@@ -646,7 +721,9 @@ export default function DashboardPage() {
                     ? GOOGLE_VOICES.find(v => v.id === voiceId)?.name ?? ''
                     : MINIMAX_VOICES.find(v => v.id === voiceId)?.name ?? ''
                 }
+                closeOnSelect
               >
+                {/* Provider 토글 */}
                 <div className="flex gap-1 mb-2">
                   <button
                     onClick={() => { setTtsProvider('minimax'); setVoiceId('Korean_SoothingLady'); }}
@@ -694,6 +771,7 @@ export default function DashboardPage() {
                 </div>
               </PanelSection>
 
+              {/* 현재 설정 요약 */}
               <div className="mt-4 space-y-1.5">
                 <p className="text-white/15 text-[11px] tracking-widest uppercase mb-2">설정 요약</p>
                 <div className="flex justify-between text-[11px] font-mono">
@@ -716,6 +794,7 @@ export default function DashboardPage() {
             </>
           )}
 
+          {/* 완성 단계 */}
           {status === 'done' && (
             <div className="space-y-1.5">
               <p className="text-white/15 text-[11px] tracking-widest uppercase mb-3">생성 완료</p>
@@ -733,8 +812,10 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
         </div>
       </aside>
+
     </div>
   );
 }

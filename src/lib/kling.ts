@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { sign } from 'jsonwebtoken';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-northeast-2',
@@ -9,33 +10,56 @@ const s3Client = new S3Client({
   },
 });
 
+function getKlingToken() {
+  const ak = process.env.KLING_ACCESS_KEY;
+  const sk = process.env.KLING_SECRET_KEY;
+  if (!ak || !sk) return '';
+
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + 1800; // 30분
+  const nbf = now - 5;
+
+  return sign(
+    {
+      iss: ak,
+      exp,
+      nbf,
+    },
+    sk,
+    { algorithm: 'HS256', header: { typ: 'JWT', alg: 'HS256' } }
+  );
+}
+
 export async function uploadImageToS3(buffer: Buffer): Promise<string> {
   const fileName = `images/input-${Date.now()}.png`;
+  const bucket = process.env.S3_BUCKET!;
+  const region = process.env.AWS_REGION || 'ap-northeast-2';
+
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET!,
+      Bucket: bucket,
       Key: fileName,
       Body: buffer,
       ContentType: 'image/png',
     })
   );
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+  return `https://${bucket}.s3.${region}.amazonaws.com/${fileName}`;
 }
 
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
-export async function createKlingVideoTask(imageUrl: string, prompt: string) {
+export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1') {
   const response = await axios.post(
     `${KLING_API_URL}/videos/image-to-video`,
     {
-      model: 'kling-v1',
+      model,
       image: imageUrl,
       prompt: prompt,
     },
     {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.KLING_API_KEY}`,
+        'Authorization': `Bearer ${getKlingToken()}`,
       },
     }
   );
@@ -47,7 +71,7 @@ export async function queryKlingVideoTask(taskId: string) {
     `${KLING_API_URL}/videos/image-to-video/${taskId}`,
     {
       headers: {
-        'Authorization': `Bearer ${process.env.KLING_API_KEY}`,
+        'Authorization': `Bearer ${getKlingToken()}`,
       },
     }
   );

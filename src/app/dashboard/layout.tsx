@@ -68,13 +68,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
                         <div className="flex items-center gap-2.5 px-3 py-2.5 text-white/50 cursor-not-allowed select-none">
-                          <span className="text-[13px] w-4">{item.icon}</span>
-                          <span className="text-[13px] tracking-wide">{item.label}</span>
-                          <span className="ml-auto text-[12px] border border-white/20 px-1.5 py-0.5 text-white/50">SOON</span>
+                          <span className="text-[13px] 2xl:text-[12px] w-4">{item.icon}</span>
+                          <span className="text-[13px] 2xl:text-[12px] tracking-wide">{item.label}</span>
+                          <span className="ml-auto text-[12px] 2xl:text-[11px] border border-white/20 px-1.5 py-0.5 text-white/50">SOON</span>
                         </div>
                       ) : (
                         <Link href={item.href}
-                          className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors text-[13px] tracking-wide ${active
+                          className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors text-[13px] 2xl:text-[12px] tracking-wide ${active
                             ? 'bg-yellow-400 text-black font-bold'
                             : 'text-white/75 hover:text-white hover:bg-white/5'
                             }`}>
@@ -105,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-white/30 text-[12.5px] tracking-widest">v1.0.0</span>
             <button
               onClick={handleLogout}
-              className="text-[#E4572E]/60 hover:text-[#E4572E] text-[12.5px] font-mono transition-colors"
+              className="text-[#E4572E]/60 hover:text-[#E4572E] text-[12.5px] 2xl:text-[11.5px] font-mono transition-colors"
             >
               로그아웃
             </button>

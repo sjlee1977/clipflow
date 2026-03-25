@@ -86,7 +86,7 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
+      className={`w-full flex items-center justify-between px-2 py-2 text-[12.5px] font-mono border-l-2 transition-colors ${
         active
           ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
           : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
@@ -154,50 +154,55 @@ export default function ScriptPage() {
       <div className="flex-1 min-w-0 p-6 border-r border-white/5">
         {(status === 'idle' || status === 'loading' || status === 'error') && (
           <>
-            <div className="relative mt-14 mb-6">
-              <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-2 px-8 py-3 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
-                <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" />
-                <span className="text-orange-400 text-[13px] font-mono tracking-widest uppercase">대본 만들기</span>
+            <div className="relative mt-10 mb-4">
+              <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
+                <span className="w-1 h-1 bg-orange-400 rounded-full" />
+                <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">대본 만들기</span>
               </div>
 
               <div
-                className={`relative border transition-colors duration-200 bg-white/[0.015] ${topicFocused ? 'border-orange-400' : 'border-white/10'}`}
+                className={`relative flex flex-col border transition-colors duration-200 bg-white/[0.015] ${topicFocused ? 'border-orange-400' : 'border-white/10'}`}
                 onMouseEnter={() => setTopicFocused(true)}
                 onMouseLeave={() => setTopicFocused(false)}
               >
+                {/* 상단: SCRIPT INPUT + 글자수 */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
+                  <span className="text-[10.5px] font-mono tracking-widest uppercase" style={{ color: '#8B9A3A' }}>Script Input</span>
+                  <span className="text-white/20 text-[10px] font-mono tabular-nums">{topic.length}자</span>
+                </div>
                 <textarea
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
                   placeholder="예: 아이폰 16 vs 갤럭시 S25 비교, 10분 만에 파스타 만들기, AI가 바꾸는 미래 직업..."
-                  className="w-full h-52 bg-transparent text-white border-0 focus:outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-white/25 p-4"
+                  className="w-full h-40 bg-transparent text-white border-0 focus:outline-none resize-none text-[13px] leading-relaxed font-mono placeholder:text-white/20 px-4 pt-3 pb-2"
                   disabled={status === 'loading'}
                 />
-                <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5">
-                  <span className="text-white/25 text-[11px] font-mono">{topic.length}자</span>
-                  <span className="text-white/15 text-[11px] font-mono tracking-wide">주제 · 키워드 · 문장 모두 가능</span>
+
+                {/* 하단: 힌트 + 글자수 + 버튼 */}
+                <div className="flex items-center justify-between px-4 py-2 border-t border-white/5">
+                  <span className="text-white/20 text-[11px] font-mono tracking-wide">주제 · 키워드 · 문장 모두 가능</span>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={!topic.trim() || status === 'loading'}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[11px] tracking-wide uppercase font-mono"
+                  >
+                    {status === 'loading' ? (
+                      <>
+                        <span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        생성 중...
+                      </>
+                    ) : '대본 생성 →'}
+                  </button>
                 </div>
               </div>
             </div>
 
             {error && (
-              <div className="border-l-2 border-red-500 pl-4 mb-6">
+              <div className="border-l-2 border-red-500 pl-4 mb-4">
                 <p className="text-red-400 text-xs font-mono">{error}</p>
                 <button onClick={() => setStatus('idle')} className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
               </div>
             )}
-
-            <button
-              onClick={handleGenerate}
-              disabled={!topic.trim() || status === 'loading'}
-              className="inline-flex items-center gap-3 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/40 font-black transition-colors text-[13px] tracking-widest uppercase font-mono"
-            >
-              {status === 'loading' ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  대본 생성 중...
-                </>
-              ) : '대본 생성 →'}
-            </button>
           </>
         )}
 
@@ -261,7 +266,7 @@ export default function ScriptPage() {
                 >
                   <div className="flex flex-col items-start py-0.5">
                     <span>{t.label}</span>
-                    <span className="text-[12px] opacity-60 font-normal">{t.desc}</span>
+                    <span className="text-[11.5px] opacity-60 font-normal">{t.desc}</span>
                   </div>
                 </OptionItem>
               ))}
@@ -275,7 +280,7 @@ export default function ScriptPage() {
                   key={t.id}
                   onClick={() => setTone(t.id)}
                   disabled={status === 'loading'}
-                  className={`px-3 py-1.5 text-[13px] font-mono border transition-colors ${
+                  className={`px-3 py-1.5 text-[12px] font-mono border transition-colors ${
                     tone === t.id
                       ? 'border-yellow-400 text-yellow-400'
                       : 'border-white/20 text-white/55 hover:border-white/40 hover:text-white/80'

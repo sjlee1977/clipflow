@@ -125,18 +125,26 @@ export async function generateSpeech(
     
     try {
       const parsed = JSON.parse(jsonStr);
-      if (parsed.base_resp?.status_code !== 0 && parsed.base_resp?.status_code !== undefined) {
-        console.error('[minimax-tts] API Error Resp in line:', parsed);
-        // 전체 실패가 아니면 계속 진행
+      
+      // 상태 코드 확인
+      const statusCode = parsed.base_resp?.status_code ?? parsed.status_code;
+      const statusMsg = parsed.base_resp?.status_msg ?? parsed.status_msg ?? parsed.message;
+      
+      if (statusCode !== 0 && statusCode !== undefined) {
+        throw new Error(`MiniMax API 에러: ${statusMsg} (코드: ${statusCode})`);
       }
-      const audio = parsed.data?.audio || parsed.data || parsed.audio || parsed.base64;
-      if (typeof audio === 'string') {
+
+      // 오디오 데이터 추출
+      const audio = parsed.data?.audio || (typeof parsed.data === 'string' ? parsed.data : null) || parsed.audio || parsed.base64;
+      
+      if (typeof audio === 'string' && audio.length > 0) {
         fullAudioString += audio;
       } else if (typeof audio === 'object' && audio !== null) {
         fullAudioString += (audio.audio || audio.content || '');
       }
-    } catch (e) {
-      // JSON이 아니면 무시 (SSE 공백 등)
+    } catch (e: any) {
+      if (e.message.includes('MiniMax API 에러')) throw e;
+      // JSON 파싱 에러 등은 무시 (SSE 공백 등)
     }
   }
 

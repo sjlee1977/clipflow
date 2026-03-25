@@ -38,9 +38,10 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // 1. 장면 분할
+        // 1. 장면 분할 (100자당 1장면)
+        const sceneCount = Math.max(5, Math.round(script.length / 100));
         console.log('[generate-scenes] Splitting script into scenes...');
-        const scriptScenes = await splitScriptIntoScenes(script, llmModelId);
+        const scriptScenes = await splitScriptIntoScenes(script, llmModelId, sceneCount);
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes.`);
         send({ type: 'total', count: scriptScenes.length });
 

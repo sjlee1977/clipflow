@@ -65,6 +65,7 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset }) =>
         {scene.videoUrl ? (
           <Video
             src={scene.videoUrl}
+            loop
             style={{
               width: '100%',
               height: '100%',

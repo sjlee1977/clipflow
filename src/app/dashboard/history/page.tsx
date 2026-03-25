@@ -107,9 +107,13 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <p className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono mb-4">
-        총 {videos.length}개
-      </p>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-orange-400/30 bg-[#0a0a0a]">
+          <span className="w-1 h-1 bg-orange-400 rounded-full" />
+          <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">내 영상</span>
+        </div>
+        <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">총 {videos.length}개</span>
+      </div>
 
       <div className="grid grid-cols-3 gap-4">
         {paged.map((v) => (
@@ -147,21 +151,21 @@ export default function HistoryPage() {
             {/* 정보 + 버튼 */}
             <div className="p-2 flex flex-col gap-1.5">
               <div className="flex flex-wrap gap-1">
-                <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
+                <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                   {v.format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}
                 </span>
                 {v.image_style && (
-                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
+                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
                   </span>
                 )}
                 {v.scene_count && (
-                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
+                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {v.scene_count}장면
                   </span>
                 )}
                 {v.tts_provider && (
-                  <span className="text-[13px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
+                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {v.tts_provider === 'google' ? 'Google TTS' : 'MiniMax TTS'}
                   </span>
                 )}
@@ -173,7 +177,7 @@ export default function HistoryPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleDelete(v.id)}
-                    className="text-[13px] font-mono text-red-500/70 hover:text-red-500 px-2 py-1 transition-colors shrink-0"
+                    className="text-[13px] 2xl:text-[12.5px] font-mono text-red-500/70 hover:text-red-500 px-2 py-1 transition-colors shrink-0"
                   >
                     삭제
                   </button>
@@ -194,7 +198,7 @@ export default function HistoryPage() {
                       setDownloading(null);
                     }}
                     disabled={downloading === v.id}
-                    className="text-[12px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
+                    className="text-[12px] 2xl:text-[11.5px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
                   >
                     {downloading === v.id ? '다운 중...' : 'MP4 다운'}
                   </button>
