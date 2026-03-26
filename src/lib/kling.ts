@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { sign } from 'jsonwebtoken';
 
@@ -48,34 +47,25 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
-export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1') {
-  const response = await axios.post(
-    `${KLING_API_URL}/videos/image-to-video`,
-    {
-      model,
-      image: imageUrl,
-      prompt: prompt,
+export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10) {
+  const res = await fetch(`${KLING_API_URL}/videos/image-to-video`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getKlingToken()}`,
     },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getKlingToken()}`,
-      },
-    }
-  );
-  return response.data.data?.task_id;
+    body: JSON.stringify({ model, image: imageUrl, prompt, duration }),
+  });
+  const json = await res.json();
+  return json.data?.task_id;
 }
 
 export async function queryKlingVideoTask(taskId: string) {
-  const response = await axios.get(
-    `${KLING_API_URL}/videos/image-to-video/${taskId}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${getKlingToken()}`,
-      },
-    }
-  );
-  const data = response.data.data;
+  const res = await fetch(`${KLING_API_URL}/videos/image-to-video/${taskId}`, {
+    headers: { 'Authorization': `Bearer ${getKlingToken()}` },
+  });
+  const json = await res.json();
+  const data = json.data;
   // MiniMax 형식에 맞춰 정규화
   const statusMap: Record<string, string> = {
     'submitted': 'processing',

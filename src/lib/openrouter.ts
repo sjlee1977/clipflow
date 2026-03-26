@@ -27,6 +27,7 @@ export const IMAGE_MODELS: ImageModel[] = [
 ];
 
 export const VIDEO_MODELS = [
+  { id: 'fal-wan-v2.1',            name: 'Wan 2.1 (fal.ai)',        price: '~$0.05/5초' },
   { id: 'MiniMax-Hailuo-2.3-Fast', name: 'MiniMax Hailuo 2.3 Fast', price: '$0.19/6초' },
   { id: 'MiniMax-Hailuo-2.3',      name: 'MiniMax Hailuo 2.3',      price: '$0.28/6초' },
   { id: 'MiniMax-Hailuo-02',       name: 'MiniMax Hailuo 02',       price: '$0.10/6초' },
@@ -116,29 +117,41 @@ export type SceneSplitResult = {
 export async function splitScriptIntoScenes(
   script: string,
   llmModel = 'deepseek/deepseek-chat-v3-0324',
-  sceneCount?: number
+  sceneCount?: number,
+  hasCharacter?: boolean
 ): Promise<SceneSplitResult> {
   const count = sceneCount ?? Math.max(5, Math.round(script.length / 100));
+
+  const characterInstruction = hasCharacter
+    ? `\n**중요 - 캐릭터 참조 이미지 있음**: imagePrompt에서 캐릭터의 표정(기쁨/슬픔/놀람/진지함 등), 자세(서있는/앉아있는/걷는/손짓하는 등), 제스처, 시선 방향을 장면 내용에 맞게 구체적으로 묘사하세요. 배경과 조명도 장면 분위기에 맞게 묘사하세요. 절대로 참조 이미지의 포즈를 그대로 복사하지 마세요.`
+    : '';
+
   const res = await fetchWithRetry(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       model: llmModel,
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [
         {
           role: 'system',
           content: `당신은 영상 제작 전문가입니다. 입력된 대본을 정확히 ${count}개의 장면으로 나누어주세요. 각 장면의 길이는 내용의 중요도와 분량에 맞게 자연스럽게 구성하세요.
-각 장면은 (1) 실제 영상에 들어갈 텍스트(한국어), (2) 해당 장면을 묘사하는 이미지 생성을 위한 프롬프트(영어), (3) 카메라의 움직임이나 캐릭터의 동작을 묘사하는 비디오 생성용 프롬프트(영어), (4) 해당 장면이 AI 비디오로 변환되기에 적합한지 여부(boolean)를 포함해야 합니다.
-**중요: 전체 장면 중 약 10% 정도의 장면(최소 1개 이상)에 대해 "shouldAnimate"를 true로 설정하세요.**
+
+**[text 필드 규칙 - 가장 중요]**
+- text는 해당 장면에 해당하는 대본 원문을 그대로 담아야 합니다. 요약·압축·생략 금지.
+- 이 text는 TTS(음성 합성)로 그대로 읽히며 자막으로 표시됩니다.
+- 모든 장면의 text를 합치면 원본 대본 전체가 빠짐없이 포함되어야 합니다.
+
+각 장면은 (1) text: 해당 장면 대본 원문(한국어, 요약 금지), (2) imagePrompt: 장면 이미지 생성 프롬프트(영어), (3) motionPrompt: 카메라/동작 묘사 프롬프트(영어), (4) shouldAnimate: AI 비디오 변환 적합 여부(boolean)를 포함해야 합니다.
+**중요: 전체 장면 중 약 10% 정도의 장면(최소 1개 이상)에 대해 "shouldAnimate"를 true로 설정하세요.**${characterInstruction}
 
 반드시 아래 JSON 형태로만 응답하세요 (다른 텍스트 없이):
 {"scenes": [
   {
-    "text": "자막 텍스트",
+    "text": "대본에서 이 장면에 해당하는 문장들을 원문 그대로 작성합니다. 절대 요약하지 마세요.",
     "imagePrompt": "Detailed English image generation prompt...",
     "motionPrompt": "Detailed English motion prompt for video generation...",
-    "shouldAnimate": true
+    "shouldAnimate": false
   }
 ]}`,
         },
@@ -232,7 +245,7 @@ export async function generateImage(
   const userContent = characterImageBase64
     ? [
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${characterImageBase64}` } },
-        { type: 'text', text: `Generate an image featuring this character: ${prompt}. Keep the character's appearance consistent with the reference image. Aspect Ratio: ${aspectRatio}` },
+        { type: 'text', text: `This is a CHARACTER REFERENCE IMAGE. Study the character's face, hairstyle, and clothing style.\nNow generate a BRAND NEW illustration of this SAME character in a completely different scene:\n${prompt}\n\nIMPORTANT: Keep face/hairstyle/clothing consistent with the reference, but use a COMPLETELY DIFFERENT pose, expression, and gesture appropriate for the scene. Do NOT copy the exact pose from the reference. Aspect Ratio: ${aspectRatio}` },
       ]
     : `Generate an image: ${prompt}. Aspect Ratio: ${aspectRatio}.`;
 

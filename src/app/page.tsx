@@ -22,7 +22,7 @@ export default function HomePage() {
           <div className="w-4 h-4 bg-yellow-400" />
           <span className="text-white font-bold text-lg tracking-widest uppercase">ClipFlow</span>
         </a>
-        <nav className="hidden md:flex items-center gap-8 text-xs tracking-widest uppercase text-gray-400">
+        <nav className="hidden md:flex items-center gap-8 text-[13px] tracking-widest uppercase text-gray-400">
           <a href="#features" className="hover:text-white transition-colors">기능</a>
           <a href="#how" className="hover:text-white transition-colors">작동 방식</a>
           <a href="#pricing" className="hover:text-white transition-colors">요금제</a>
@@ -33,8 +33,8 @@ export default function HomePage() {
               로그인
             </Link>
           )}
-          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold tracking-tight uppercase px-3 py-1.5 transition-colors">
-            {user ? '대시보드 이동' : '무료 시작'}
+          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-[13px] font-bold tracking-tight uppercase px-3 py-1.5 transition-colors">
+            {user ? '대시보드' : '무료 시작'}
           </Link>
         </div>
       </header>
@@ -64,29 +64,29 @@ export default function HomePage() {
 
         {/* 메인 텍스트 */}
         <div className="relative text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-xs tracking-widest text-yellow-400 uppercase">
+          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-[13px] tracking-widest text-yellow-400 uppercase">
             <div className="w-2 h-2 bg-yellow-400 animate-pulse" />
             지금 바로 무료로 시작
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tight mb-4">
+          <h1 className="text-6xl md:text-8xl font-black leading-tight tracking-tight mb-4" style={{ wordSpacing: '-0.1em' }}>
             <span className="block text-white">영상 한 편에</span>
             <span className="block text-white">몇 시간을</span>
             <span className="block text-yellow-400">쓰고 계신가요?</span>
           </h1>
 
-          <p className="text-gray-400 text-sm md:text-base mt-8 mb-12 max-w-xl mx-auto leading-loose">
+          <p className="text-gray-400 text-[20px] mt-8 mb-12 max-w-xl mx-auto leading-loose">
             대본만 입력하면 장면 구성·이미지·나레이션·자막까지 AI가 완성합니다.<br />
             편집에 쏟던 시간을, 당신의 본업과 아이디어에 사용하세요.
           </p>
 
           <div className="flex items-center justify-center gap-3">
             <Link href="/dashboard"
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase px-4 py-2 transition-colors">
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-[13px] tracking-widest uppercase px-4 py-2 transition-colors">
               시작하기 — 무료
             </Link>
             <a href="#how"
-              className="text-white/40 hover:text-white/80 text-xs tracking-widest uppercase transition-colors">
+              className="text-white/40 hover:text-white/80 text-[13px] tracking-widest uppercase transition-colors">
               작동 방식 보기 →
             </a>
           </div>

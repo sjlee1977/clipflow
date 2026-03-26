@@ -25,6 +25,19 @@ async function parseJson(res: Response) {
 }
 
 /**
+ * S3 URL → base64 data URI 변환 (MiniMax가 S3 URL을 직접 못 읽을 경우 대비)
+ */
+async function toBase64DataUri(imageUrl: string): Promise<string> {
+  if (imageUrl.startsWith('data:')) return imageUrl;
+  const res = await fetch(imageUrl);
+  if (!res.ok) throw new Error(`이미지 다운로드 실패: ${imageUrl}`);
+  const buf = await res.arrayBuffer();
+  const contentType = res.headers.get('content-type') || 'image/jpeg';
+  const b64 = Buffer.from(buf).toString('base64');
+  return `data:${contentType};base64,${b64}`;
+}
+
+/**
  * 1단계: 이미지 → 영상 작업 생성 → task_id 반환
  */
 export async function createVideoTask(
@@ -32,21 +45,46 @@ export async function createVideoTask(
   prompt: string,
   model = 'MiniMax-Hailuo-2.3-Fast'
 ): Promise<string> {
-  const res = await fetch(`${BASE}/video_generation`, {
+  const groupId = process.env.MINIMAX_GROUP_ID;
+  const url = groupId
+    ? `${BASE}/video_generation?GroupId=${groupId}`
+    : `${BASE}/video_generation`;
+
+  // S3 URL을 base64로 변환 (MiniMax 서버에서 외부 URL 접근 불가 방어)
+  const firstFrameImage = await toBase64DataUri(imageUrl);
+  console.log('[minimax-video] createVideoTask', { url, model, imageType: firstFrameImage.startsWith('data:') ? 'base64' : 'url' });
+
+  const body = {
+    model,
+    prompt: prompt || 'Cinematic motion, high quality',
+    first_frame_image: firstFrameImage,
+  };
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({
-      model,
-      prompt: prompt || 'Cinematic motion, high quality',
-      first_frame_image: imageUrl,
-    }),
+    body: JSON.stringify(body),
   });
 
-  const data = await parseJson(res);
-  if (data.base_resp?.status_code !== 0) {
-    throw new Error(data.base_resp?.status_msg || '비디오 생성 태스크 시작 실패');
+  const rawText = await res.text();
+  console.log('[minimax-video] response status:', res.status, 'body:', rawText.slice(0, 400));
+
+  let data: any;
+  try {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    data = match ? JSON.parse(match[0]) : {};
+  } catch {
+    throw new Error(`MiniMax Video API 응답 파싱 실패: ${rawText.slice(0, 200)}`);
   }
-  if (!data.task_id) throw new Error('task_id가 반환되지 않았습니다');
+
+  const statusCode = data.base_resp?.status_code;
+  const statusMsg = data.base_resp?.status_msg;
+  if (statusCode !== undefined && statusCode !== 0) {
+    throw new Error(`MiniMax Video 오류 [${statusCode}]: ${statusMsg}`);
+  }
+  if (!data.task_id) {
+    throw new Error(`task_id 없음. 응답: ${rawText.slice(0, 200)}`);
+  }
   return data.task_id as string;
 }
 

@@ -136,7 +136,6 @@ async function generateWanClip(imageUrl: string, prompt: string): Promise<string
     body: JSON.stringify({
       image_url: imageUrl,
       prompt: prompt || 'Cinematic motion, smooth camera movement',
-      duration: '5',
     }),
   });
 

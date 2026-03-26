@@ -19,6 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
     "@clerk/nextjs": "^7.0.6",
+    "@fal-ai/client": "^1.9.5",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@google/genai": "^1.46.0",
     "@remotion/lambda": "^4.0.438",

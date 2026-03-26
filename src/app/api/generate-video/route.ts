@@ -6,6 +6,40 @@ import { startRender, waitForRender } from '@/lib/remotion';
 const FPS = 30;
 const PADDING_FRAMES = 15; // 오디오 끝 후 0.5초 여유
 
+/** 텍스트를 1~2행(최대 20자) 단위로 분할 후 프레임 비례 배분 */
+function splitIntoSubtitles(text: string, totalFrames: number) {
+  const MAX_CHARS = 20;
+  const chunks: string[] = [];
+  let remaining = text.trim();
+
+  while (remaining.length > MAX_CHARS) {
+    let splitAt = -1;
+    // 구두점·공백 기준으로 자연스러운 분할점 탐색
+    for (let i = MAX_CHARS; i >= Math.ceil(MAX_CHARS / 2); i--) {
+      if (/[.!?,。！？，\s]/.test(remaining[i] ?? '')) {
+        splitAt = i + 1;
+        break;
+      }
+    }
+    if (splitAt === -1) splitAt = MAX_CHARS;
+    chunks.push(remaining.slice(0, splitAt).trim());
+    remaining = remaining.slice(splitAt).trim();
+  }
+  if (remaining) chunks.push(remaining);
+
+  const totalChars = chunks.reduce((sum, c) => sum + c.length, 0);
+  let currentFrame = 0;
+  return chunks.map((chunk, i) => {
+    const isLast = i === chunks.length - 1;
+    const frames = isLast
+      ? totalFrames - currentFrame
+      : Math.max(15, Math.round((chunk.length / totalChars) * totalFrames));
+    const entry = { text: chunk, startFrame: currentFrame, endFrame: currentFrame + frames };
+    currentFrame += frames;
+    return entry;
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -28,7 +62,7 @@ export async function POST(req: NextRequest) {
       let audioUrl: string;
       let durationMs: number;
       if (ttsProvider === 'google') {
-        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId));
+        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed));
       } else {
         ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed }));
       }
@@ -38,7 +72,7 @@ export async function POST(req: NextRequest) {
         videoUrl: s.videoUrl,
         audioUrl,
         durationInFrames,
-        subtitles: [{ text: s.text, startFrame: 0, endFrame: durationInFrames }],
+        subtitles: splitIntoSubtitles(s.text, durationInFrames),
       };
     }
 

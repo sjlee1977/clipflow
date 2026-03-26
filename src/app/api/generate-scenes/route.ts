@@ -40,12 +40,13 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. 장면 분할 (200자당 1장면, 최대 35장면)
-        const sceneCount = Math.min(35, Math.max(5, Math.round(script.length / 200)));
+        const sceneCount = Math.min(35, Math.max(1, Math.round(script.length / 200)));
         console.log('[generate-scenes] Splitting script into scenes...');
         const isGemini = llmModelId.startsWith('google/gemini-');
+        const hasCharacter = !!characterImageBase64;
         const { scenes: scriptScenes, usage: llmUsage } = isGemini
-          ? await splitViaGemini(script, llmModelId, sceneCount)
-          : await splitViaOpenRouter(script, llmModelId, sceneCount);
+          ? await splitViaGemini(script, llmModelId, sceneCount, hasCharacter)
+          : await splitViaOpenRouter(script, llmModelId, sceneCount, hasCharacter);
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes. LLM tokens: ${llmUsage.promptTokens}+${llmUsage.completionTokens}`);
         send({ type: 'total', count: scriptScenes.length });
 

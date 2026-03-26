@@ -30,13 +30,14 @@ type PreviewScene = {
   shouldAnimate?: boolean;
   videoUrl?: string;
   isAnimating?: boolean;
+  isLoading?: boolean;
 };
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-[#17BEBB]/70 text-[clamp(10px,0.8vw,12px)] tracking-widest uppercase mb-3">{label}</p>
+      <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">{label}</p>
       {children}
     </div>
   );
@@ -56,7 +57,7 @@ function PanelAccordion({ label, value, children, closeOnSelect = false }: {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between py-3 group"
       >
-        <span className="text-[#17BEBB]/70 text-[clamp(10px,0.8vw,12px)] tracking-widest uppercase">{label}</span>
+        <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase">{label}</span>
         <span className="flex items-center gap-2">
           <span className="text-white/70 text-[13px] font-mono truncate max-w-[180px]">{value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
@@ -101,7 +102,7 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] 2xl:text-[12px] font-mono border-l-2 transition-colors ${
+      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
         active
           ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
           : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
@@ -116,11 +117,11 @@ function OptionItem({ active, onClick, children, sub }: {
 export default function DashboardPage() {
   const [script, setScript] = useState('');
   const [format, setFormat] = useState<Format>('shorts');
-  const [imageModelId, setImageModelId] = useState('black-forest-labs/flux.2-klein-4b');
-  const [llmModelId, setLlmModelId] = useState('deepseek/deepseek-chat-v3-0324');
-  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('minimax');
-  const [videoModelId, setVideoModelId] = useState('MiniMax-Hailuo-2.3-Fast');
-  const [voiceId, setVoiceId] = useState('Korean_SoothingLady');
+  const [imageModelId, setImageModelId] = useState('google/gemini-2.5-flash-image');
+  const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash-lite');
+  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('google');
+  const [videoModelId, setVideoModelId] = useState('fal-wan-v2.1');
+  const [voiceId, setVoiceId] = useState('Kore');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
   const [imageStyle, setImageStyle] = useState<ImageStyle>('cinematic');
@@ -210,7 +211,12 @@ export default function DashboardPage() {
           if (!line.startsWith('data: ')) continue;
           const event = JSON.parse(line.slice(6));
           if (event.type === 'error') throw new Error(event.message);
-          if (event.type === 'total') setGenTotal(event.count);
+          if (event.type === 'total') {
+            setGenTotal(event.count);
+            setScenes(Array.from({ length: event.count }, () => ({
+              text: '', imageUrl: '', imagePrompt: '', isLoading: true,
+            })));
+          }
           if (event.type === 'scene') {
             setGenCompleted(prev => prev + 1);
             const sceneData = { 
@@ -230,10 +236,16 @@ export default function DashboardPage() {
           if (event.type === 'done') {
             if (event.usage) setUsageInfo(event.usage);
             setStatus('preview');
-            // 자동 애니메이션 시작 (shouldAnimate 장면들을 순차적으로, RPM 초과 방지)
+            // 자동 애니메이션 시작 (shouldAnimate 장면들 + 첫/마지막 장면은 무조건, RPM 초과 방지)
             const animTargets = newScenes
               .map((s, idx) => ({ s, idx }))
-              .filter(({ s }) => s && s.shouldAnimate && !s.videoUrl);
+              .filter(({ s, idx }) => {
+                if (!s) return false;
+                if (s.videoUrl) return false;
+                // 첫 번째(0) 또는 마지막 장면이면 무조건 포함
+                if (idx === 0 || idx === newScenes.length - 1) return true;
+                return s.shouldAnimate;
+              });
             animTargets.forEach(({ idx }, i) => {
               setTimeout(() => handleAnimateScene(idx, newScenes), i * 3000);
             });
@@ -258,15 +270,16 @@ export default function DashboardPage() {
     setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: true } : s));
 
     try {
-      const provider = videoModelId.startsWith('kling') ? 'kling' : 'minimax';
+      const provider = videoModelId.startsWith('kling') ? 'kling' : videoModelId.startsWith('fal-') ? 'fal' : 'minimax';
       const res = await fetch('/api/animate-scene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imageUrl: scene.imageUrl, 
+        body: JSON.stringify({
+          imageUrl: scene.imageUrl,
           prompt: scene.motionPrompt || scene.text,
           provider,
-          model: videoModelId
+          model: videoModelId,
+          duration: (index === 0 || index === scenes.length - 1) ? 5 : 10,
         }),
       });
       const data = await res.json();
@@ -292,7 +305,8 @@ export default function DashboardPage() {
 
           setTimeout(poll, 4000);
         } catch (pollErr: any) {
-          console.error(pollErr);
+          console.error('[animate poll]', pollErr);
+          setError(`AI 비디오 변환 실패 (장면 ${index + 1}): ${pollErr.message}`);
           setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: false } : s));
           setAnimatingCount(prev => Math.max(0, prev - 1));
         }
@@ -464,7 +478,9 @@ export default function DashboardPage() {
   }, [playingIndex, voiceId, playbackRate]);
 
   const selectedImageModel = IMAGE_MODELS.find(m => m.id === imageModelId);
-  const selectedVoice = MINIMAX_VOICES.find(v => v.id === voiceId);
+  const selectedVoice =
+    MINIMAX_VOICES.find(v => v.id === voiceId) ??
+    GOOGLE_VOICES.find(v => v.id === voiceId);
 
   function calcEstimatedCost(info: typeof usageInfo): string | null {
     if (!info) return null;
@@ -492,14 +508,14 @@ export default function DashboardPage() {
       <div className="flex-1 min-w-0 p-6 border-r border-white/5">
 
         {/* ── 입력 단계 ── */}
-        {(status === 'idle' || status === 'previewing' || status === 'error') && (
+        {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
           <div className="flex flex-col h-full">
             {/* 입력 카드 */}
             <div className="relative mt-10 flex flex-col">
               {/* 탭 레이블 */}
               <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
                 <span className="w-1 h-1 bg-orange-400 rounded-full" />
-                <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">영상 만들기</span>
+                <span className="text-orange-400 text-[13px] font-mono tracking-widest uppercase">영상 만들기</span>
               </div>
 
               <div className={`flex flex-col border transition-colors duration-200 ${
@@ -524,11 +540,11 @@ export default function DashboardPage() {
 
               {/* 하단: TIP + 버튼 */}
               <div className="px-4 pb-3 flex items-center justify-between border-t border-white/5 pt-3">
-                <span className="text-[11px] text-white/20 font-mono">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
+                <span className="text-[12px] text-white/20 font-mono">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
                 <button
                   onClick={handlePreview}
                   disabled={!script.trim() || isProcessing}
-                  className="flex items-center gap-2 bg-orange-400 hover:bg-orange-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[11px] tracking-wide uppercase font-mono px-3 py-1.5 transition-colors group"
+                  className="flex items-center gap-2 bg-orange-400 hover:bg-orange-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[13px] tracking-wide uppercase font-mono px-3 py-1.5 transition-colors group"
                 >
                   {status === 'previewing' ? (
                     <>
@@ -598,13 +614,19 @@ export default function DashboardPage() {
         )}
 
         {/* ── 미리보기 단계 ── */}
-        {(status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
+        {(status === 'previewing' && genTotal > 0 || status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+                <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+                {status === 'previewing' && (
+                  <span className="flex items-center gap-2 text-orange-400/80 text-[11px] font-mono">
+                    <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
+                    이미지 생성 중 {genCompleted} / {genTotal}
+                  </span>
+                )}
                 {usageInfo && (
-                  <span className="text-white/25 text-[10px] font-mono">
+                  <span className="text-white/25 text-[12px] font-mono">
                     LLM {(usageInfo.promptTokens + usageInfo.completionTokens).toLocaleString()}토큰 · 이미지 {usageInfo.imageCount}장
                     {calcEstimatedCost(usageInfo) && (
                       <span className="text-yellow-400/50 ml-1">{calcEstimatedCost(usageInfo)}</span>
@@ -612,7 +634,7 @@ export default function DashboardPage() {
                   </span>
                 )}
                 {animatingCount > 0 && (
-                  <span className="flex items-center gap-2 bg-yellow-400/10 text-yellow-400 text-[10px] font-mono px-2 py-0.5 rounded-full animate-pulse">
+                  <span className="flex items-center gap-2 bg-yellow-400/10 text-yellow-400 text-[11px] font-mono px-2 py-0.5 rounded-full animate-pulse">
                     <span className="w-1 h-1 bg-yellow-400 rounded-full" />
                     {animatingCount}개 애니메이션 중
                   </span>
@@ -640,7 +662,11 @@ export default function DashboardPage() {
                 <div key={i} className="flex gap-4 py-4 border-b border-white/5">
                   <span className="text-white/40 text-xs font-mono pt-0.5 w-5 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
                   <div className="w-16 h-16 shrink-0 overflow-hidden bg-white/5">
-                    {regeneratingIndex === i ? (
+                    {scene.isLoading ? (
+                      <div className="w-full h-full flex items-center justify-center bg-white/[0.03] animate-pulse">
+                        <span className="w-4 h-4 border-2 border-white/20 border-t-orange-400/60 rounded-full animate-spin" />
+                      </div>
+                    ) : regeneratingIndex === i ? (
                       <div className="w-full h-full flex items-center justify-center bg-black/60">
                         <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                       </div>
@@ -649,26 +675,34 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
+                    {scene.isLoading ? (
+                      <div className="space-y-2 pt-1">
+                        <div className="h-2.5 bg-white/[0.06] rounded animate-pulse w-full" />
+                        <div className="h-2.5 bg-white/[0.06] rounded animate-pulse w-4/5" />
+                        <div className="h-2.5 bg-white/[0.06] rounded animate-pulse w-3/5" />
+                      </div>
+                    ) : (
                     <textarea
                       value={scene.text}
                       onChange={e => updateSceneText(i, e.target.value)}
                       disabled={status !== 'preview'}
                       rows={3}
-                      className="w-full bg-transparent text-white/80 text-xs font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
+                      className="w-full bg-transparent text-white/80 text-[13px] font-mono leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60"
                     />
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <span className="text-white/35 text-xs font-mono">{scene.text.length}자</span>
+                    )}
+                    {!scene.isLoading && <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="text-white/35 text-[12px] font-mono">{scene.text.length}자</span>
                       <button
                         onClick={() => handlePlayScene(i, scene.text)}
                         disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
-                        className="text-white/25 hover:text-yellow-400 text-xs font-mono transition-colors disabled:opacity-20"
+                        className="text-white/25 hover:text-yellow-400 text-[12px] font-mono transition-colors disabled:opacity-20"
                       >
                         {loadingAudioIndex === i ? '로딩...' : playingIndex === i ? '■ 정지' : '▶ 미리듣기'}
                       </button>
                       <button
                         onClick={() => handleAnimateScene(i)}
                         disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
-                        className={`text-xs font-mono transition-colors ${
+                        className={`text-[12px] font-mono transition-colors ${
                           scene.videoUrl
                             ? 'text-yellow-400/50 cursor-default'
                             : 'text-white/25 hover:text-yellow-400 disabled:opacity-20'
@@ -681,13 +715,13 @@ export default function DashboardPage() {
                           <button
                             onClick={() => handleRegenerateImage(i)}
                             disabled={regeneratingIndex !== null}
-                            className="text-white/25 hover:text-orange-400 text-xs font-mono transition-colors disabled:opacity-20"
+                            className="text-white/25 hover:text-orange-400 text-[12px] font-mono transition-colors disabled:opacity-20"
                           >
                             {regeneratingIndex === i ? '재생성 중...' : '↺ 재생성'}
                           </button>
                           <button
                             onClick={() => replaceInputRefs.current[i]?.click()}
-                            className="text-white/25 hover:text-[#17BEBB] text-xs font-mono transition-colors"
+                            className="text-white/25 hover:text-[#17BEBB] text-[12px] font-mono transition-colors"
                           >↑ 교체</button>
                           <input
                             type="file"
@@ -698,7 +732,7 @@ export default function DashboardPage() {
                           />
                         </>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
               ))}
@@ -708,7 +742,7 @@ export default function DashboardPage() {
             {status === 'preview' && (
               <button
                 onClick={handleRender}
-                className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 transition-colors text-xs tracking-widest uppercase font-mono"
+                className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
               >
                 영상 생성 →
               </button>
@@ -716,10 +750,13 @@ export default function DashboardPage() {
 
             {status === 'error' && error && (
               <div className="mt-8 border-l-2 border-red-500 pl-4 py-1">
-                <p className="text-red-400 text-xs font-mono">영상 생성 실패: {error}</p>
+                <p className="text-red-400 font-mono" style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                  영상 생성 실패: {error}
+                </p>
                 <button
                   onClick={() => { setStatus('preview'); setError(''); }}
-                  className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors"
+                  className="mt-2 text-white/25 hover:text-white/60 font-mono transition-colors"
+                  style={{ fontSize: '12px' }}
                 >
                   다시 시도 →
                 </button>
@@ -754,7 +791,7 @@ export default function DashboardPage() {
             <div className="w-full flex items-center justify-between pb-3 border-b border-white/5 mb-5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">완성 영상</span>
+                <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">완성 영상</span>
               </div>
               <button
                 onClick={() => setStatus('preview')}
@@ -793,13 +830,13 @@ export default function DashboardPage() {
                   a.download = 'clipflow.mp4';
                   a.click();
                 }}
-                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
+                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-[13px] tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
               >
                 ↓ 다운로드
               </button>
               <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
-                className="flex items-center gap-2 border border-white/15 hover:border-white/30 text-white/40 hover:text-white/70 text-xs font-mono tracking-widest uppercase px-4 py-1.5 transition-colors"
+                className="flex items-center gap-2 border border-white/15 hover:border-white/30 text-white/40 hover:text-white/70 text-[13px] font-mono tracking-widest uppercase px-4 py-1.5 transition-colors"
               >
                 ↺ 새 영상
               </button>
@@ -813,7 +850,7 @@ export default function DashboardPage() {
         <div className="flex-1 px-4 py-5 space-y-0">
 
           {/* 입력 단계 설정 */}
-          {(status === 'idle' || status === 'previewing' || status === 'error') && (
+          {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
             <>
               <PanelSection label="스타일">
                 <div className="flex flex-wrap gap-1">
@@ -822,7 +859,7 @@ export default function DashboardPage() {
                       key={s.id}
                       onClick={() => setImageStyle(s.id)}
                       disabled={isProcessing}
-                      className={`px-3 py-1.5 text-xs font-mono border transition-colors ${
+                      className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
                         imageStyle === s.id
                           ? 'border-yellow-400 text-yellow-400'
                           : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
@@ -902,60 +939,51 @@ export default function DashboardPage() {
           )}
 
           {/* 미리보기 단계 설정 */}
-          {(status === 'preview' || status === 'rendering') && (
+          {(status === 'previewing' && genTotal > 0 || status === 'preview' || status === 'rendering' || (status === 'error' && scenes.length > 0)) && (
             <>
-              <PanelAccordion
-                label="목소리"
-                value={
-                  ttsProvider === 'google'
-                    ? GOOGLE_VOICES.find(v => v.id === voiceId)?.name ?? ''
-                    : MINIMAX_VOICES.find(v => v.id === voiceId)?.name ?? ''
-                }
-                closeOnSelect
-              >
-                {/* Provider 토글 */}
-                <div className="flex gap-1 mb-2">
-                  <button
-                    onClick={() => { setTtsProvider('minimax'); setVoiceId('Korean_SoothingLady'); }}
-                    className={`flex-1 py-1 text-[11px] rounded ${ttsProvider === 'minimax' ? 'bg-yellow-400 text-black font-bold' : 'bg-white/10 text-white/50'}`}
-                  >
-                    MiniMax (유료)
-                  </button>
-                  <button
-                    onClick={() => { setTtsProvider('google'); setVoiceId('Kore'); }}
-                    className={`flex-1 py-1 text-[11px] rounded ${ttsProvider === 'google' ? 'bg-yellow-400 text-black font-bold' : 'bg-white/10 text-white/50'}`}
-                  >
-                    Google (무료)
-                  </button>
+              <PanelSection label="보이스">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <p className="text-white/25 text-[12px] font-mono tracking-widest uppercase mb-1.5">MiniMax</p>
+                    <select
+                      value={ttsProvider === 'minimax' ? voiceId : ''}
+                      onChange={e => { setVoiceId(e.target.value); setTtsProvider('minimax'); }}
+                      className="w-full bg-[#111] text-white/70 text-[13px] font-mono px-2 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80 [&>option]:text-[13px]"
+                    >
+                      <option value="" disabled>선택 안 됨</option>
+                      {MINIMAX_VOICES.map(v => (
+                        <option key={v.id} value={v.id}>{v.name} ({v.gender === 'female' ? '여' : '남'})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white/25 text-[12px] font-mono tracking-widest uppercase mb-1.5">Google AI Studio</p>
+                    <select
+                      value={ttsProvider === 'google' ? voiceId : ''}
+                      onChange={e => { setVoiceId(e.target.value); setTtsProvider('google'); }}
+                      className="w-full bg-[#111] text-white/70 text-[13px] font-mono px-2 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80 [&>option]:text-[13px]"
+                    >
+                      <option value="" disabled>선택 안 됨</option>
+                      {GOOGLE_VOICES.map(v => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  {ttsProvider === 'google'
-                    ? GOOGLE_VOICES.map(v => (
-                        <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
-                          {v.name}
-                        </OptionItem>
-                      ))
-                    : MINIMAX_VOICES.map(v => (
-                        <OptionItem key={v.id} active={voiceId === v.id} onClick={() => setVoiceId(v.id)}>
-                          {v.name}
-                        </OptionItem>
-                      ))
-                  }
-                </div>
-              </PanelAccordion>
+              </PanelSection>
 
               <PanelSection label="나레이션 속도">
                 <div className="px-1">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-white/30 text-[11px] font-mono">속도</span>
-                    <span className="text-yellow-400 text-xs font-mono">{playbackRate.toFixed(2)}x</span>
+                    <span className="text-white/30 text-[13px] font-mono">속도</span>
+                    <span className="text-yellow-400 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
                   </div>
                   <input
                     type="range" min={0.5} max={2.0} step={0.25} value={playbackRate}
                     onChange={e => setPlaybackRate(parseFloat(e.target.value))}
                     className="w-full accent-yellow-400 h-0.5"
                   />
-                  <div className="flex justify-between text-white/15 text-[9px] font-mono mt-2">
+                  <div className="flex justify-between text-white/15 text-[12px] font-mono mt-2">
                     <span>0.5x</span><span>1.0x</span><span>2.0x</span>
                   </div>
                 </div>
@@ -963,20 +991,20 @@ export default function DashboardPage() {
 
               {/* 현재 설정 요약 */}
               <div className="mt-4 space-y-1.5">
-                <p className="text-white/15 text-[11px] tracking-widest uppercase mb-2">설정 요약</p>
-                <div className="flex justify-between text-[11px] font-mono">
+                <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-2">설정 요약</p>
+                <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">스타일</span>
                   <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
                 </div>
-                <div className="flex justify-between text-[11px] font-mono">
+                <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">비율</span>
                   <span className="text-white/40">{format === 'shorts' ? '9:16' : '16:9'}</span>
                 </div>
-                <div className="flex justify-between text-[11px] font-mono">
+                <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">이미지 AI</span>
                   <span className="text-white/40">{selectedImageModel?.name?.split(' ').slice(0, 2).join(' ')}</span>
                 </div>
-                <div className="flex justify-between text-[11px] font-mono">
+                <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">목소리</span>
                   <span className="text-white/40">{selectedVoice?.name}</span>
                 </div>
@@ -987,16 +1015,16 @@ export default function DashboardPage() {
           {/* 완성 단계 */}
           {status === 'done' && (
             <div className="space-y-1.5">
-              <p className="text-white/15 text-[11px] tracking-widest uppercase mb-3">생성 완료</p>
-              <div className="flex justify-between text-[11px] font-mono">
+              <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">생성 완료</p>
+              <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">장면 수</span>
                 <span className="text-white/40">{scenes.length}개</span>
               </div>
-              <div className="flex justify-between text-[10px] font-mono">
+              <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">스타일</span>
                 <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
               </div>
-              <div className="flex justify-between text-[10px] font-mono">
+              <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">비율</span>
                 <span className="text-white/40">{format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}</span>
               </div>

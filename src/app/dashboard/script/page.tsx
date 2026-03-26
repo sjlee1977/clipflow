@@ -157,7 +157,7 @@ export default function ScriptPage() {
             <div className="relative mt-10 mb-4">
               <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
                 <span className="w-1 h-1 bg-orange-400 rounded-full" />
-                <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">대본 만들기</span>
+                <span className="text-orange-400 text-[13px] font-mono tracking-widest uppercase">대본 만들기</span>
               </div>
 
               <div
@@ -180,11 +180,11 @@ export default function ScriptPage() {
 
                 {/* 하단: 힌트 + 글자수 + 버튼 */}
                 <div className="flex items-center justify-between px-4 py-2 border-t border-white/5">
-                  <span className="text-white/20 text-[11px] font-mono tracking-wide">주제 · 키워드 · 문장 모두 가능</span>
+                  <span className="text-white/20 text-[12px] font-mono tracking-wide">주제 · 키워드 · 문장 모두 가능</span>
                   <button
                     onClick={handleGenerate}
                     disabled={!topic.trim() || status === 'loading'}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[11px] tracking-wide uppercase font-mono"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] tracking-wide uppercase font-mono"
                   >
                     {status === 'loading' ? (
                       <>
@@ -209,7 +209,7 @@ export default function ScriptPage() {
         {status === 'done' && (
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
-              <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">완성된 대본</span>
+              <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">완성된 대본</span>
               <button
                 onClick={() => { setStatus('idle'); setScript(''); }}
                 className="text-white/40 hover:text-white/70 text-xs font-mono transition-colors"
@@ -220,12 +220,12 @@ export default function ScriptPage() {
               <textarea
                 value={script}
                 onChange={e => setScript(e.target.value)}
-                className="w-full h-[500px] bg-transparent text-white/80 text-sm font-mono leading-relaxed border-0 focus:outline-none resize-none pb-12"
+                className="w-full h-[500px] bg-transparent text-white/80 text-[13px] font-mono leading-relaxed border-0 focus:outline-none resize-none pb-12"
               />
               <div className="absolute bottom-4 right-4 flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className={`px-3 py-1.5 text-[11px] font-mono border transition-colors ${
+                  className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
                     copied 
                       ? 'border-green-400 text-green-400' 
                       : 'border-white/20 text-white/55 hover:border-white/40 hover:text-white/80'
@@ -239,13 +239,13 @@ export default function ScriptPage() {
             <div className="flex items-center gap-3 mt-8">
               <button
                 onClick={handleUseScript}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black transition-colors text-xs tracking-widest uppercase font-mono"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black transition-colors text-[13px] tracking-widest uppercase font-mono"
               >
                 이 대본으로 영상 만들기 →
               </button>
               <button
                 onClick={() => { setStatus('idle'); setScript(''); }}
-                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-xs font-mono transition-colors"
+                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-[13px] font-mono transition-colors"
               >
                 새 대본
               </button>
