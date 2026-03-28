@@ -9,15 +9,22 @@ const NAV_ITEMS = [
   {
     group: 'STUDIO',
     items: [
+      { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: '⌘' },
       { href: '/dashboard/script', label: '대본 만들기', icon: '✎' },
       { href: '/dashboard', label: '영상 만들기', icon: '▶' },
+    ],
+  },
+  {
+    group: 'LIBRARY',
+    items: [
       { href: '/dashboard/history', label: '내 영상', icon: '◫' },
+      { href: '/dashboard/my-scripts', label: '내 대본', icon: '☰' },
     ],
   },
   {
     group: 'SETTINGS',
     items: [
-      { href: '/dashboard/settings', label: '설정', icon: '◈', soon: true },
+      { href: '/dashboard/settings', label: '설정', icon: '◈' },
     ],
   },
 ];

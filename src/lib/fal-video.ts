@@ -6,9 +6,9 @@
 const FAL_BASE = 'https://queue.fal.run';
 const MODEL = 'fal-ai/wan/v2.1/image-to-video';
 
-function headers() {
+function headers(apiKey?: string) {
   return {
-    'Authorization': `Key ${process.env.FAL_KEY}`,
+    'Authorization': `Key ${apiKey || process.env.FAL_KEY}`,
     'Content-Type': 'application/json',
   };
 }
@@ -20,14 +20,15 @@ function headers() {
 export async function createFalVideoTask(
   imageUrl: string,
   prompt: string,
-  duration?: 5 | 10
+  duration?: 5 | 10,
+  apiKey?: string
 ): Promise<string> {
   // WAN 2.1은 기본적으로 5초(81프레임)
   console.log('[fal-video] createTask', { model: MODEL, imageUrl: imageUrl.slice(0, 80), duration });
 
   const res = await fetch(`${FAL_BASE}/${MODEL}`, {
     method: 'POST',
-    headers: headers(),
+    headers: headers(apiKey),
     body: JSON.stringify({
       image_url: imageUrl,
       prompt: prompt || 'Cinematic motion, smooth camera movement, high quality',
@@ -62,14 +63,14 @@ export async function createFalVideoTask(
  * 2단계: 태스크 상태 조회
  * requestId는 status_url (전체 URL)
  */
-export async function queryFalVideoTask(combined: string): Promise<{
+export async function queryFalVideoTask(combined: string, apiKey?: string): Promise<{
   task_status: string;
   video_url?: string;
   task_status_msg?: string;
 }> {
   const [statusUrl, responseUrl] = combined.includes('|') ? combined.split('|') : [combined, combined.replace(/\/status$/, '')];
   console.log('[fal-video] polling:', statusUrl);
-  const statusRes = await fetch(statusUrl, { headers: headers() });
+  const statusRes = await fetch(statusUrl, { headers: headers(apiKey) });
 
   const statusRaw = await statusRes.text();
   console.log('[fal-video] status raw response:', statusRes.status, statusRaw.slice(0, 300));
@@ -81,7 +82,7 @@ export async function queryFalVideoTask(combined: string): Promise<{
 
   if (statusData.status === 'COMPLETED') {
     // fal.ai가 제공한 response_url 직접 사용
-    const resultRes = await fetch(responseUrl, { headers: headers() });
+    const resultRes = await fetch(responseUrl, { headers: headers(apiKey) });
     const resultRaw = await resultRes.text();
     console.log('[fal-video] result raw response:', resultRes.status, resultRaw.slice(0, 300));
     let result: any;

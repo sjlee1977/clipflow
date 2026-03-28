@@ -9,24 +9,13 @@ const s3Client = new S3Client({
   },
 });
 
-function getKlingToken() {
-  const ak = process.env.KLING_ACCESS_KEY;
-  const sk = process.env.KLING_SECRET_KEY;
-  if (!ak || !sk) return '';
+function getKlingToken(ak?: string, sk?: string) {
+  const accessKey = ak || process.env.KLING_ACCESS_KEY_ID;
+  const secretKey = sk || process.env.KLING_ACCESS_KEY_SECRET;
+  if (!accessKey || !secretKey) throw new Error('Kling API 키가 설정되지 않았습니다. 설정 페이지에서 Access Key와 Secret Key를 등록해주세요.');
 
   const now = Math.floor(Date.now() / 1000);
-  const exp = now + 1800; // 30분
-  const nbf = now - 5;
-
-  return sign(
-    {
-      iss: ak,
-      exp,
-      nbf,
-    },
-    sk,
-    { algorithm: 'HS256', header: { typ: 'JWT', alg: 'HS256' } }
-  );
+  return sign({ iss: accessKey, exp: now + 1800, nbf: now - 5 }, secretKey, { algorithm: 'HS256', header: { typ: 'JWT', alg: 'HS256' } });
 }
 
 export async function uploadImageToS3(buffer: Buffer): Promise<string> {
@@ -47,12 +36,12 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
-export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10) {
+export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10, ak?: string, sk?: string) {
   const res = await fetch(`${KLING_API_URL}/videos/image-to-video`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getKlingToken()}`,
+      'Authorization': `Bearer ${getKlingToken(ak, sk)}`,
     },
     body: JSON.stringify({ model, image: imageUrl, prompt, duration }),
   });
@@ -60,9 +49,9 @@ export async function createKlingVideoTask(imageUrl: string, prompt: string, mod
   return json.data?.task_id;
 }
 
-export async function queryKlingVideoTask(taskId: string) {
+export async function queryKlingVideoTask(taskId: string, ak?: string, sk?: string) {
   const res = await fetch(`${KLING_API_URL}/videos/image-to-video/${taskId}`, {
-    headers: { 'Authorization': `Bearer ${getKlingToken()}` },
+    headers: { 'Authorization': `Bearer ${getKlingToken(ak, sk)}` },
   });
   const json = await res.json();
   const data = json.data;

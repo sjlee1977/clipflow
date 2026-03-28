@@ -12,11 +12,12 @@ const s3 = new S3Client({
 const BUCKET = process.env.S3_BUCKET ?? 'remotionlambda-apnortheast2-17lxfxukvf';
 
 let ai: GoogleGenAI;
-function getAI() {
+function getAI(apiKey?: string) {
+  if (apiKey) return new GoogleGenAI({ apiKey });
   if (!ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY 환경변수가 설정되지 않았습니다');
-    ai = new GoogleGenAI({ apiKey });
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error('GEMINI_API_KEY 환경변수가 설정되지 않았습니다');
+    ai = new GoogleGenAI({ apiKey: key });
   }
   return ai;
 }
@@ -57,16 +58,16 @@ export async function splitScriptIntoScenes(
   script: string,
   llmModelId = 'gemini-2.5-flash',
   sceneCount = 1,
-  hasCharacter?: boolean
+  hasCharacter?: boolean,
+  apiKey?: string
 ): Promise<SceneSplitResult> {
-  // OpenRouter 형식(google/gemini-xxx) → AI Studio 형식(gemini-xxx) 변환
   const model = llmModelId.startsWith('google/') ? llmModelId.slice('google/'.length) : llmModelId;
 
   const characterInstruction = hasCharacter
     ? `\n**중요 - 캐릭터 참조 이미지 있음**: imagePrompt에서 캐릭터의 표정(기쁨/슬픔/놀람/진지함 등), 자세(서있는/앉아있는/걷는/손짓하는 등), 제스처, 시선 방향을 장면 내용에 맞게 구체적으로 묘사하세요. 배경과 조명도 장면 분위기에 맞게 묘사하세요. 절대로 참조 이미지의 포즈를 그대로 복사하지 마세요.`
     : '';
 
-  const response = await getAI().models.generateContent({
+  const response = await getAI(apiKey).models.generateContent({
     model,
     contents: [
       {
@@ -138,7 +139,8 @@ type GenerateImageOptions = {
 export async function generateImage(
   prompt: string,
   options: GenerateImageOptions = {},
-  modelId = 'google/gemini-2.5-flash-image'
+  modelId = 'google/gemini-2.5-flash-image',
+  apiKey?: string
 ): Promise<string> {
   const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg' } = options;
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');

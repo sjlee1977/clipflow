@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { LLM_MODELS } from '@/lib/openrouter';
+
+const SCRIPT_LLM_MODELS = [
+  // ── Claude ──────────────────────────────────────────────────
+  { id: 'claude-opus-4-5',           name: 'Claude Opus 4.5',     provider: 'Anthropic', price: '고품질' },
+  { id: 'claude-sonnet-4-5',         name: 'Claude Sonnet 4.5',   provider: 'Anthropic', price: '균형' },
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
+  // ── Gemini ──────────────────────────────────────────────────
+  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '균형' },
+  { id: 'gemini-2.5-pro',            name: 'Gemini 2.5 Pro',      provider: 'Google',    price: '고품질' },
+];
 
 type ScriptType = 'shorts' | 'youtube' | 'ad' | 'edu' | 'story';
 type Tone = 'professional' | 'casual' | 'emotional' | 'funny' | 'dramatic';
@@ -12,6 +21,13 @@ const SCRIPT_TYPES: { id: ScriptType; label: string; desc: string }[] = [
   { id: 'ad', label: '광고', desc: '15~30초 임팩트' },
   { id: 'edu', label: '교육 / 설명', desc: '정보 전달형' },
   { id: 'story', label: '스토리텔링', desc: '감성 내러티브' },
+];
+
+const YOUTUBE_LENGTHS = [
+  { id: '5000', label: '5,000자', desc: '약 5~6분' },
+  { id: '7000', label: '7,000자', desc: '약 7~8분' },
+  { id: '9000', label: '9,000자', desc: '약 10분' },
+  { id: '12000', label: '12,000자 이상', desc: '12분+' },
 ];
 
 const TONES: { id: Tone; label: string }[] = [
@@ -99,10 +115,16 @@ function OptionItem({ active, onClick, children, sub }: {
 }
 
 export default function ScriptPage() {
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const saved = sessionStorage.getItem('clipflow_script_topic');
+    if (saved) { sessionStorage.removeItem('clipflow_script_topic'); return saved; }
+    return '';
+  });
   const [scriptType, setScriptType] = useState<ScriptType>('shorts');
+  const [youtubeLength, setYoutubeLength] = useState('7000');
   const [tone, setTone] = useState<Tone>('professional');
-  const [llmModelId, setLlmModelId] = useState('deepseek/deepseek-chat-v3-0324');
+  const [llmModelId, setLlmModelId] = useState('gemini-2.5-flash');
   const [keywords, setKeywords] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
 
@@ -122,10 +144,18 @@ export default function ScriptPage() {
       const res = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, scriptType, tone, keywords, targetAudience, llmModelId }),
+        body: JSON.stringify({ topic, scriptType, youtubeLength, tone, keywords, targetAudience, llmModelId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '대본 생성 실패');
+      if (!res.ok) {
+        if (data.needsKey) {
+          setError(`__KEY__${data.error}`);
+        } else {
+          throw new Error(data.error || '대본 생성 실패');
+        }
+        setStatus('error');
+        return;
+      }
       setScript(data.script);
       setStatus('done');
     } catch (err: unknown) {
@@ -145,7 +175,7 @@ export default function ScriptPage() {
     window.location.href = '/dashboard';
   }
 
-  const selectedLlm = LLM_MODELS.find(m => m.id === llmModelId);
+  const selectedLlm = SCRIPT_LLM_MODELS.find(m => m.id === llmModelId);
   const selectedType = SCRIPT_TYPES.find(t => t.id === scriptType);
   const selectedTone = TONES.find(t => t.id === tone);
 
@@ -199,8 +229,13 @@ export default function ScriptPage() {
 
             {error && (
               <div className="border-l-2 border-red-500 pl-4 mb-4">
-                <p className="text-red-400 text-xs font-mono">{error}</p>
-                <button onClick={() => setStatus('idle')} className="mt-2 text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
+                <p className="text-red-400 text-xs font-mono">{error.replace('__KEY__', '')}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <button onClick={() => setStatus('idle')} className="text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
+                  {error.startsWith('__KEY__') && (
+                    <a href="/dashboard/settings" className="text-yellow-400/70 hover:text-yellow-400 text-xs font-mono transition-colors">API 키 설정 →</a>
+                  )}
+                </div>
               </div>
             )}
           </>
@@ -259,16 +294,35 @@ export default function ScriptPage() {
           <PanelSection label="영상 유형">
             <div className="space-y-0.5">
               {SCRIPT_TYPES.map(t => (
-                <OptionItem 
-                  key={t.id} 
-                  active={scriptType === t.id} 
-                  onClick={() => setScriptType(t.id)}
-                >
-                  <div className="flex flex-col items-start py-0.5">
-                    <span>{t.label}</span>
-                    <span className="text-[11.5px] opacity-60 font-normal">{t.desc}</span>
-                  </div>
-                </OptionItem>
+                <div key={t.id}>
+                  <OptionItem
+                    active={scriptType === t.id}
+                    onClick={() => setScriptType(t.id)}
+                  >
+                    <div className="flex flex-col items-start py-0.5">
+                      <span>{t.label}</span>
+                      <span className="text-[11.5px] opacity-60 font-normal">{t.desc}</span>
+                    </div>
+                  </OptionItem>
+                  {t.id === 'youtube' && scriptType === 'youtube' && (
+                    <div className="ml-4 mt-1 mb-2 space-y-0.5 border-l border-yellow-400/20 pl-2">
+                      {YOUTUBE_LENGTHS.map(l => (
+                        <button
+                          key={l.id}
+                          onClick={() => setYoutubeLength(l.id)}
+                          className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono transition-colors ${
+                            youtubeLength === l.id
+                              ? 'text-yellow-400 bg-yellow-400/5'
+                              : 'text-white/50 hover:text-white/80'
+                          }`}
+                        >
+                          <span>{l.label}</span>
+                          <span className="text-[11px] opacity-60">{l.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </PanelSection>
@@ -318,16 +372,23 @@ export default function ScriptPage() {
           </PanelSection>
 
           <PanelAccordion label="AI 모델" value={selectedLlm?.name ?? ''}>
-            <div className="space-y-0.5">
-              {LLM_MODELS.map(m => (
-                <OptionItem 
-                  key={m.id} 
-                  active={llmModelId === m.id} 
-                  onClick={() => setLlmModelId(m.id)} 
-                  sub={m.price}
-                >
-                  {m.name}
-                </OptionItem>
+            <div className="space-y-2">
+              {(['Anthropic', 'Google'] as const).map(provider => (
+                <div key={provider}>
+                  <p className="text-[11px] font-mono text-white/30 tracking-widest uppercase px-2 mb-1">{provider}</p>
+                  <div className="space-y-0.5">
+                    {SCRIPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
+                      <OptionItem
+                        key={m.id}
+                        active={llmModelId === m.id}
+                        onClick={() => setLlmModelId(m.id)}
+                        sub={m.price}
+                      >
+                        {m.name}
+                      </OptionItem>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </PanelAccordion>
@@ -336,7 +397,10 @@ export default function ScriptPage() {
             <p className="text-[#17BEBB]/60 text-[12.6px] tracking-widest uppercase mb-2">대본 설정 요약</p>
             <div className="flex justify-between text-[12.6px] font-mono">
               <span className="text-white/40">유형</span>
-              <span className="text-white/70">{selectedType?.label}</span>
+              <span className="text-white/70">
+                {selectedType?.label}
+                {scriptType === 'youtube' && ` / ${YOUTUBE_LENGTHS.find(l => l.id === youtubeLength)?.label}`}
+              </span>
             </div>
             <div className="flex justify-between text-[12.6px] font-mono">
               <span className="text-white/40">톤</span>

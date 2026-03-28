@@ -1,13 +1,28 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { IMAGE_MODELS, LLM_MODELS, VIDEO_MODELS } from '@/lib/openrouter';
+const LLM_MODELS = [
+  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', price: '균형' },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', price: '고품질' },
+];
+
+const IMAGE_MODELS = [
+  { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', price: '균형' },
+  { id: 'fal/z-image-turbo', name: 'Z-Image Turbo (fal.ai)', price: '빠름' },
+  { id: 'fal/z-image-base', name: 'Z-Image Base (fal.ai)', price: '고품질' },
+];
+
+const VIDEO_MODELS = [
+  { id: 'kling-v1', name: 'Kling v1', price: '균형' },
+  { id: 'kling-v1-5', name: 'Kling v1.5', price: '고품질' },
+  { id: 'fal-wan-v2.1', name: 'WAN 2.1 (fal.ai)', price: '빠름' },
+];
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 import { GOOGLE_VOICES } from '@/lib/google';
 import { supabase } from '@/lib/supabase';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
-type Format = 'shorts' | 'landscape';
+type Format = 'shorts' | 'landscape' | 'square';
 
 const IMAGE_STYLES = [
   { id: 'cinematic', label: '영화' },
@@ -116,7 +131,7 @@ function OptionItem({ active, onClick, children, sub }: {
 
 export default function DashboardPage() {
   const [script, setScript] = useState('');
-  const [format, setFormat] = useState<Format>('shorts');
+  const [format, setFormat] = useState<Format>('landscape');
   const [imageModelId, setImageModelId] = useState('google/gemini-2.5-flash-image');
   const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash-lite');
   const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('google');
@@ -800,12 +815,12 @@ export default function DashboardPage() {
             </div>
 
             {/* 비디오 */}
-            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : 'max-w-xl'} border border-white/10 overflow-hidden`}>
+            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : format === 'square' ? 'max-w-sm' : 'max-w-xl'} border border-white/10 overflow-hidden`}>
               <video src={videoUrl} controls className="w-full block" />
             </div>
 
             {/* 버튼 */}
-            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : 'max-w-xl'} flex items-center justify-center gap-2 mt-4`}>
+            <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : format === 'square' ? 'max-w-sm' : 'max-w-xl'} flex items-center justify-center gap-2 mt-4`}>
               <button
                 onClick={async () => {
                   const proxyUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&filename=clipflow`;
@@ -873,10 +888,10 @@ export default function DashboardPage() {
 
               <PanelSection label="비율">
                 <div className="space-y-0.5">
-                  {([['shorts', '쇼츠/릴스', '9:16'], ['landscape', '유튜브', '16:9']] as const).map(([val, label, ratio]) => (
+                  {([['landscape', '유튜브', '16:9'], ['shorts', '쇼츠/릴스', '9:16'], ['square', '인스타그램', '1:1']] as const).map(([val, label, ratio]) => (
                     <OptionItem key={val} active={format === val} onClick={() => setFormat(val)}>
                       <span className="flex items-center gap-2">
-                        <span className={`border border-current inline-block shrink-0 ${val === 'shorts' ? 'w-2.5 h-4' : 'w-4 h-2.5'}`} />
+                        <span className={`border border-current inline-block shrink-0 ${val === 'shorts' ? 'w-2.5 h-4' : val === 'square' ? 'w-3.5 h-3.5' : 'w-4 h-2.5'}`} />
                         {label} <span className="text-white/40">{ratio}</span>
                       </span>
                     </OptionItem>
@@ -998,7 +1013,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">비율</span>
-                  <span className="text-white/40">{format === 'shorts' ? '9:16' : '16:9'}</span>
+                  <span className="text-white/40">{format === 'shorts' ? '9:16' : format === 'square' ? '1:1' : '16:9'}</span>
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">이미지 AI</span>
@@ -1026,7 +1041,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">비율</span>
-                <span className="text-white/40">{format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}</span>
+                <span className="text-white/40">{format === 'shorts' ? '9:16 쇼츠' : format === 'square' ? '1:1 인스타' : '16:9 유튜브'}</span>
               </div>
             </div>
           )}

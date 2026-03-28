@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Remotion Lambda 렌더링 시작
-    const compositionId = format === 'landscape' ? 'ClipFlowLandscape' : 'ClipFlowShorts';
+    const compositionId = format === 'landscape' ? 'ClipFlowLandscape' : format === 'square' ? 'ClipFlowSquare' : 'ClipFlowShorts';
     const { renderId, bucketName } = await startRender({
       compositionId,
       inputProps: { scenes, fps: FPS },

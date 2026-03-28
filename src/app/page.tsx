@@ -24,7 +24,6 @@ export default function HomePage() {
         </a>
         <nav className="hidden md:flex items-center gap-8 text-[13px] tracking-widest uppercase text-gray-400">
           <a href="#features" className="hover:text-white transition-colors">기능</a>
-          <a href="#how" className="hover:text-white transition-colors">작동 방식</a>
           <a href="#pricing" className="hover:text-white transition-colors">요금제</a>
         </nav>
         <div className="flex items-center gap-3">
@@ -69,7 +68,7 @@ export default function HomePage() {
             지금 바로 무료로 시작
           </div>
 
-          <h1 className="text-6xl md:text-8xl font-black leading-tight tracking-tight mb-4" style={{ wordSpacing: '-0.1em' }}>
+          <h1 className="text-6xl md:text-8xl font-black leading-tight tracking-tight mb-4" style={{ wordSpacing: '-0.3em' }}>
             <span className="block text-white">영상 한 편에</span>
             <span className="block text-white">몇 시간을</span>
             <span className="block text-yellow-400">쓰고 계신가요?</span>
@@ -85,11 +84,7 @@ export default function HomePage() {
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-[13px] tracking-widest uppercase px-4 py-2 transition-colors">
               시작하기 — 무료
             </Link>
-            <a href="#how"
-              className="text-white/40 hover:text-white/80 text-[13px] tracking-widest uppercase transition-colors">
-              작동 방식 보기 →
-            </a>
-          </div>
+            </div>
         </div>
       </section>
 
