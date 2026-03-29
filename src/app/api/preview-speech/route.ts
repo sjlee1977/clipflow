@@ -16,20 +16,27 @@ export async function POST(req: NextRequest) {
     let buffer: Buffer;
     let contentType: string;
 
+    const googleKey = meta.gemini_api_key || process.env.GEMINI_API_KEY;
+    const minimaxKey = meta.minimax_api_key || process.env.MINIMAX_API_KEY;
+    const elevenKey = meta.elevenlabs_api_key;
+
     if (ttsProvider === 'google') {
-      const result = await googleTTS(text, voiceId, meta.gemini_api_key);
+      if (!googleKey) return NextResponse.json({ error: 'Google(Gemini) API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
+      const result = await googleTTS(text, voiceId, googleKey);
       buffer = result.buffer;
       contentType = 'audio/wav';
     } else if (ttsProvider === 'elevenlabs') {
+      if (!elevenKey) return NextResponse.json({ error: 'ElevenLabs API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
       const { generateSpeechBuffer: elevenTTS } = await import('@/lib/elevenlabs');
-      const result = await elevenTTS(text, voiceId, meta.elevenlabs_api_key);
+      const result = await elevenTTS(text, voiceId, elevenKey);
       buffer = result.buffer;
       contentType = 'audio/mpeg';
     } else {
+      if (!minimaxKey) return NextResponse.json({ error: 'Minimax API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
       const result = await minimaxTTS(text, { 
         voiceId, 
-        apiKey: meta.minimax_api_key, 
-        groupId: meta.minimax_group_id 
+        apiKey: minimaxKey, 
+        groupId: meta.minimax_group_id || process.env.MINIMAX_GROUP_ID
       });
       buffer = result.buffer;
       contentType = 'audio/mpeg';

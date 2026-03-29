@@ -13,8 +13,8 @@ const IMAGE_MODELS = [
 ];
 
 const VIDEO_MODELS = [
-  { id: 'kling-v1', name: 'Kling v1', price: '균형' },
-  { id: 'kling-v1-5', name: 'Kling v1.5', price: '고품질' },
+  { id: 'kling-v3', name: 'Kling v3 (최신 고성능)', price: '고품질' },
+  { id: 'kling-v2-6', name: 'Kling v2.6 (가성비)', price: '균형' },
   { id: 'fal-wan-v2.1', name: 'WAN 2.1 (fal.ai)', price: '빠름' },
 ];
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
@@ -596,7 +596,11 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voiceId, ttsProvider }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '음성 미리듣기 생성에 실패했습니다.');
+      }
+      
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -605,8 +609,9 @@ export default function DashboardPage() {
       setPlayingIndex(index);
       audio.play();
       audio.onended = () => { URL.revokeObjectURL(url); setPlayingIndex(null); audioRef.current = null; };
-    } catch {
+    } catch (err: any) {
       setPlayingIndex(null);
+      setError(err.message || '음성 미리듣기 생성 중 오류가 발생했습니다.');
     } finally {
       setLoadingAudioIndex(null);
     }
