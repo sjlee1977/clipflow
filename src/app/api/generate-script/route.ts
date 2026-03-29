@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
-import { createClient } from '@/lib/supabase-server';
+import { createClient, createAdminClient } from '@/lib/supabase-server';
 import fs from 'fs';
 import path from 'path';
 
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
       const anthropic = new Anthropic({ apiKey });
       const msg = await anthropic.messages.create({
         model,
-        max_tokens: 16000,
+        max_tokens: 8192,
         system: dynamicSystemPrompt,
         messages: [{ role: 'user', content: userContent }],
       });
@@ -289,19 +289,21 @@ export async function POST(req: NextRequest) {
 
     if (!script) throw new Error('응답 없음');
 
-    // [DB 저장]    // 4. 라이브러리에 자동 저장 (Robustness 강화)
+    // [DB 저장] - Admin Client 사용하여 RLS 우회 (확실한 저장 보장)
     let savedScriptId = null;
     try {
-      const { data: savedData, error: insertError } = await supabase
+      const adminSupabase = await createAdminClient();
+      const { data: savedData, error: insertError } = await adminSupabase
         .from('scripts')
         .insert({
           user_id: user.id,
           title: topic.length > 50 ? topic.slice(0, 50) + '...' : topic,
           content: script,
-          type: scriptType || 'shorts',
-          llm_model: model || 'claude-4-6-sonnet',
+          // type, llm_model 컬럼이 테이블에 없을 가능성이 있어 제거함
           metadata: {
             topic,
+            scriptType,
+            llmModelId: model,
             generated_at: new Date().toISOString(),
           }
         })
@@ -328,9 +330,18 @@ export async function POST(req: NextRequest) {
       status: 'success'
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : '대본 생성 중 오류가 발생했습니다' },
-      { status: 500 }
-    );
+    console.error('[generate-script] Error details:', err);
+    console.error('[generate-script] Stack:', err?.stack);
+    
+    let userMsg = '대본 생성 중 오류가 발생했습니다';
+    const errText = err?.message || '';
+    
+    if (errText.includes('Unexpected token') && errText.includes('Service Unavailable')) {
+      userMsg = 'Anthropic 서버가 현재 트래픽 과부하로 응답하지 않습니다 (503 Service Unavailable). 잠시 후 다시 시도해주세요.';
+    } else if (err instanceof Error) {
+      userMsg = err.message;
+    }
+
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }

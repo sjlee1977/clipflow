@@ -194,14 +194,24 @@ export default function DashboardPage() {
 
   // [장면 보존 및 복구]
   useEffect(() => {
-    // 1. 복구 시도
+    const savedScript = sessionStorage.getItem('clipflow_script');
     const savedEdit = sessionStorage.getItem('clipflow_edit_scenes');
     const savedActive = sessionStorage.getItem('clipflow_active_scenes');
-    const source = savedEdit || savedActive;
 
-    if (source) {
+    // 1. 새 대본이 넘어온 경우 최우선 (기존 작업 내역 초기화)
+    if (savedScript) {
+      setScript(savedScript);
+      setScenes([]);
+      setStatus('idle');
+      sessionStorage.removeItem('clipflow_script');
+      // 기존 잔여 active state 삭제
+      sessionStorage.removeItem('clipflow_active_scenes');
+    } 
+    // 2. 새 대본이 없으면 이전 세션(편집/활성) 복구
+    else if (savedEdit || savedActive) {
+      const source = savedEdit || savedActive;
       try {
-        const data = JSON.parse(source);
+        const data = JSON.parse(source!);
         if (data.scenes?.length) {
           setScenes(data.scenes);
           if (data.format) setFormat(data.format);
@@ -214,15 +224,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('[Dashboard] Restore failed:', err);
       }
-      // 'edit'용은 일회성 복구용이므로 삭제 (active는 유지)
       if (savedEdit) sessionStorage.removeItem('clipflow_edit_scenes');
-    }
-
-    // 2. 대본 복원 (from prompt page)
-    const savedScript = sessionStorage.getItem('clipflow_script');
-    if (savedScript) {
-      setScript(savedScript);
-      sessionStorage.removeItem('clipflow_script');
     }
     // 3. 실시간 업데이트 리스너 (사이드바에서 선택 시)
     const handleScriptUpdate = () => {
@@ -782,7 +784,12 @@ export default function DashboardPage() {
                 )}
                 {status === 'preview' && (
                   <button
-                    onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); }}
+                    onClick={() => { 
+                      setStatus('idle'); 
+                      setScenes([]); 
+                      setVideoUrl(''); 
+                      sessionStorage.removeItem('clipflow_active_scenes');
+                    }}
                     className="text-white/20 hover:text-white/50 text-xs font-mono transition-colors"
                   >← 처음으로</button>
                 )}

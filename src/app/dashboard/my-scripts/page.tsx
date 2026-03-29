@@ -8,8 +8,6 @@ type Script = {
   id: string;
   title: string;
   content: string;
-  type: string;
-  llm_model: string;
   created_at: string;
 };
 
@@ -121,10 +119,7 @@ export default function MyScriptsPage() {
                 <div className="p-4 flex flex-col gap-3 border-t border-white/5">
                   <div className="flex flex-wrap gap-1.5">
                     <span className="text-[11px] font-mono text-[#17BEBB]/80 border border-[#17BEBB]/20 bg-[#17BEBB]/5 px-2 py-0.5">
-                      {script.type === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}
-                    </span>
-                    <span className="text-[11px] font-mono text-[#17BEBB]/80 border border-[#17BEBB]/20 bg-[#17BEBB]/5 px-2 py-0.5 truncate max-w-[120px]">
-                      {script.llm_model?.split('/').pop() || 'Claude 4.6'}
+                      대본
                     </span>
                   </div>
 

@@ -124,7 +124,7 @@ export default function ScriptPage() {
   const [scriptType, setScriptType] = useState<ScriptType>('shorts');
   const [youtubeLength, setYoutubeLength] = useState('7000');
   const [tone, setTone] = useState<Tone>('professional');
-  const [llmModelId, setLlmModelId] = useState('gemini-2.5-flash');
+  const [llmModelId, setLlmModelId] = useState('claude-sonnet-4-6');
   const [keywords, setKeywords] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
 

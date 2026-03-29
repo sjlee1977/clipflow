@@ -8,7 +8,6 @@ type Script = {
   id: string;
   title: string;
   content: string;
-  type: string;
   created_at: string;
 };
 
@@ -22,7 +21,7 @@ export default function SidebarScripts() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('scripts')
-        .select('id, title, content, type, created_at')
+        .select('id, title, content, created_at')
         .order('created_at', { ascending: false })
         .limit(8);
 
@@ -85,7 +84,7 @@ export default function SidebarScripts() {
               {s.title}
             </span>
             <span className="text-white/10 text-[10px] font-mono shrink-0">
-              {s.type === 'shorts' ? 'S' : 'Y'}
+              TXT
             </span>
           </div>
           <div className="flex items-center justify-between">
