@@ -37,15 +37,32 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
 export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10, ak?: string, sk?: string) {
+  const body = { model, image: imageUrl, prompt, duration };
+  console.log('[kling] createKlingVideoTask body:', JSON.stringify(body));
+
   const res = await fetch(`${KLING_API_URL}/videos/image-to-video`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${getKlingToken(ak, sk)}`,
     },
-    body: JSON.stringify({ model, image: imageUrl, prompt, duration }),
+    body: JSON.stringify(body),
   });
-  const json = await res.json();
+  
+  const raw = await res.text();
+  console.log('[kling] response status:', res.status, 'body:', raw);
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Kling API 응답 파싱 실패: ${raw}`);
+  }
+
+  if (json.code !== 0 && json.code !== 200) {
+    throw new Error(`Kling API 오류 [${json.code}]: ${json.message}`);
+  }
+
   return json.data?.task_id;
 }
 

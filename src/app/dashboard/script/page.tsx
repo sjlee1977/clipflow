@@ -3,31 +3,30 @@
 import { useState } from 'react';
 
 const SCRIPT_LLM_MODELS = [
-  // ── Claude ──────────────────────────────────────────────────
-  { id: 'claude-opus-4-5',           name: 'Claude Opus 4.5',     provider: 'Anthropic', price: '고품질' },
-  { id: 'claude-sonnet-4-5',         name: 'Claude Sonnet 4.5',   provider: 'Anthropic', price: '균형' },
+  // ── Claude 4.6 & 4.5 (Official API IDs) ────────────────
+  { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
-  // ── Gemini ──────────────────────────────────────────────────
-  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '균형' },
-  { id: 'gemini-2.5-pro',            name: 'Gemini 2.5 Pro',      provider: 'Google',    price: '고품질' },
+  { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  // ── Gemini 3.0 & 2.5 (2026 Standard) ────────────────────
+  { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
+  { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
+  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
 ];
 
-type ScriptType = 'shorts' | 'youtube' | 'ad' | 'edu' | 'story';
+type ScriptType = 'shorts' | 'youtube' | 'ad';
 type Tone = 'professional' | 'casual' | 'emotional' | 'funny' | 'dramatic';
 
 const SCRIPT_TYPES: { id: ScriptType; label: string; desc: string }[] = [
+  { id: 'youtube', label: '유튜브', desc: '5~20분 분량' },
   { id: 'shorts', label: '쇼츠 / 릴스', desc: '60초 이내 숏폼' },
-  { id: 'youtube', label: '유튜브', desc: '3~10분 분량' },
   { id: 'ad', label: '광고', desc: '15~30초 임팩트' },
-  { id: 'edu', label: '교육 / 설명', desc: '정보 전달형' },
-  { id: 'story', label: '스토리텔링', desc: '감성 내러티브' },
 ];
 
 const YOUTUBE_LENGTHS = [
-  { id: '5000', label: '5,000자', desc: '약 5~6분' },
-  { id: '7000', label: '7,000자', desc: '약 7~8분' },
-  { id: '9000', label: '9,000자', desc: '약 10분' },
-  { id: '12000', label: '12,000자 이상', desc: '12분+' },
+  { id: '3000', label: '3,000자', desc: '약 8~9분' },
+  { id: '5000', label: '5,000자', desc: '약 15분' },
+  { id: '7000', label: '7,000자', desc: '약 20분' },
+  { id: '9000', label: '9,000자 이상', desc: '약 25분+' },
 ];
 
 const TONES: { id: Tone; label: string }[] = [
@@ -49,16 +48,17 @@ function PanelSection({ label, children }: { label: string; children: React.Reac
 }
 
 /* ── 오른쪽 패널 섹션 (아코디언) ── */
-function PanelAccordion({ label, value, children }: {
+function PanelAccordion({ label, value, open, onToggle, children }: {
   label: string;
   value: string;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-white/5 mb-1">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between py-3 group"
       >
         <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase">{label}</span>
@@ -133,6 +133,7 @@ export default function ScriptPage() {
   const [script, setScript] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
 
   async function handleGenerate() {
     if (!topic.trim()) return;
@@ -153,11 +154,12 @@ export default function ScriptPage() {
         } else {
           throw new Error(data.error || '대본 생성 실패');
         }
-        setStatus('error');
-        return;
       }
       setScript(data.script);
       setStatus('done');
+      console.log('[ScriptPage] 대본 생성 및 저장 완료:', data.scriptId);
+      // 사이드바 업데이트 알림
+      window.dispatchEvent(new Event('clipflow_script_updated'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '대본 생성에 실패했습니다.');
       setStatus('error');
@@ -271,18 +273,20 @@ export default function ScriptPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-8">
+            <div className="flex items-center gap-8 mt-12 pb-10">
               <button
                 onClick={handleUseScript}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black transition-colors text-[13px] tracking-widest uppercase font-mono"
+                className="group flex items-center gap-3 text-yellow-400 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-yellow-300"
               >
-                이 대본으로 영상 만들기 →
+                영상만들기
+                <span className="w-8 h-[1px] bg-yellow-400/30 group-hover:w-12 group-hover:bg-yellow-400 transition-all duration-300" />
               </button>
+
               <button
                 onClick={() => { setStatus('idle'); setScript(''); }}
-                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-[13px] font-mono transition-colors"
+                className="text-white/20 hover:text-white/50 text-[11px] font-mono tracking-widest uppercase transition-colors"
               >
-                새 대본
+                새 대본 작성하기
               </button>
             </div>
           </>
@@ -371,7 +375,12 @@ export default function ScriptPage() {
             </div>
           </PanelSection>
 
-          <PanelAccordion label="AI 모델" value={selectedLlm?.name ?? ''}>
+          <PanelAccordion 
+            label="AI 모델" 
+            value={selectedLlm?.name ?? ''}
+            open={modelOpen}
+            onToggle={() => setModelOpen(prev => !prev)}
+          >
             <div className="space-y-2">
               {(['Anthropic', 'Google'] as const).map(provider => (
                 <div key={provider}>
@@ -381,7 +390,10 @@ export default function ScriptPage() {
                       <OptionItem
                         key={m.id}
                         active={llmModelId === m.id}
-                        onClick={() => setLlmModelId(m.id)}
+                        onClick={() => {
+                          setLlmModelId(m.id);
+                          setModelOpen(false); // 선택 시 닫기
+                        }}
                         sub={m.price}
                       >
                         {m.name}

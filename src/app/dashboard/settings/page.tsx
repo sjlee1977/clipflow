@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
-type Provider = 'anthropic' | 'gemini' | 'kling' | 'fal';
+type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal';
 
 const inputCls = 'flex-1 bg-black/40 text-white/80 border border-white/15 focus:border-white/40 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2 transition-colors';
 
-/* ── 단일 키 섹션 (Anthropic, Gemini) ── */
+/* ── 단일 키 섹션 ── */
 function SingleKeySection({
   name, label, color, models, placeholder, docsUrl, hasKey, maskedKey, onSave, onDelete,
 }: {
@@ -16,7 +16,12 @@ function SingleKeySection({
   onSave: (provider: Provider, key: string) => Promise<void>;
   onDelete: (provider: Provider) => Promise<void>;
 }) {
-  const providerMap: Record<string, Provider> = { anthropic: 'anthropic', google: 'gemini', 'fal.ai': 'fal' };
+  const providerMap: Record<string, Provider> = { 
+    anthropic: 'anthropic', 
+    google: 'gemini', 
+    elevenlabs: 'elevenlabs',
+    'fal.ai': 'fal' 
+  };
   const provider: Provider = providerMap[name.toLowerCase()] ?? 'gemini';
   const [input, setInput] = useState('');
   const [editing, setEditing] = useState(false);
@@ -70,36 +75,40 @@ function SingleKeySection({
   );
 }
 
-/* ── Kling 이중 키 섹션 ── */
-function KlingKeySection({
-  hasKey, maskedAccess, maskedSecret, onSave, onDelete,
+/* ── 이중 키 섹션 (Kling, MiniMax) ── */
+function DualKeySection({
+  name, label, color, fields, hasKey, masked1, masked2, onSave, onDelete, docsUrl, provider
 }: {
-  hasKey: boolean; maskedAccess: string; maskedSecret: string;
+  name: string; label: string; color: string; 
+  fields: { label: string; placeholder: string }[];
+  hasKey: boolean; masked1: string; masked2: string;
   onSave: (provider: Provider, key: string, key2: string) => Promise<void>;
   onDelete: (provider: Provider) => Promise<void>;
+  docsUrl: string;
+  provider: Provider;
 }) {
-  const [accessKey, setAccessKey] = useState('');
-  const [secretKey, setSecretKey] = useState('');
+  const [val1, setVal1] = useState('');
+  const [val2, setVal2] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
 
   async function handleSave() {
-    if (!accessKey.trim() || !secretKey.trim()) return;
+    if (!val1.trim() || !val2.trim()) return;
     setSaving(true);
-    await onSave('kling', accessKey.trim(), secretKey.trim());
-    setSaving(false); setAccessKey(''); setSecretKey(''); setEditing(false);
+    await onSave(provider, val1.trim(), val2.trim());
+    setSaving(false); setVal1(''); setVal2(''); setEditing(false);
   }
 
   return (
     <div className="border border-white/10 bg-white/[0.02]">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-purple-400" />
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           <div>
-            <p className="text-white text-[13px] font-bold font-mono">Kling AI — 영상 생성</p>
-            <p className="text-white/35 text-[11.5px] font-mono mt-0.5">Kling V1.0 · Kling V2.5 Turbo · Kling V2.6</p>
+            <p className="text-white text-[13px] font-bold font-mono">{name} — {label}</p>
+            <p className="text-white/35 text-[11.5px] font-mono mt-0.5">{fields.map(f => f.label).join(' · ')}</p>
           </div>
         </div>
         {hasKey
@@ -110,36 +119,36 @@ function KlingKeySection({
         {hasKey && !editing ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-2">
-              <span className="text-white/35 text-[11px] font-mono w-20 shrink-0">Access Key</span>
-              <span className="text-white/50 text-[13px] font-mono flex-1">{showKeys ? maskedAccess : '••••••••••••••••••••'}</span>
+              <span className="text-white/35 text-[11px] font-mono w-24 shrink-0">{fields[0].label}</span>
+              <span className="text-white/50 text-[13px] font-mono flex-1">{showKeys ? masked1 : '••••••••••••••••••••'}</span>
             </div>
             <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-2">
-              <span className="text-white/35 text-[11px] font-mono w-20 shrink-0">Secret Key</span>
-              <span className="text-white/50 text-[13px] font-mono flex-1">{showKeys ? maskedSecret : '••••••••••••••••••••'}</span>
+              <span className="text-white/35 text-[11px] font-mono w-24 shrink-0">{fields[1].label}</span>
+              <span className="text-white/50 text-[13px] font-mono flex-1">{showKeys ? masked2 : '••••••••••••••••••••'}</span>
             </div>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => setShowKeys(v => !v)} className="text-white/30 hover:text-white/60 text-[11px] font-mono transition-colors">{showKeys ? '숨기기' : '보기'}</button>
               <button onClick={() => setEditing(true)} className="px-3 py-1.5 border border-white/15 text-white/50 hover:text-white/80 hover:border-white/30 text-[12px] font-mono transition-colors">변경</button>
-              <button onClick={async () => { setDeleting(true); await onDelete('kling'); setDeleting(false); }} disabled={deleting} className="px-3 py-1.5 border border-red-500/20 text-red-400/50 hover:text-red-400 hover:border-red-400/40 text-[12px] font-mono transition-colors disabled:opacity-40">{deleting ? '삭제 중...' : '삭제'}</button>
+              <button onClick={async () => { setDeleting(true); await onDelete(provider); setDeleting(false); }} disabled={deleting} className="px-3 py-1.5 border border-red-500/20 text-red-400/50 hover:text-red-400 hover:border-red-400/40 text-[12px] font-mono transition-colors disabled:opacity-40">{deleting ? '삭제 중...' : '삭제'}</button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="space-y-2">
               <div className="flex gap-2 items-center">
-                <span className="text-white/35 text-[11.5px] font-mono w-20 shrink-0">Access Key</span>
-                <input type="password" value={accessKey} onChange={e => setAccessKey(e.target.value)} placeholder="Ay3Fang..." className={inputCls} />
+                <span className="text-white/35 text-[11.5px] font-mono w-24 shrink-0">{fields[0].label}</span>
+                <input type="password" value={val1} onChange={e => setVal1(e.target.value)} placeholder={fields[0].placeholder} className={inputCls} />
               </div>
               <div className="flex gap-2 items-center">
-                <span className="text-white/35 text-[11.5px] font-mono w-20 shrink-0">Secret Key</span>
-                <input type="password" value={secretKey} onChange={e => setSecretKey(e.target.value)} placeholder="3fMgAf..." className={inputCls} />
+                <span className="text-white/35 text-[11.5px] font-mono w-24 shrink-0">{fields[1].label}</span>
+                <input type="password" value={val2} onChange={e => setVal2(e.target.value)} placeholder={fields[1].placeholder} className={inputCls} />
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleSave} disabled={!accessKey.trim() || !secretKey.trim() || saving} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[12px] font-mono transition-colors">{saving ? '저장 중...' : '저장'}</button>
-              {editing && <button onClick={() => { setEditing(false); setAccessKey(''); setSecretKey(''); }} className="px-3 py-2 border border-white/10 text-white/40 hover:text-white/70 text-[12px] font-mono transition-colors">취소</button>}
+              <button onClick={handleSave} disabled={!val1.trim() || !val2.trim() || saving} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[12px] font-mono transition-colors">{saving ? '저장 중...' : '저장'}</button>
+              {editing && <button onClick={() => { setEditing(false); setVal1(''); setVal2(''); }} className="px-3 py-2 border border-white/10 text-white/40 hover:text-white/70 text-[12px] font-mono transition-colors">취소</button>}
             </div>
-            <p className="text-white/25 text-[11.5px] font-mono">Kling AI 콘솔에서 Access Key + Secret Key를 발급받아 입력해주세요 · <a href="https://klingai.com" target="_blank" rel="noopener noreferrer" className="text-[#17BEBB]/50 hover:text-[#17BEBB] transition-colors">klingai.com →</a></p>
+            <p className="text-white/25 text-[11.5px] font-mono">가이드에 따라 정보를 입력해주세요 · <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-[#17BEBB]/50 hover:text-[#17BEBB] transition-colors">키 발급 안내 →</a></p>
           </div>
         )}
       </div>
@@ -148,7 +157,10 @@ function KlingKeySection({
 }
 
 export default function SettingsPage() {
-  const [keys, setKeys] = useState({ hasAnthropic: false, hasGemini: false, hasKling: false, hasFal: false, anthropic: '', gemini: '', klingAccess: '', klingSecret: '', fal: '' });
+  const [keys, setKeys] = useState({ 
+    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, 
+    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '' 
+  });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
 
@@ -200,16 +212,18 @@ export default function SettingsPage() {
       </div>
 
       {/* 연결 현황 */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: 'Claude (대본)', has: keys.hasAnthropic, color: '#E4572E' },
-          { label: 'Gemini (이미지)', has: keys.hasGemini, color: '#17BEBB' },
+          { label: 'Gemini (전체)', has: keys.hasGemini, color: '#17BEBB' },
+          { label: 'MiniMax (음성)', has: keys.hasMinimax, color: '#ff7e33' },
+          { label: 'ElevenLabs (음성)', has: keys.hasElevenlabs, color: '#27ae60' },
           { label: 'Kling (영상)', has: keys.hasKling, color: '#a78bfa' },
           { label: 'fal.ai (영상)', has: keys.hasFal, color: '#f97316' },
         ].map(({ label, has, color }) => (
           <div key={label} className={`flex items-center gap-2 px-4 py-3 border ${has ? 'border-green-400/20 bg-green-400/[0.04]' : 'border-white/8 bg-white/[0.02]'}`}>
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: has ? '#4ade80' : '#ffffff20' }} />
-            <span className="text-[11.5px] font-mono text-white/55 truncate">{label}</span>
+            <span className="text-[11px] font-mono text-white/55 truncate">{label}</span>
             <span className={`ml-auto text-[10px] font-mono shrink-0 ${has ? 'text-green-400/70' : 'text-white/20'}`}>{has ? '✓' : '—'}</span>
           </div>
         ))}
@@ -223,7 +237,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <SingleKeySection
             name="Anthropic" label="Claude" color="#E4572E"
-            models={['Claude Opus 4.5', 'Claude Sonnet 4.5', 'Claude Haiku 4.5']}
+            models={['Claude Opus 4.6', 'Claude Sonnet 4.6', 'Claude Haiku 4.5']}
             placeholder="sk-ant-..."
             docsUrl="https://console.anthropic.com/settings/keys"
             hasKey={keys.hasAnthropic} maskedKey={keys.anthropic}
@@ -231,16 +245,40 @@ export default function SettingsPage() {
           />
           <SingleKeySection
             name="Google" label="Gemini" color="#17BEBB"
-            models={['Gemini 2.5 Flash Image', 'Gemini 2.5 Pro Image']}
+            models={['Gemini 2.5 Flash', 'Image Generation', 'TTS']}
             placeholder="AIzaSy..."
             docsUrl="https://aistudio.google.com/app/apikey"
             hasKey={keys.hasGemini} maskedKey={keys.gemini}
             onSave={handleSave} onDelete={handleDelete}
           />
-          <KlingKeySection
-            hasKey={keys.hasKling}
-            maskedAccess={keys.klingAccess}
-            maskedSecret={keys.klingSecret}
+          <DualKeySection
+            name="MiniMax" label="고품질 음성" color="#ff7e33"
+            provider="minimax"
+            fields={[
+              { label: 'API Key', placeholder: 'sk-api-...' },
+              { label: 'Group ID', placeholder: '1988...' }
+            ]}
+            docsUrl="https://platform.minimaxi.chat/user-center/basic-information"
+            hasKey={keys.hasMinimax} masked1={keys.minimax} masked2={keys.minimaxGroup}
+            onSave={handleSave} onDelete={handleDelete}
+          />
+          <SingleKeySection
+            name="ElevenLabs" label="프리미엄 음성" color="#27ae60"
+            models={['pNInz6obpgDQGcFmaJgB', 'Adam', 'Bella']}
+            placeholder="eleven_..."
+            docsUrl="https://elevenlabs.io/app/settings/api-keys"
+            hasKey={keys.hasElevenlabs} maskedKey={keys.elevenlabs}
+            onSave={handleSave} onDelete={handleDelete}
+          />
+          <DualKeySection
+            name="Kling AI" label="영상 생성" color="#a78bfa"
+            provider="kling"
+            fields={[
+              { label: 'Access Key', placeholder: 'Ay3Fang...' },
+              { label: 'Secret Key', placeholder: '3fMgAf...' }
+            ]}
+            docsUrl="https://klingai.com"
+            hasKey={keys.hasKling} masked1={keys.klingAccess} masked2={keys.klingSecret}
             onSave={handleSave} onDelete={handleDelete}
           />
           <SingleKeySection
@@ -257,16 +295,15 @@ export default function SettingsPage() {
       <div className="mt-6 border border-white/5 bg-white/[0.02] px-5 py-4 space-y-3">
         <p className="text-[#17BEBB]/60 text-[12px] font-mono tracking-widest uppercase mb-2">API 키 발급</p>
         {[
-          { label: 'Anthropic (Claude) — 대본 생성', url: 'https://console.anthropic.com/settings/keys', desc: 'console.anthropic.com → API Keys' },
-          { label: 'Google (Gemini) — 이미지 생성', url: 'https://aistudio.google.com/app/apikey', desc: 'aistudio.google.com → Get API Key' },
-          { label: 'Kling AI — 영상 생성', url: 'https://klingai.com', desc: 'klingai.com → 개발자 콘솔 → Access Key' },
-          { label: 'fal.ai — 영상 생성', url: 'https://fal.ai/dashboard/keys', desc: 'fal.ai → Dashboard → API Keys' },
-        ].map(({ label, url, desc }) => (
-          <div key={label} className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-white/60 text-[12.5px] font-mono">{label}</p>
-              <p className="text-white/30 text-[11.5px] font-mono">{desc}</p>
-            </div>
+          { label: 'Anthropic (Claude) — 대본 생성', url: 'https://console.anthropic.com/settings/keys' },
+          { label: 'Google (Gemini) — 전체', url: 'https://aistudio.google.com/app/apikey' },
+          { label: 'MiniMax (TTS) — 음성 생성', url: 'https://platform.minimaxi.chat/user-center/basic-information' },
+          { label: 'ElevenLabs (TTS) — 음성 생성', url: 'https://elevenlabs.io/app/settings/api-keys' },
+          { label: 'Kling AI — 영상 생성', url: 'https://klingai.com' },
+          { label: 'fal.ai — 영상 생성', url: 'https://fal.ai/dashboard/keys' },
+        ].map(({ label, url }) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <p className="text-white/60 text-[12.5px] font-mono">{label}</p>
             <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[#17BEBB]/50 hover:text-[#17BEBB] text-[12px] font-mono transition-colors">이동 →</a>
           </div>
         ))}

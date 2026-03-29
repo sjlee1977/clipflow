@@ -26,7 +26,7 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     codec: 'h264',
     outName: `${compositionId}-${Date.now()}.mp4`,
     concurrencyPerLambda: 2,  // CPU 코어 수(2)에 맞게 설정
-    framesPerLambda: 60,     // 200 Lambda 한도 대응 (장면 수 많을수록 필요)
+    framesPerLambda: 360,    // 200 Lambda 한도 대응 (360 * 200 = 72,000 프레임 = 약 40분 분량 가능)
   });
 
   return { renderId, bucketName };

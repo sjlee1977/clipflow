@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
+import SidebarScripts from '@/components/SidebarScripts';
 
 const NAV_ITEMS = [
   {
@@ -92,6 +93,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   );
                 })}
+
+                {/* LIBRARY 그룹에 사이드바 대서 목록 추가 */}
+                {group.group === 'LIBRARY' && (
+                  <div className="mt-4 border-t border-white/5 pt-2">
+                    <SidebarScripts />
+                  </div>
+                )}
               </div>
             </div>
           ))}

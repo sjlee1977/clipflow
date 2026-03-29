@@ -10,6 +10,8 @@ export type Scene = {
   audioUrl: string;
   durationInFrames: number;
   subtitles: SubtitleWord[];
+  textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
+  textPosition?: 'bottom' | 'center' | 'top';
 };
 
 export type VideoProps = {

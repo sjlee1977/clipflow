@@ -19,6 +19,11 @@ const VIDEO_MODELS = [
 ];
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 import { GOOGLE_VOICES } from '@/lib/google';
+export const ELEVENLABS_VOICES = [
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (남성)', gender: 'male' },
+  { id: 'jsCq9z7qwP5uCFS9ufK3', name: 'Bella (여성)', gender: 'female' },
+  { id: 'ThT5KcBeq8keWAlS799P', name: 'Rachel (여성)', gender: 'female' },
+];
 import { supabase } from '@/lib/supabase';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
@@ -33,9 +38,34 @@ const IMAGE_STYLES = [
   { id: 'watercolor', label: '수채화' },
   { id: 'cartoon', label: '카툰' },
   { id: 'noir', label: '누아르' },
+  { id: 'none', label: '선택 없음' },
 ] as const;
 
 type ImageStyle = typeof IMAGE_STYLES[number]['id'];
+
+const TEXT_ANIMATIONS = [
+  { id: 'typewriter', label: '타이핑' },
+  { id: 'fly-in', label: '슬라이드' },
+  { id: 'pop-in', label: '팝업' },
+  { id: 'fade-zoom', label: '페이드 줌' },
+  { id: 'clock-spin', label: '시계 바늘' },
+  { id: 'pulse-ring', label: '맥박(강조)' },
+  { id: 'sparkle', label: '반짝임' },
+  { id: 'confetti', label: '축하 꽃가루' },
+  { id: 'rain', label: '비 내림' },
+  { id: 'snow', label: '눈 내림' },
+  { id: 'fire', label: '불꽃/열정' },
+  { id: 'heart', label: '사랑/하트' },
+  { id: 'stars', label: '별밤/우주' },
+  { id: 'thunder', label: '천둥/충격' },
+  { id: 'chart-up', label: '성장/상승' },
+  { id: 'film-roll', label: '영화/기록' },
+  { id: 'magnifier', label: '돋보기/관찰' },
+  { id: 'lock-secure', label: '보안/결론' },
+  { id: 'camera-flash', label: '스포트라이트' },
+] as const;
+
+type TextAnimationId = typeof TEXT_ANIMATIONS[number]['id'];
 
 type PreviewScene = {
   text: string;
@@ -46,13 +76,15 @@ type PreviewScene = {
   videoUrl?: string;
   isAnimating?: boolean;
   isLoading?: boolean;
+  textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
+  textPosition?: 'bottom' | 'center' | 'top';
 };
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">{label}</p>
+      <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2">{label}</p>
       {children}
     </div>
   );
@@ -134,13 +166,21 @@ export default function DashboardPage() {
   const [format, setFormat] = useState<Format>('landscape');
   const [imageModelId, setImageModelId] = useState('google/gemini-2.5-flash-image');
   const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash-lite');
-  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google'>('google');
+  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google' | 'elevenlabs'>('google');
   const [videoModelId, setVideoModelId] = useState('fal-wan-v2.1');
   const [voiceId, setVoiceId] = useState('Kore');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
+  const [subCharacters, setSubCharacters] = useState<{ preview: string; base64: string; name: string }[]>([]);
   const [imageStyle, setImageStyle] = useState<ImageStyle>('cinematic');
+  const [useTextAnims, setUseTextAnims] = useState(true);
+  const [selectedTextAnims] = useState<TextAnimationId[]>([
+    'typewriter', 'fly-in', 'pop-in', 'fade-zoom', 'clock-spin', 'pulse-ring', 'sparkle',
+    'confetti', 'rain', 'snow', 'fire', 'heart', 'stars', 'thunder',
+    'chart-up', 'film-roll', 'magnifier', 'lock-secure', 'camera-flash'
+  ]);
   const characterInputRef = useRef<HTMLInputElement>(null);
+  const subCharacterInputRef = useRef<HTMLInputElement>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [renderProgress, setRenderProgress] = useState(0);
   const [animatingCount, setAnimatingCount] = useState(0);
@@ -152,25 +192,63 @@ export default function DashboardPage() {
   const [genTotal, setGenTotal] = useState(0);
   const [genCompleted, setGenCompleted] = useState(0);
 
-  // 히스토리에서 장면 편집으로 넘어온 경우 복원
+  // [장면 보존 및 복구]
   useEffect(() => {
-    const saved = sessionStorage.getItem('clipflow_edit_scenes');
-    if (saved) {
+    // 1. 복구 시도
+    const savedEdit = sessionStorage.getItem('clipflow_edit_scenes');
+    const savedActive = sessionStorage.getItem('clipflow_active_scenes');
+    const source = savedEdit || savedActive;
+
+    if (source) {
       try {
-        const { scenes: s, format: f, imageModelId: im, imageStyle: is, voiceId: v, ttsProvider: tp, videoUrl: vu } = JSON.parse(saved);
-        if (s?.length) {
-          setScenes(s);
-          if (f) setFormat(f);
-          if (im) setImageModelId(im);
-          if (is) setImageStyle(is);
-          if (v) setVoiceId(v);
-          if (tp) setTtsProvider(tp);
-          if (vu) { setVideoUrl(vu); setStatus('done'); } else setStatus('preview');
+        const data = JSON.parse(source);
+        if (data.scenes?.length) {
+          setScenes(data.scenes);
+          if (data.format) setFormat(data.format);
+          if (data.imageModelId) setImageModelId(data.imageModelId);
+          if (data.imageStyle) setImageStyle(data.imageStyle);
+          if (data.voiceId) setVoiceId(data.voiceId);
+          if (data.ttsProvider) setTtsProvider(data.ttsProvider);
+          if (data.videoUrl) { setVideoUrl(data.videoUrl); setStatus('done'); } else setStatus('preview');
         }
-      } catch {}
-      sessionStorage.removeItem('clipflow_edit_scenes');
+      } catch (err) {
+        console.error('[Dashboard] Restore failed:', err);
+      }
+      // 'edit'용은 일회성 복구용이므로 삭제 (active는 유지)
+      if (savedEdit) sessionStorage.removeItem('clipflow_edit_scenes');
     }
+
+    // 2. 대본 복원 (from prompt page)
+    const savedScript = sessionStorage.getItem('clipflow_script');
+    if (savedScript) {
+      setScript(savedScript);
+      sessionStorage.removeItem('clipflow_script');
+    }
+    // 3. 실시간 업데이트 리스너 (사이드바에서 선택 시)
+    const handleScriptUpdate = () => {
+      const updated = sessionStorage.getItem('clipflow_script');
+      if (updated) {
+        setScript(updated);
+        // 필요하다면 기존 장면 데이터 초기화 (신규 대본이므로)
+        setScenes([]);
+        setStatus('idle');
+      }
+    };
+
+    window.addEventListener('clipflow_script_updated', handleScriptUpdate);
+    return () => window.removeEventListener('clipflow_script_updated', handleScriptUpdate);
   }, []);
+
+  // [상태 자동 저장] 장면이나 설정이 바뀌면 실시간 보존 (새로고침 사고 대비)
+  useEffect(() => {
+    if (scenes.length > 0) {
+      const stateToSave = { 
+        scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, 
+        videoUrl: status === 'done' ? videoUrl : '' 
+      };
+      sessionStorage.setItem('clipflow_active_scenes', JSON.stringify(stateToSave));
+    }
+  }, [scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, status, videoUrl]);
   const [usageInfo, setUsageInfo] = useState<{ promptTokens: number; completionTokens: number; imageCount: number; imageModelId: string; llmModelId: string } | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const replaceInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
@@ -191,6 +269,29 @@ export default function DashboardPage() {
       setCharacterImageBase64(dataUrl.split(',')[1]);
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function handleSubCharacterUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (subCharacters.length >= 5) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSubCharacters(prev => [...prev, { preview: dataUrl, base64: dataUrl.split(',')[1], name: `캐릭터 ${prev.length + 2}` }]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function removeSubCharacter(index: number) {
+    setSubCharacters(prev => prev.filter((_, i) => i !== index));
+  }
+
+
+  function updateSubCharacterName(index: number, name: string) {
+    setSubCharacters(prev => prev.map((c, i) => i === index ? { ...c, name } : c));
   }
 
   async function handlePreview() {
@@ -205,7 +306,16 @@ export default function DashboardPage() {
       const res = await fetch('/api/generate-scenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script, imageModelId, llmModelId, format, characterImageBase64, imageStyle }),
+        body: JSON.stringify({ 
+          script, 
+          imageModelId, 
+          llmModelId, 
+          format, 
+          characterImageBase64, 
+          imageStyle, 
+          subCharacters: subCharacters.map(c => ({ base64: c.base64, name: c.name })),
+          allowedAnimations: useTextAnims ? selectedTextAnims : ['none']
+        }),
       });
       if (!res.ok || !res.body) throw new Error('장면 생성 실패');
 
@@ -239,7 +349,9 @@ export default function DashboardPage() {
               imagePrompt: event.imagePrompt, 
               imageUrl: event.imageUrl,
               motionPrompt: event.motionPrompt,
-              shouldAnimate: event.shouldAnimate 
+              shouldAnimate: event.shouldAnimate,
+              textAnimationStyle: event.textAnimationStyle,
+              textPosition: event.textPosition
             };
             newScenes[event.index] = sceneData;
             setScenes(prev => {
@@ -251,18 +363,16 @@ export default function DashboardPage() {
           if (event.type === 'done') {
             if (event.usage) setUsageInfo(event.usage);
             setStatus('preview');
-            // 자동 애니메이션 시작 (shouldAnimate 장면들 + 첫/마지막 장면은 무조건, RPM 초과 방지)
+            // 자동 애니메이션 시작 (RPM 초과 방지 위해 3초 간격)
             const animTargets = newScenes
               .map((s, idx) => ({ s, idx }))
-              .filter(({ s, idx }) => {
-                if (!s) return false;
-                if (s.videoUrl) return false;
-                // 첫 번째(0) 또는 마지막 장면이면 무조건 포함
-                if (idx === 0 || idx === newScenes.length - 1) return true;
-                return s.shouldAnimate;
-              });
+              .filter(({ s }) => s && !s.videoUrl); // 비디오 없는 모든 장면 대상
+
             animTargets.forEach(({ idx }, i) => {
-              setTimeout(() => handleAnimateScene(idx, newScenes), i * 3000);
+              setTimeout(() => {
+                console.log(`[AutoAnim] Triggering scene ${idx + 1}`);
+                handleAnimateScene(idx, newScenes);
+              }, i * 3500);
             });
           }
         }
@@ -420,6 +530,14 @@ export default function DashboardPage() {
     setScenes(prev => prev.map((s, i) => (i === index ? { ...s, text } : s)));
   }
 
+  function updateSceneStyle(index: number, style: PreviewScene['textAnimationStyle']) {
+    setScenes(prev => prev.map((s, i) => (i === index ? { ...s, textAnimationStyle: style } : s)));
+  }
+
+  function updateScenePosition(index: number, position: PreviewScene['textPosition']) {
+    setScenes(prev => prev.map((s, i) => (i === index ? { ...s, textPosition: position } : s)));
+  }
+
   async function handleRegenerateImage(index: number) {
     const scene = scenes[index];
     if (!scene || regeneratingIndex !== null) return;
@@ -428,7 +546,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/regenerate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imagePrompt: scene.imagePrompt, imageModelId, format, imageStyle, characterImageBase64 }),
+        body: JSON.stringify({ imagePrompt: scene.imagePrompt, imageModelId, format, imageStyle, characterImageBase64, subCharacters: subCharacters.map(c => ({ base64: c.base64, name: c.name })) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '재생성 실패');
@@ -748,6 +866,31 @@ export default function DashboardPage() {
                         </>
                       )}
                     </div>}
+                    
+                    {!scene.isLoading && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <select 
+                          value={scene.textAnimationStyle || 'none'}
+                          onChange={(e) => updateSceneStyle(i, e.target.value as any)}
+                          className="bg-white/5 text-white/40 text-[10px] font-mono border border-white/10 rounded px-1.5 py-1 focus:outline-none focus:border-yellow-400/50 hover:text-white/70 transition-colors"
+                        >
+                          <option value="none" className="bg-[#111]">애니메이션: 없음</option>
+                          <option value="typewriter" className="bg-[#111]">타이핑 (Typewriter)</option>
+                          <option value="fly-in" className="bg-[#111]">슬라이드 (Fly-in)</option>
+                          <option value="pop-in" className="bg-[#111]">팝업 (Pop-in)</option>
+                          <option value="fade-zoom" className="bg-[#111]">페이드 줌</option>
+                        </select>
+                        <select 
+                          value={scene.textPosition || 'bottom'}
+                          onChange={(e) => updateScenePosition(i, e.target.value as any)}
+                          className="bg-white/5 text-white/40 text-[10px] font-mono border border-white/10 rounded px-1.5 py-1 focus:outline-none focus:border-yellow-400/50 hover:text-white/70 transition-colors"
+                        >
+                          <option value="bottom" className="bg-[#111]">위치: 하단</option>
+                          <option value="center" className="bg-[#111]">위치: 중앙</option>
+                          <option value="top" className="bg-[#111]">위치: 상단</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -764,17 +907,52 @@ export default function DashboardPage() {
             )}
 
             {status === 'error' && error && (
-              <div className="mt-8 border-l-2 border-red-500 pl-4 py-1">
-                <p className="text-red-400 font-mono" style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                  영상 생성 실패: {error}
+              <div className="mt-8 border-l-2 border-red-500 pl-4 py-1.5 bg-red-500/5">
+                <p className="text-red-400 font-mono text-[12.5px] leading-relaxed">
+                  <span className="font-bold flex items-center gap-1.5 mb-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    영상 생성 실패
+                  </span>
+                  {error.includes('Quota exceeded') || error.includes('429') ? (
+                    <>
+                      일일 할당량 초과, 다른 모델로 교체하세요.
+                    </>
+                  ) : error}
                 </p>
-                <button
-                  onClick={() => { setStatus('preview'); setError(''); }}
-                  className="mt-2 text-white/25 hover:text-white/60 font-mono transition-colors"
-                  style={{ fontSize: '12px' }}
-                >
-                  다시 시도 →
-                </button>
+                <div className="mt-3 flex items-center gap-4">
+                  <button
+                    onClick={() => { setStatus('preview'); setError(''); }}
+                    className="text-white/40 hover:text-white/80 font-mono transition-colors text-[12px] flex items-center gap-1"
+                  >
+                    <span>↺</span> 다시 시도
+                  </button>
+                  {(error.includes('Quota exceeded') || error.includes('429')) && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setTtsProvider('minimax');
+                          setVoiceId('Korean_SoothingLady');
+                          setStatus('preview');
+                          setError('');
+                        }}
+                        className="px-3 py-1 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-[12px] font-bold font-mono transition-all"
+                      >
+                        MiniMax로 전환
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTtsProvider('elevenlabs');
+                          setVoiceId('pNInz6obpgDQGcFmaJgB');
+                          setStatus('preview');
+                          setError('');
+                        }}
+                        className="px-3 py-1 bg-orange-400/10 hover:bg-orange-400/20 border border-orange-400/30 text-orange-400 text-[12px] font-bold font-mono transition-all"
+                      >
+                        ElevenLabs로 전환
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -784,7 +962,9 @@ export default function DashboardPage() {
                   <span className="w-3.5 h-3.5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin shrink-0" />
                   <div>
                     <p className="text-yellow-400/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
-                    <p className="text-[#17BEBB]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">TTS → AWS Lambda 렌더링 진행 중</p>
+                    <p className="text-[#17BEBB]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">
+                      {renderProgress > 0 ? 'AWS Lambda 렌더링 진행 중' : '나레이션(TTS) 생성 및 렌더링 준비 중...'}
+                    </p>
                   </div>
                 </div>
                 {/* 미니 프로그레스 바 */}
@@ -868,7 +1048,7 @@ export default function DashboardPage() {
           {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
             <>
               <PanelSection label="스타일">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 mb-4">
                   {IMAGE_STYLES.map(s => (
                     <button
                       key={s.id}
@@ -884,6 +1064,30 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+
+                <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2 mt-6">텍스트 애니메이션</p>
+                <button 
+                  onClick={() => setUseTextAnims(!useTextAnims)}
+                  className={`w-full px-3 py-4 rounded-md border transition-all text-left group ${
+                    useTextAnims 
+                    ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-100' 
+                    : 'border-white/10 bg-white/5 text-white/30 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[13px] font-bold ${useTextAnims ? 'text-yellow-400' : 'text-white/40'}`}>
+                      AI 자동 연출 효과
+                    </span>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${useTextAnims ? 'bg-yellow-400' : 'bg-white/10'}`}>
+                      <div className={`absolute top-1 w-2 h-2 rounded-full bg-white transition-all ${useTextAnims ? 'right-1' : 'left-1'}`} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] opacity-60 leading-relaxed">
+                    {useTextAnims 
+                      ? "21종의 시네마틱 효과(꽃가루, 시계, 하트 등)를 AI가 대본에 맞춰 자동 연출합니다."
+                      : "특수효과 없이 깔끔한 자막 스타일로 영상을 제작합니다."}
+                  </p>
+                </button>
               </PanelSection>
 
               <PanelSection label="비율">
@@ -900,6 +1104,8 @@ export default function DashboardPage() {
               </PanelSection>
 
               <PanelSection label="캐릭터">
+                {/* 메인 캐릭터 */}
+                <p className="text-white/30 text-[10px] font-mono mb-1.5">메인 캐릭터</p>
                 <div
                   onClick={() => !isProcessing && characterInputRef.current?.click()}
                   className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-white/10 text-white/30 transition-colors ${
@@ -907,7 +1113,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {characterPreview
-                    ? <img src={characterPreview} alt="캐릭터" className="w-5 h-5 object-cover" />
+                    ? <img src={characterPreview} alt="메인캐릭터" className="w-5 h-5 object-cover rounded-sm" />
                     : <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
                   }
                   <span>{characterPreview ? '변경' : '이미지 선택'}</span>
@@ -919,6 +1125,39 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
+
+                {/* 추가 캐릭터 */}
+                <p className="text-white/30 text-[10px] font-mono mt-3 mb-1.5">서브 캐릭터 <span className="text-white/20">({subCharacters.length}/5)</span></p>
+                <div className="space-y-1.5">
+                  {subCharacters.map((char, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <img src={char.preview} alt={char.name} className="w-5 h-5 object-cover rounded-sm shrink-0" />
+                      <input
+                        type="text"
+                        value={char.name}
+                        onChange={e => updateSubCharacterName(i, e.target.value)}
+                        className="flex-1 bg-transparent border border-white/10 px-2 py-1 text-[11px] font-mono text-white/60 focus:outline-none focus:border-white/30 min-w-0"
+                        placeholder="캐릭터 이름"
+                      />
+                      <button
+                        onClick={() => removeSubCharacter(i)}
+                        className="text-white/20 hover:text-red-400 transition-colors text-xs shrink-0"
+                      >✕</button>
+                    </div>
+                  ))}
+                  {subCharacters.length < 5 && (
+                    <div
+                      onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
+                      className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-white/10 text-white/20 transition-colors ${
+                        !isProcessing ? 'hover:border-white/30 hover:text-white/40 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                      }`}
+                    >
+                      <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
+                      <span>서브 캐릭터 추가</span>
+                    </div>
+                  )}
+                </div>
+                <input ref={subCharacterInputRef} type="file" accept="image/*" className="hidden" onChange={handleSubCharacterUpload} />
               </PanelSection>
 
               <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''} closeOnSelect>
@@ -957,30 +1196,43 @@ export default function DashboardPage() {
           {(status === 'previewing' && genTotal > 0 || status === 'preview' || status === 'rendering' || (status === 'error' && scenes.length > 0)) && (
             <>
               <PanelSection label="보이스">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <p className="text-white/25 text-[12px] font-mono tracking-widest uppercase mb-1.5">MiniMax</p>
+                <div className="grid grid-cols-3 gap-1.5 px-0.5">
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-white/25 text-[10px] font-mono tracking-wider uppercase mb-1.5 truncate">MiniMax</p>
                     <select
                       value={ttsProvider === 'minimax' ? voiceId : ''}
                       onChange={e => { setVoiceId(e.target.value); setTtsProvider('minimax'); }}
-                      className="w-full bg-[#111] text-white/70 text-[13px] font-mono px-2 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80 [&>option]:text-[13px]"
+                      className="w-full bg-[#111] text-white/70 text-[12px] font-mono px-1 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80"
                     >
-                      <option value="" disabled>선택 안 됨</option>
+                      <option value="" disabled>선택</option>
                       {MINIMAX_VOICES.map(v => (
-                        <option key={v.id} value={v.id}>{v.name} ({v.gender === 'female' ? '여' : '남'})</option>
+                        <option key={v.id} value={v.id}>{v.name.split(' (')[0]}</option>
                       ))}
                     </select>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white/25 text-[12px] font-mono tracking-widest uppercase mb-1.5">Google AI Studio</p>
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-white/25 text-[10px] font-mono tracking-wider uppercase mb-1.5 truncate">Google</p>
                     <select
                       value={ttsProvider === 'google' ? voiceId : ''}
                       onChange={e => { setVoiceId(e.target.value); setTtsProvider('google'); }}
-                      className="w-full bg-[#111] text-white/70 text-[13px] font-mono px-2 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80 [&>option]:text-[13px]"
+                      className="w-full bg-[#111] text-white/70 text-[12px] font-mono px-1 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80"
                     >
-                      <option value="" disabled>선택 안 됨</option>
+                      <option value="" disabled>선택</option>
                       {GOOGLE_VOICES.map(v => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
+                        <option key={v.id} value={v.id}>{v.name.split(' (')[0]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-white/25 text-[10px] font-mono tracking-wider uppercase mb-1.5 truncate">ElevenLabs</p>
+                    <select
+                      value={ttsProvider === 'elevenlabs' ? voiceId : ''}
+                      onChange={e => { setVoiceId(e.target.value); setTtsProvider('elevenlabs'); }}
+                      className="w-full bg-[#111] text-white/70 text-[12px] font-mono px-1 py-1.5 border border-white/10 hover:border-white/20 focus:outline-none focus:border-orange-400/50 transition-colors [&>option]:bg-[#111] [&>option]:text-white/80"
+                    >
+                      <option value="" disabled>선택</option>
+                      {ELEVENLABS_VOICES.map(v => (
+                        <option key={v.id} value={v.id}>{v.name.split(' (')[0]}</option>
                       ))}
                     </select>
                   </div>

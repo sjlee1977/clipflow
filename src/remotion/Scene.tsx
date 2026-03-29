@@ -97,7 +97,11 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset }) =>
       )}
 
       {/* 자막 */}
-      <SubtitleOverlay subtitles={scene.subtitles} />
+      <SubtitleOverlay 
+        subtitles={scene.subtitles} 
+        style={scene.textAnimationStyle}
+        position={scene.textPosition}
+      />
     </AbsoluteFill>
   );
 };

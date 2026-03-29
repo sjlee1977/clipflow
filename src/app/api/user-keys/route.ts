@@ -11,11 +11,16 @@ export async function GET() {
     return NextResponse.json({
       anthropic: meta.anthropic_api_key ? maskKey(meta.anthropic_api_key) : '',
       gemini: meta.gemini_api_key ? maskKey(meta.gemini_api_key) : '',
+      minimax: meta.minimax_api_key ? maskKey(meta.minimax_api_key) : '',
+      minimaxGroup: meta.minimax_group_id ? maskKey(meta.minimax_group_id) : '',
+      elevenlabs: meta.elevenlabs_api_key ? maskKey(meta.elevenlabs_api_key) : '',
       klingAccess: meta.kling_access_key ? maskKey(meta.kling_access_key) : '',
       klingSecret: meta.kling_secret_key ? maskKey(meta.kling_secret_key) : '',
       fal: meta.fal_api_key ? maskKey(meta.fal_api_key) : '',
       hasAnthropic: !!meta.anthropic_api_key,
       hasGemini: !!meta.gemini_api_key,
+      hasMinimax: !!meta.minimax_api_key && !!meta.minimax_group_id,
+      hasElevenlabs: !!meta.elevenlabs_api_key,
       hasKling: !!meta.kling_access_key && !!meta.kling_secret_key,
       hasFal: !!meta.fal_api_key,
     });
@@ -38,6 +43,11 @@ export async function POST(req: NextRequest) {
       updateData = { anthropic_api_key: apiKey.trim() };
     } else if (provider === 'gemini') {
       updateData = { gemini_api_key: apiKey.trim() };
+    } else if (provider === 'minimax') {
+      if (!apiKey2) return NextResponse.json({ error: 'MiniMax Group ID가 필요합니다' }, { status: 400 });
+      updateData = { minimax_api_key: apiKey.trim(), minimax_group_id: apiKey2.trim() };
+    } else if (provider === 'elevenlabs') {
+      updateData = { elevenlabs_api_key: apiKey.trim() };
     } else if (provider === 'kling') {
       if (!apiKey2) return NextResponse.json({ error: 'Kling Secret Key가 필요합니다' }, { status: 400 });
       updateData = { kling_access_key: apiKey.trim(), kling_secret_key: apiKey2.trim() };
@@ -66,6 +76,8 @@ export async function DELETE(req: NextRequest) {
     const metaMap: Record<string, Record<string, null>> = {
       anthropic: { anthropic_api_key: null },
       gemini: { gemini_api_key: null },
+      minimax: { minimax_api_key: null, minimax_group_id: null },
+      elevenlabs: { elevenlabs_api_key: null },
       kling: { kling_access_key: null, kling_secret_key: null },
       fal: { fal_api_key: null },
     };

@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     format = 'landscape',
     characterImageBase64,
     imageStyle,
+    subCharacters,
+    allowedAnimations,
   } = await req.json();
 
   // 유저 API 키 조회
@@ -29,8 +31,9 @@ export async function POST(req: NextRequest) {
     watercolor: 'watercolor illustration, soft brushstrokes, artistic, painterly',
     cartoon: 'cartoon style, flat design, bold outlines, vibrant illustration',
     noir: 'film noir, black and white, high contrast, moody shadows, dramatic',
+    none: 'minimalist background, solid dark color, simple texture, non-distracting, professional, clean',
   };
-  const stylePrompt = imageStyle ? (stylePrompts[imageStyle] ?? '') : '';
+  const stylePrompt = imageStyle && imageStyle !== 'none' ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -57,11 +60,12 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // 1. 장면 분할 (200자당 1장면, 최대 35장면)
-        const sceneCount = Math.min(35, Math.max(1, Math.round(script.length / 200)));
+        // 1. 장면 분할 (200자당 1장면, 최대 50장면)
+        const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / 200)));
         console.log('[generate-scenes] Splitting script into scenes...');
         const hasCharacter = !!characterImageBase64;
-        const { scenes: scriptScenes, usage: llmUsage } = await splitViaGemini(script, llmModelId, sceneCount, hasCharacter, geminiApiKey);
+        const subCharacterNames = Array.isArray(subCharacters) ? subCharacters.map((c: { name: string }) => c.name) : [];
+        const { scenes: scriptScenes, usage: llmUsage } = await splitViaGemini(script, llmModelId, sceneCount, hasCharacter, geminiApiKey, subCharacterNames, allowedAnimations, imageStyle);
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes. LLM tokens: ${llmUsage.promptTokens}+${llmUsage.completionTokens}`);
         send({ type: 'total', count: scriptScenes.length });
 
@@ -85,7 +89,16 @@ export async function POST(req: NextRequest) {
                   geminiApiKey
                 );
               }
-              const scene = { index, text: s.text, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, imageUrl, shouldAnimate: s.shouldAnimate };
+              const scene = { 
+                index, 
+                text: s.text, 
+                imagePrompt: s.imagePrompt, 
+                motionPrompt: s.motionPrompt, 
+                imageUrl, 
+                shouldAnimate: s.shouldAnimate,
+                textAnimationStyle: s.textAnimationStyle,
+                textPosition: s.textPosition
+              };
               results.push(scene);
               send({ type: 'scene', ...scene });
             })

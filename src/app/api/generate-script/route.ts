@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase-server';
+import fs from 'fs';
+import path from 'path';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function getWorldState() {
+  try {
+    const filePath = path.join(process.cwd(), 'src/app/api/world-state/current.json');
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (err) {
+    console.error('Failed to read world state:', err);
+    return null;
+  }
+}
 
 const SYSTEM_PROMPT = `=== 경제학 주식과 채널 유튜브 대본 전문 작가 프롬프트 ===
 
@@ -222,14 +238,32 @@ export async function POST(req: NextRequest) {
     }
 
     const youtubeLengthMap: Record<string, string> = {
+      '3000': '3,000자 이상',
       '5000': '5,000자 이상',
       '7000': '7,000자 이상',
       '9000': '9,000자 이상',
-      '12000': '12,000자 이상',
     };
     const lengthInstruction = scriptType === 'youtube' && youtubeLength
       ? `\n\n대본 최소 길이: ${youtubeLengthMap[youtubeLength] ?? '7,000자 이상'}. 반드시 이 길이를 충족해.`
       : '';
+
+    // [2026 World Context Injection]
+    const state = getWorldState();
+    const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+    
+    let worldContextBlock = `[전개 시점 정보] 오늘은 ${today} 입니다.\n`;
+    
+    if (state) {
+      worldContextBlock += `\n[2026년 금융 시장 리얼타임 데이터 가이드라인]\n`;
+      worldContextBlock += `현재는 **코스피 ${state.marketData.kospi.value}선, 나스닥 ${state.marketData.nasdaq.value.split('.')[0]}선**이 정착된 고성장 2026년입니다.\n`;
+      worldContextBlock += `- 지표: KOSPI ${state.marketData.kospi.value} (${state.marketData.kospi.change})\n`;
+      worldContextBlock += `- 환율: ${state.marketData.exchangeRate.value} ${state.marketData.exchangeRate.currency}\n`;
+      worldContextBlock += `- 기준금리: ${state.macroEconomics.baseRate}\n`;
+      worldContextBlock += `- 주요 테마: ${state.keyThemes.join(', ')}\n`;
+      worldContextBlock += `\n**주의:** 하단 시스템 프롬프트(SYSTEM_PROMPT)의 2024~2025년 데이터는 형식 예시일 뿐이며, 반드시 위의 2026년 실재 데이터와 사용자 입력 데이터를 최우선적으로 반영하세요.\n`;
+    }
+
+    const dynamicSystemPrompt = `${worldContextBlock}\n\n${SYSTEM_PROMPT}`;
 
     const userContent = topic + lengthInstruction;
     let script = '';
@@ -239,7 +273,7 @@ export async function POST(req: NextRequest) {
       const msg = await anthropic.messages.create({
         model,
         max_tokens: 16000,
-        system: SYSTEM_PROMPT,
+        system: dynamicSystemPrompt,
         messages: [{ role: 'user', content: userContent }],
       });
       script = (msg.content[0] as { type: string; text: string }).text ?? '';
@@ -248,14 +282,52 @@ export async function POST(req: NextRequest) {
       const response = await ai.models.generateContent({
         model,
         contents: userContent,
-        config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.8 },
+        config: { systemInstruction: dynamicSystemPrompt, temperature: 0.8 },
       });
       script = response.text ?? '';
     }
 
     if (!script) throw new Error('응답 없음');
-    return NextResponse.json({ script });
-  } catch (err: unknown) {
+
+    // [DB 저장]    // 4. 라이브러리에 자동 저장 (Robustness 강화)
+    let savedScriptId = null;
+    try {
+      const { data: savedData, error: insertError } = await supabase
+        .from('scripts')
+        .insert({
+          user_id: user.id,
+          title: topic.length > 50 ? topic.slice(0, 50) + '...' : topic,
+          content: script,
+          type: scriptType || 'shorts',
+          llm_model: model || 'claude-4-6-sonnet',
+          metadata: {
+            topic,
+            generated_at: new Date().toISOString(),
+          }
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('[generate-script] 라이브러리 저장 실패 상세:', {
+          error: insertError,
+          userId: user.id,
+          topic: topic.slice(0, 20)
+        });
+      } else if (savedData) {
+        savedScriptId = savedData.id;
+        console.log('[generate-script] 라이브러리 저장 성공:', savedScriptId);
+      }
+    } catch (saveErr) {
+      console.error('[generate-script] 저장 프로세스 중 예외 발생:', saveErr);
+    }
+
+    return NextResponse.json({ 
+      script,
+      scriptId: savedScriptId,
+      status: 'success'
+    });
+  } catch (err: any) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : '대본 생성 중 오류가 발생했습니다' },
       { status: 500 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { YoutubeTranscript } from 'youtube-transcript';
+import { YoutubeTranscript } from '@/lib/youtube';
 import { GoogleGenAI } from '@google/genai';
 
 function extractVideoId(url: string): string | null {

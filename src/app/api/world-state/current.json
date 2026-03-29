@@ -1,0 +1,41 @@
+{
+  "lastUpdated": "2026-03-29",
+  "status": "active",
+  "targetYear": 2026,
+  "marketData": {
+    "kospi": {
+      "value": "5,438.87",
+      "change": "-21.59 (-0.40%)",
+      "date": "2026-03-27",
+      "trend": "High-growth stability"
+    },
+    "nasdaq": {
+      "value": "22,150.45",
+      "change": "+15.20 (+0.07%)",
+      "date": "2026-03-27",
+      "trend": "AI-led expansion"
+    },
+    "exchangeRate": {
+      "value": "1,482.50",
+      "currency": "KRW/USD",
+      "trend": "Weakening dollar bias"
+    }
+  },
+  "macroEconomics": {
+    "baseRate": "2.50%",
+    "inflation": "2.1%",
+    "employment": "Full employment levels",
+    "narrative": "Liquidity cycle entering mature phase with AI productivity gains fully priced in."
+  },
+  "keyThemes": [
+    "AI Agent Economy & Productivity Revolution",
+    "Next-Gen Energy (SMR & Fusion Progress)",
+    "Regional Supply Chain Autonomy",
+    "Silver Economy Boom"
+  ],
+  "hallucinationGuards": [
+    "Never use KOSPI 2,XXX or 3,XXX levels; they are outdated history.",
+    "Never use Nasdaq 1X,XXX levels; 20k is the new baseline.",
+    "Today's date is March 29, 2026. Treat pre-2026 data as historical context only."
+  ]
+}

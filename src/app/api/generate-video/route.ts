@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSpeechToS3 } from '@/lib/minimax-tts';
 import { generateSpeech as googleTTSToS3 } from '@/lib/google';
-import { startRender, waitForRender } from '@/lib/remotion';
+import { startRender } from '@/lib/remotion';
+import { createClient } from '@/lib/supabase-server';
 
 const FPS = 30;
 const PADDING_FRAMES = 15; // 오디오 끝 후 0.5초 여유
@@ -14,7 +15,6 @@ function splitIntoSubtitles(text: string, totalFrames: number) {
 
   while (remaining.length > MAX_CHARS) {
     let splitAt = -1;
-    // 구두점·공백 기준으로 자연스러운 분할점 탐색
     for (let i = MAX_CHARS; i >= Math.ceil(MAX_CHARS / 2); i--) {
       if (/[.!?,。！？，\s]/.test(remaining[i] ?? '')) {
         splitAt = i + 1;
@@ -54,38 +54,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '장면 데이터가 없습니다' }, { status: 400 });
     }
 
+    // 유저 API 키 조회
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const meta = user?.user_metadata ?? {};
+
     const ts = Date.now();
 
-    // 1. TTS 생성 (Google은 RPM 10 제한으로 순차 처리, MiniMax는 병렬)
-    type SceneInput = { text: string; imageUrl: string; videoUrl?: string };
+    // 1. TTS 생성
+    type SceneInput = { 
+      text: string; 
+      imageUrl: string; 
+      videoUrl?: string;
+      textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
+      textPosition?: 'bottom' | 'center' | 'top';
+    };
+    
     async function processTTS(s: SceneInput, i: number) {
       let audioUrl: string;
       let durationMs: number;
+      
       if (ttsProvider === 'google') {
-        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed));
+        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
+      } else if (ttsProvider === 'elevenlabs') {
+        const { generateSpeechToS3: elevenTTSToS3 } = await import('@/lib/elevenlabs');
+        ({ url: audioUrl, durationMs } = await elevenTTSToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
       } else {
-        ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed }));
+        ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
       }
-      const durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
+      
+      let durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
+
+      if (s.videoUrl) {
+        durationInFrames = Math.max(durationInFrames, 150);
+      }
+
       return {
         imageUrl: s.imageUrl,
         videoUrl: s.videoUrl,
         audioUrl,
         durationInFrames,
         subtitles: splitIntoSubtitles(s.text, durationInFrames),
+        textAnimationStyle: s.textAnimationStyle,
+        textPosition: s.textPosition,
       };
     }
 
-    let scenes;
+    let scenes: any[] = [];
     if (ttsProvider === 'google') {
-      // 순차 처리 (RPM 10 제한 대응)
-      scenes = [];
       for (let i = 0; i < inputScenes.length; i++) {
         scenes.push(await processTTS(inputScenes[i], i));
       }
     } else {
-      // MiniMax: 병렬 처리
-      scenes = await Promise.all(inputScenes.map((s: SceneInput, i: number) => processTTS(s, i)));
+      const CHUNK_SIZE = 5;
+      for (let i = 0; i < inputScenes.length; i += CHUNK_SIZE) {
+        const chunk = inputScenes.slice(i, i + CHUNK_SIZE);
+        const results = await Promise.all(
+          chunk.map((s: SceneInput, j: number) => processTTS(s, i + j))
+        );
+        scenes.push(...results);
+      }
     }
 
     // 2. Remotion Lambda 렌더링 시작

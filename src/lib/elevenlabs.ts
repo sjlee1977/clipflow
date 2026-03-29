@@ -1,9 +1,6 @@
 import { ElevenLabsClient } from 'elevenlabs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const elevenlabs = new ElevenLabsClient({
-  apiKey: process.env.ELEVENLABS_API_KEY,
-});
+import { Readable } from 'stream';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION ?? 'ap-northeast-2',
@@ -14,66 +11,56 @@ const s3 = new S3Client({
 });
 
 const BUCKET = process.env.S3_BUCKET ?? 'remotionlambda-apnortheast2-17lxfxukvf';
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? 'pNInz6obpgDQGcFmaJgB'; // Adam (기본값)
+
+function getElevenLabs(apiKey?: string) {
+  const key = apiKey || process.env.ELEVENLABS_API_KEY;
+  if (!key) throw new Error('ElevenLabs API Key가 설정되지 않았습니다');
+  return new ElevenLabsClient({ apiKey: key });
+}
 
 /**
- * 텍스트를 TTS로 변환하고 S3에 업로드한 뒤 URL을 반환합니다.
+ * 스트림을 Buffer로 변환
  */
-export async function generateSpeech(text: string, filename: string): Promise<string> {
-  const audioStream = await elevenlabs.generate({
-    voice: VOICE_ID,
+async function streamToBuffer(stream: Readable | any): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * 1. 미리보기용 Buffer 생성
+ */
+export async function generateSpeechBuffer(text: string, voiceId?: string, apiKey?: string): Promise<{ buffer: Buffer }> {
+  const client = getElevenLabs(apiKey);
+  const audioStream = await client.generate({
+    voice: voiceId || 'pNInz6obpgDQGcFmaJgB', // Adam
     text,
     model_id: 'eleven_multilingual_v2',
     output_format: 'mp3_44100_128',
   });
 
-  // 스트림을 Buffer로 변환
-  const chunks: Buffer[] = [];
-  for await (const chunk of audioStream) {
-    chunks.push(Buffer.from(chunk));
-  }
-  const audioBuffer = Buffer.concat(chunks);
-
-  // S3 업로드
-  const key = `audio/${filename}.mp3`;
-  await s3.send(new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-    Body: audioBuffer,
-    ContentType: 'audio/mpeg',
-  }));
-
-  return `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  const buffer = await streamToBuffer(audioStream);
+  return { buffer };
 }
 
 /**
- * 텍스트 길이 기준으로 대략적인 자막 타이밍을 생성합니다.
- * (ElevenLabs 타임스탬프 API 사용 가능하지만 여기서는 단순 추정)
+ * 2. 렌더링용 S3 업로드 및 상세 정보 반환
  */
-export function estimateSubtitles(
-  text: string,
-  totalFrames: number,
-  fps: number
-): Array<{ text: string; startFrame: number; endFrame: number }> {
-  // 문장 단위로 분할
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (sentences.length === 0) {
-    return [{ text, startFrame: 0, endFrame: totalFrames }];
-  }
+export async function generateSpeechToS3(
+  text: string, 
+  filename: string, 
+  options: { voiceId?: string; speed?: number; apiKey?: string } = {}
+): Promise<{ url: string; durationMs: number }> {
+  const { buffer } = await generateSpeechBuffer(text, options.voiceId, options.apiKey);
 
-  const framesPerChar = totalFrames / text.length;
-  const subtitles: Array<{ text: string; startFrame: number; endFrame: number }> = [];
-  let currentFrame = 0;
+  const key = `audio/${filename}.mp3`;
+  await s3.send(new PutObjectCommand({
+    Bucket: BUCKET, Key: key, Body: buffer, ContentType: 'audio/mpeg',
+  }));
 
-  for (const sentence of sentences) {
-    const duration = Math.round(sentence.length * framesPerChar);
-    subtitles.push({
-      text: sentence,
-      startFrame: currentFrame,
-      endFrame: Math.min(currentFrame + duration, totalFrames),
-    });
-    currentFrame += duration;
-  }
-
-  return subtitles;
+  const url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  const durationMs = Math.round((text.length / 8.5) * 1000) + 500;
+  return { url, durationMs };
 }

@@ -47,13 +47,15 @@ export type GenerateSpeechOptions = {
   speed?: number;
   pitch?: number;
   vol?: number;
+  apiKey?: string;
+  groupId?: string;
 };
 
-async function callMiniMax(voiceId: string, text: string, speed: number): Promise<Response> {
-  const url = `https://api.minimaxi.chat/v1/t2a_v2?GroupId=${process.env.MINIMAX_GROUP_ID}`;
+async function callMiniMax(voiceId: string, text: string, speed: number, apiKey: string, groupId: string): Promise<Response> {
+  const url = `https://api.minimaxi.chat/v1/t2a_v2?GroupId=${groupId}`;
   
   const body = {
-    model: 'speech-01-hd', // 정석 모델명으로 회귀
+    model: 'speech-01-hd',
     text,
     stream: false,
     voice_setting: {
@@ -69,12 +71,10 @@ async function callMiniMax(voiceId: string, text: string, speed: number): Promis
     },
   };
 
-  console.log('[minimax-tts] Requesting with body:', JSON.stringify(body, null, 2).slice(0, 500));
-  
   return fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.MINIMAX_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -86,12 +86,19 @@ export async function generateSpeech(
   text: string,
   options: GenerateSpeechOptions = {}
 ): Promise<{ buffer: Buffer; durationMs: number }> {
-  const { voiceId = 'Korean_SoothingLady', speed: rawSpeed = 1.0 } = options;
-  const speed = Math.min(2.0, Math.max(0.5, rawSpeed));
+  const { 
+    voiceId = 'Korean_SoothingLady', 
+    speed: rawSpeed = 1.0,
+    apiKey = process.env.MINIMAX_API_KEY,
+    groupId = process.env.MINIMAX_GROUP_ID
+  } = options;
 
+  if (!apiKey || !groupId) throw new Error('MiniMax API Key 또는 Group ID가 설정되지 않았습니다');
+
+  const speed = Math.min(2.0, Math.max(0.5, rawSpeed));
   console.log('[minimax-tts] generating...', { text: text.slice(0, 20), voiceId });
 
-  let res = await callMiniMax(voiceId, text, speed);
+  let res = await callMiniMax(voiceId, text, speed, apiKey, groupId);
   
   if (!res.ok) {
     const errText = await res.text();
@@ -100,7 +107,7 @@ export async function generateSpeech(
     if (res.status === 429) {
       for (let i = 1; i <= 2; i++) {
         await new Promise(r => setTimeout(r, 2000 * i));
-        res = await callMiniMax(voiceId, text, speed);
+        res = await callMiniMax(voiceId, text, speed, apiKey, groupId);
         if (res.ok) break;
       }
     }

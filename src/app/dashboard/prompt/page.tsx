@@ -46,9 +46,8 @@ const CATEGORIES = [
   },
 ] as const;
 
-const SCRIPT_LENGTHS = ['7,000자 이상', '8,000자 이상', '10,000자 이상', '12,000자 이상'];
 const STORAGE_KEY = 'clipflow_prompt_v2';
-const DEFAULT_CAT_DATA = { minLength: '7,000자 이상' };
+const DEFAULT_CAT_DATA = {};
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -200,12 +199,10 @@ export default function PromptPage() {
   function buildPrompt(): string {
     const g = get;
     const catLabel = catInfo.label;
-    const length = g('minLength') || '7,000자 이상';
     const lines: string[] = [];
 
     lines.push(`아래 요청서를 바탕으로 ${catLabel} 카테고리 유튜브 대본을 작성해줘.`);
     lines.push(`위에서 설정한 채널 정체성, 말투 원칙, 7단계 대본 구조, 출력 형식 원칙을 전부 그대로 적용해.`);
-    lines.push(`대본 길이는 반드시 ${length}이어야 하고, 마지막에 총 글자 수를 표기해줘.`);
     lines.push(`나레이션과 자막으로 바로 사용 가능하도록 자연스럽게 작성해. 마크다운 없이 순수 텍스트로만 작성해. 제목, 굵게, 기호, 번호 리스트 등 어떤 서식도 사용하지 마. 단락 구분은 줄바꿈으로만 해.`);
     lines.push(''); lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━'); lines.push('');
 
@@ -283,7 +280,6 @@ export default function PromptPage() {
     lines.push('마크다운 없이 순수 텍스트로만 작성.');
     lines.push('제목, 굵게, 기호, 번호 리스트 등 어떤 서식도 사용하지 마.');
     lines.push('단락 구분은 줄바꿈으로만.');
-    lines.push(`총 글자 수: ${length} (마지막에 글자 수 표기)`);
 
     return lines.join('\n');
   }
@@ -316,18 +312,12 @@ export default function PromptPage() {
 
   const canGenerate = (() => {
     if (!get('topic').trim() || !get('angle').trim()) return false;
-    if (activeCategory === 'general') return true;
-    if (activeCategory === 'economy') return !!get('econData').trim();
-    if (activeCategory === 'history') return !!get('histEra').trim() && !!get('histConnect').trim();
-    if (activeCategory === 'psychology') return !!get('psychPhenomenon').trim() && !!get('psychResearch').trim() && !!get('psychApplication').trim();
-    if (activeCategory === 'horror') return !!get('horrorMaterial').trim() && !!get('horrorTwist').trim();
-    if (activeCategory === 'health') return !!get('healthTopic').trim() && !!get('healthResearch').trim() && !!get('healthMisconception').trim();
     return true;
   })();
 
   // Fill status for right panel
   const fillStatus = (() => {
-    const common = [
+    const common: { label: string; value: string; required?: boolean }[] = [
       { label: '영상 주제', value: get('topic'), required: true },
       { label: '핵심 앵글', value: get('angle'), required: true },
       { label: '비유 방향', value: get('analogy') },
@@ -409,7 +399,7 @@ export default function PromptPage() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategory(cat.id); setPageStatus('idle'); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-[12.5px] font-mono font-bold tracking-wide border-b-2 transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-[11.5px] font-mono font-bold tracking-wide border-b-2 transition-colors ${
                     activeCategory === cat.id
                       ? cat.activeCls
                       : 'border-transparent text-white/35 hover:text-white/60'
@@ -529,14 +519,6 @@ export default function PromptPage() {
                   <FieldLabel optional sub="도입부 특히 강하게 / 반전 극적으로 / 차분하게">영상 톤 & 강조 포인트</FieldLabel>
                   <input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />
                 </div>
-
-                {/* 대본 길이 */}
-                <div>
-                  <FieldLabel required>대본 최소 길이</FieldLabel>
-                  <select value={get('minLength') || '7,000자 이상'} onChange={e => set('minLength', e.target.value)} className={sCls}>
-                    {SCRIPT_LENGTHS.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                </div>
               </div>
 
               {/* ── 카테고리 전용 필드 ── */}
@@ -594,7 +576,7 @@ export default function PromptPage() {
                 {activeCategory === 'economy' && (
                   <>
                     <div>
-                      <FieldLabel required sub="촬영일, 코스피/나스닥/환율/유가, 주요 이벤트, 외국인 수급">오늘 날짜 & 핵심 수치</FieldLabel>
+                      <FieldLabel sub="촬영일, 코스피/나스닥/환율/유가, 주요 이벤트, 외국인 수급">오늘 날짜 & 핵심 수치</FieldLabel>
                       <textarea value={get('econData')} onChange={e => set('econData', e.target.value)} rows={4}
                         placeholder={`예:\n2025.3.28 (금)\n코스피 2,580 (-0.8%) / 나스닥 18,200 (+0.3%)\n원달러 1,420원 / 외국인 +800억\nFOMC 4월 회의 예정`}
                         className={iCls} />
@@ -637,12 +619,12 @@ export default function PromptPage() {
                 {activeCategory === 'history' && (
                   <>
                     <div>
-                      <FieldLabel required>시대 & 핵심 사건</FieldLabel>
+                      <FieldLabel>시대 & 핵심 사건</FieldLabel>
                       <textarea value={get('histEra')} onChange={e => set('histEra', e.target.value)} rows={3} placeholder="예: 1929년 대공황 / 뱅크런 연쇄 발생 → 실업률 25% → 뉴딜 정책 도입" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required sub="역사적 사건이 지금 우리에게 왜 중요한지">현재와의 연결고리</FieldLabel>
+                      <FieldLabel sub="역사적 사건이 지금 우리에게 왜 중요한지">현재와의 연결고리</FieldLabel>
                       <textarea value={get('histConnect')} onChange={e => set('histConnect', e.target.value)} rows={3} placeholder="예: 현재 SVB 사태, 부동산 PF 부실과 구조적으로 유사한 신용 수축 메커니즘" className={iCls} />
                     </div>
 
@@ -667,17 +649,17 @@ export default function PromptPage() {
                 {activeCategory === 'psychology' && (
                   <>
                     <div>
-                      <FieldLabel required>핵심 심리 현상 & 이름</FieldLabel>
+                      <FieldLabel>핵심 심리 현상 & 이름</FieldLabel>
                       <textarea value={get('psychPhenomenon')} onChange={e => set('psychPhenomenon', e.target.value)} rows={3} placeholder="예: 확증 편향 (Confirmation Bias) — 자신의 믿음을 강화하는 정보만 선택적으로 수용하는 현상" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required sub="연구자명, 실험명, 연도, 결과 수치까지">관련 연구 & 실험</FieldLabel>
+                      <FieldLabel sub="연구자명, 실험명, 연도, 결과 수치까지">관련 연구 & 실험</FieldLabel>
                       <textarea value={get('psychResearch')} onChange={e => set('psychResearch', e.target.value)} rows={3} placeholder="예: 피터 웨이슨(1960) 선택 과제 실험 — 피험자 80% 이상이 자신의 가설을 반증하는 카드를 뒤집지 않음" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required sub="시청자가 실제로 겪는 구체적 사례">일상 적용 상황</FieldLabel>
+                      <FieldLabel sub="시청자가 실제로 겪는 구체적 사례">일상 적용 상황</FieldLabel>
                       <textarea value={get('psychApplication')} onChange={e => set('psychApplication', e.target.value)} rows={3} placeholder="예: 주식을 사면 그 기업의 좋은 뉴스만 눈에 들어오고, 나쁜 뉴스는 '예외'로 처리하는 경험" className={iCls} />
                     </div>
 
@@ -692,12 +674,12 @@ export default function PromptPage() {
                 {activeCategory === 'horror' && (
                   <>
                     <div>
-                      <FieldLabel required>공포의 소재 & 배경</FieldLabel>
+                      <FieldLabel>공포의 소재 & 배경</FieldLabel>
                       <textarea value={get('horrorMaterial')} onChange={e => set('horrorMaterial', e.target.value)} rows={3} placeholder="예: 1980년대 일본 자살 숲 아오키가하라 / 연간 수십 구의 시신 발견 / 일본 정부가 안내판을 세운 이유" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required sub="시청자가 예상 못 한 반전 — 이게 없으면 공포 영상이 아니에요">핵심 반전 포인트</FieldLabel>
+                      <FieldLabel sub="시청자가 예상 못 한 반전 — 이게 없으면 공포 영상이 아니에요">핵심 반전 포인트</FieldLabel>
                       <textarea value={get('horrorTwist')} onChange={e => set('horrorTwist', e.target.value)} rows={3} placeholder="예: 숲 자체가 아니라 '그곳에 가는 사람들을 유인하는 심리 구조'가 진짜 공포 — 인터넷 자살 카페와 동일한 메커니즘" className={iCls} />
                     </div>
 
@@ -722,17 +704,17 @@ export default function PromptPage() {
                 {activeCategory === 'health' && (
                   <>
                     <div>
-                      <FieldLabel required>건강 주제 & 핵심 현상</FieldLabel>
+                      <FieldLabel>건강 주제 & 핵심 현상</FieldLabel>
                       <textarea value={get('healthTopic')} onChange={e => set('healthTopic', e.target.value)} rows={3} placeholder="예: 수면 부족이 뇌에 미치는 영향 — 하루 6시간 이하 수면 시 인지 기능 저하가 혈중 알코올 0.1% 상태와 동일" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required sub="연구기관, 논문, 수치까지">관련 연구 & 의학적 근거</FieldLabel>
+                      <FieldLabel sub="연구기관, 논문, 수치까지">관련 연구 & 의학적 근거</FieldLabel>
                       <textarea value={get('healthResearch')} onChange={e => set('healthResearch', e.target.value)} rows={3} placeholder="예: 매튜 워커(UC버클리, 2017) — 수면 부족 시 편도체 반응 60% 증가 / WHO 수면 부족 '현대의 전염병' 규정" className={iCls} />
                     </div>
 
                     <div>
-                      <FieldLabel required>대중의 잘못된 상식</FieldLabel>
+                      <FieldLabel>대중의 잘못된 상식</FieldLabel>
                       <textarea value={get('healthMisconception')} onChange={e => set('healthMisconception', e.target.value)} rows={3} placeholder="예: '주말에 몰아서 자면 된다' — 수면 부채는 완전히 회복되지 않으며, 몰아 자기는 오히려 생체리듬 파괴" className={iCls} />
                     </div>
 
