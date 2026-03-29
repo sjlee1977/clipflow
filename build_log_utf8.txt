@@ -1,0 +1,35 @@
+﻿
+> clipflow@1.0.0 build
+> next build
+
+??Next.js 16.2.1 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+??Compiled successfully in 6.7s
+  Running TypeScript ...
+node.exe : Failed to type check.
+위치 줄:1 문자:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo
+ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Failed to type check.:Str 
+   ing) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+./src/lib/google.ts:268:3
+Type error: Type 'string' is not assignable to type '{ url: string; dur
+ationMs: number; }'.
+
+  [90m266 |[0m   }));
+  [90m267 |[0m
+[31m[1m>[0m [90m268 |[0m   [36mreturn[0m [32m`https://[0m${[3
+3mBUCKET[0m[32m}.s3.[0m${process.env.[33mAWS_REGION[0m ?? [32m'ap
+-northeast-2'[0m[32m}.amazonaws.co..[0m.
+  [90m    |[0m   [31m[1m^[0m
+  [90m269 |[0m }
+  [90m270 |[0m
+  [90m271 |[0m [36mfunction[0m pcmToWav(pcmData: [33mBuffer[0m, s
+ampleRate: number, channels: number, bitsPerSample: n...
+Next.js build worker exited with code: 1 and signal: null

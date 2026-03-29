@@ -1,0 +1,35 @@
+﻿
+> clipflow@1.0.0 build
+> next build
+
+??Next.js 16.2.1 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+??Compiled successfully in 5.8s
+  Running TypeScript ...
+node.exe : Failed to type check.
+위치 줄:1 문자:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_m
+o ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~
+    + CategoryInfo          : NotSpecified: (Failed to type check.:St 
+   ring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+./tmp/dashboard_laptop.tsx:18:39
+Type error: Unterminated string literal.
+
+  [90m16 |[0m   { id: [32m'documentary'[0m, label: [32m'??쎄괠'[0m
+ },
+  [90m17 |[0m   { id: [32m'3d'[0m, label: [32m'3D'[0m },
+[31m[1m>[0m [90m18 |[0m   { id: [32m'watercolor'[0m, label: [3
+2m'??륁퐟?? },[0m
+  [90m   |[0m                                     [31m[1m^[0m
+  [90m19 |[0m [32m  { id: '[0mcartoon[32m', label: '[0m燁삳똾??[32m
+' },[0m
+  [90m20 |[0m [32m  { id: '[0mnoir[32m', label: '[0m?袁⑸툡?? },
+  [90m21 |[0m ] [36mas[0m [36mconst[0m;
+Next.js build worker exited with code: 1 and signal: null

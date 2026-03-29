@@ -265,7 +265,8 @@ export async function generateSpeech(text: string, filename: string, voiceName =
     Bucket: BUCKET, Key: key, Body: wavBuffer, ContentType: 'audio/wav',
   }));
 
-  return `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  const url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+  return { url, durationMs };
 }
 
 function pcmToWav(pcmData: Buffer, sampleRate: number, channels: number, bitsPerSample: number): Buffer {
