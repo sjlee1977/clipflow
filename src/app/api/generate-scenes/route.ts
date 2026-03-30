@@ -61,8 +61,10 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. 장면 분할 (200자당 1장면, 최대 50장면)
-        const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / 200)));
-        console.log('[generate-scenes] Splitting script into scenes...');
+        // 최소 150자, 최대 250자 기준으로 자연스러운 문장 단위로 분할
+        const targetCharsPerScene = 200;
+        const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
+        console.log(`[generate-scenes] script.length=${script.length}, sceneCount=${sceneCount}`);
         const hasCharacter = !!characterImageBase64;
         const subCharacterNames = Array.isArray(subCharacters) ? subCharacters.map((c: { name: string }) => c.name) : [];
         const { scenes: scriptScenes, usage: llmUsage } = await splitViaGemini(script, llmModelId, sceneCount, hasCharacter, geminiApiKey, subCharacterNames, allowedAnimations, imageStyle);

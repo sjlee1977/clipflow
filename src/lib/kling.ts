@@ -37,10 +37,10 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
 export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10, ak?: string, sk?: string) {
-  const body = { model, image: imageUrl, prompt, duration };
+  const body = { model_name: model, image_url: imageUrl, prompt, duration };
   console.log('[kling] createKlingVideoTask body:', JSON.stringify(body));
 
-  const res = await fetch(`${KLING_API_URL}/videos/image-to-video`, {
+  const res = await fetch(`${KLING_API_URL}/videos/image2video`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -60,14 +60,14 @@ export async function createKlingVideoTask(imageUrl: string, prompt: string, mod
   }
 
   if (json.code !== 0 && json.code !== 200) {
-    throw new Error(`Kling API 오류 [${json.code}]: ${json.message}`);
+    throw new Error(`Kling API 오류 [${json.code}]: ${json.message ?? '응답 원문: ' + raw.slice(0, 300)}`);
   }
 
   return json.data?.task_id;
 }
 
 export async function queryKlingVideoTask(taskId: string, ak?: string, sk?: string) {
-  const res = await fetch(`${KLING_API_URL}/videos/image-to-video/${taskId}`, {
+  const res = await fetch(`${KLING_API_URL}/videos/image2video/${taskId}`, {
     headers: { 'Authorization': `Bearer ${getKlingToken(ak, sk)}` },
   });
   const json = await res.json();

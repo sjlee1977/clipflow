@@ -42,7 +42,7 @@ export default function SidebarScripts() {
     sessionStorage.setItem('clipflow_script', s.content);
     // 현재 페이지가 대시보드라면 새로고침 효과를 위해 강제 이동 또는 상태 공유가 필요할 수 있음
     // 여기서는 가장 단순하게 대시보드로 이동
-    router.push('/dashboard');
+    router.push('/dashboard/video');
     // 만약 이미 /dashboard에 있다면 리로드 트리거가 필요할 수 있음. 
     // 브라우저 이벤트로 알림
     window.dispatchEvent(new Event('clipflow_script_updated'));

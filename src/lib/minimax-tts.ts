@@ -16,30 +16,31 @@ const BUCKET = process.env.S3_BUCKET ?? 'remotionlambda-apnortheast2-17lxfxukvf'
 export type MiniMaxVoice = {
   id: string;
   name: string;
+  desc: string;
   gender: 'female' | 'male';
 };
 
 export const MINIMAX_VOICES: MiniMaxVoice[] = [
-  { id: 'Korean_SoothingLady',     name: '부드러운 여성', gender: 'female' },
-  { id: 'Korean_SweetGirl',        name: '달콤한 소녀', gender: 'female' },
-  { id: 'Korean_ReliableSister',   name: '믿음직한 누나', gender: 'female' },
-  { id: 'Korean_MatureLady',       name: '성숙한 여성', gender: 'female' },
-  { id: 'Korean_ThoughtfulWoman',  name: '생각 깊은 여성', gender: 'female' },
-  { id: 'Korean_SassyGirl',        name: '톡톡 튀는 소녀', gender: 'female' },
-  { id: 'Korean_QuirkyGirl',       name: '독특한 소녀', gender: 'female' },
-  { id: 'Korean_MysteriousGirl',   name: '신비로운 소녀', gender: 'female' },
-  { id: 'Korean_ShyGirl',          name: '수줍은 소녀', gender: 'female' },
-  { id: 'Korean_AirheadedGirl',    name: '엉뚱한 소녀', gender: 'female' },
-  { id: 'Korean_ReliableYouth',    name: '믿음직한 청년', gender: 'male' },
-  { id: 'Korean_OptimisticYouth',  name: '낙천적인 청년', gender: 'male' },
-  { id: 'Korean_IntellectualMan',  name: '지적인 남성', gender: 'male' },
-  { id: 'Korean_IntellectualSenior',name: '지적인 어르신', gender: 'male' },
-  { id: 'Korean_LonelyWarrior',    name: '고독한 전사', gender: 'male' },
-  { id: 'Korean_PlayboyCharmer',   name: '매력적인 남성', gender: 'male' },
-  { id: 'Korean_PossessiveMan',    name: '소유욕 있는 남성', gender: 'male' },
-  { id: 'Korean_StrictBoss',       name: '엄격한 상사', gender: 'male' },
-  { id: 'Korean_WiseTeacher',      name: '현명한 선생님', gender: 'male' },
-  { id: 'Korean_WiseElf',          name: '현명한 엘프', gender: 'male' },
+  { id: 'Korean_SoothingLady',      name: 'Soothing',    desc: '부드러운',      gender: 'female' },
+  { id: 'Korean_SweetGirl',         name: 'Sweet',       desc: '달콤한',        gender: 'female' },
+  { id: 'Korean_ReliableSister',    name: 'Reliable',    desc: '믿음직한',      gender: 'female' },
+  { id: 'Korean_MatureLady',        name: 'Mature',      desc: '성숙한',        gender: 'female' },
+  { id: 'Korean_ThoughtfulWoman',   name: 'Thoughtful',  desc: '생각 깊은',     gender: 'female' },
+  { id: 'Korean_SassyGirl',         name: 'Sassy',       desc: '톡톡 튀는',     gender: 'female' },
+  { id: 'Korean_QuirkyGirl',        name: 'Quirky',      desc: '독특한',        gender: 'female' },
+  { id: 'Korean_MysteriousGirl',    name: 'Mysterious',  desc: '신비로운',      gender: 'female' },
+  { id: 'Korean_ShyGirl',           name: 'Shy',         desc: '수줍은',        gender: 'female' },
+  { id: 'Korean_AirheadedGirl',     name: 'Airheaded',   desc: '엉뚱한',        gender: 'female' },
+  { id: 'Korean_ReliableYouth',     name: 'Youth',       desc: '믿음직한',      gender: 'male'   },
+  { id: 'Korean_OptimisticYouth',   name: 'Optimistic',  desc: '낙천적인',      gender: 'male'   },
+  { id: 'Korean_IntellectualMan',   name: 'Intellectual', desc: '지적인',       gender: 'male'   },
+  { id: 'Korean_IntellectualSenior',name: 'Senior',      desc: '지적인 어르신', gender: 'male'   },
+  { id: 'Korean_LonelyWarrior',     name: 'Warrior',     desc: '고독한',        gender: 'male'   },
+  { id: 'Korean_PlayboyCharmer',    name: 'Charmer',     desc: '매력적인',      gender: 'male'   },
+  { id: 'Korean_PossessiveMan',     name: 'Possessive',  desc: '소유욕 있는',   gender: 'male'   },
+  { id: 'Korean_StrictBoss',        name: 'Boss',        desc: '엄격한',        gender: 'male'   },
+  { id: 'Korean_WiseTeacher',       name: 'Teacher',     desc: '현명한',        gender: 'male'   },
+  { id: 'Korean_WiseElf',           name: 'Elf',         desc: '현명한 (엘프)', gender: 'male'   },
 ];
 
 export type GenerateSpeechOptions = {

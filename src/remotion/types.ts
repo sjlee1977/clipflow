@@ -17,4 +17,5 @@ export type Scene = {
 export type VideoProps = {
   scenes: Scene[];
   fps: number;
+  fontFamily?: string;
 };

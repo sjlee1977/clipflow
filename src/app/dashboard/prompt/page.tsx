@@ -98,6 +98,11 @@ export default function PromptPage() {
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcriptCopied, setTranscriptCopied] = useState(false);
 
+  // Script analysis state
+  const [scriptText, setScriptText] = useState('');
+  const [scriptStatus, setScriptStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [scriptError, setScriptError] = useState('');
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── localStorage: load on mount ──
@@ -171,10 +176,13 @@ export default function PromptPage() {
       const updates: Record<string, string> = {};
       if (d.topic) updates.topic = d.topic;
       if (d.angle) updates.angle = d.angle;
+      if (d.hookStyle) updates.hookStyle = d.hookStyle;
+      if (d.differentiation) updates.differentiation = d.differentiation;
+      if (d.videoLength) updates.videoLength = d.videoLength;
 
       const catFields: Record<string, string[]> = {
-        general:   ['genContent', 'genPoint1', 'genPoint2', 'genPoint3', 'genCaution', 'genReference', 'genAudience'],
-        economy:   ['econData', 'econBullish', 'econNeutral', 'econBearish', 'econRisk', 'econSector', 'econIndicator'],
+        general:   ['genContent', 'genPoint1', 'genPoint2', 'genPoint3', 'genCaution', 'genReference'],
+        economy:   ['econData', 'econBullish', 'econNeutral', 'econBearish', 'econRisk', 'econSector'],
         history:   ['histEra', 'histConnect', 'histPattern', 'histFacts', 'histLesson'],
         psychology:['psychPhenomenon', 'psychResearch', 'psychApplication', 'psychBehavior'],
         horror:    ['horrorMaterial', 'horrorTwist', 'horrorTension', 'horrorFact', 'horrorEnding'],
@@ -195,6 +203,56 @@ export default function PromptPage() {
     }
   }
 
+  // ── Script Analyzer ──
+  async function handleScriptAnalyze() {
+    if (!scriptText.trim()) return;
+    setScriptStatus('loading'); setScriptError('');
+    try {
+      const requestCategory = activeCategory === 'general' ? 'auto' : activeCategory;
+
+      const res = await fetch('/api/analyze-script', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: scriptText.trim(), category: requestCategory }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || '분석 실패');
+
+      const targetCat: CategoryId = (requestCategory === 'auto' && d.detectedCategory)
+        ? (d.detectedCategory as CategoryId)
+        : activeCategory;
+
+      if (targetCat !== activeCategory) setActiveCategory(targetCat);
+
+      const applyFields = (cat: CategoryId, fields: Record<string, string>) => {
+        setAllData(prev => ({ ...prev, [cat]: { ...prev[cat], ...fields } }));
+      };
+
+      const updates: Record<string, string> = {};
+      if (d.topic) updates.topic = d.topic;
+      if (d.angle) updates.angle = d.angle;
+      if (d.hookStyle) updates.hookStyle = d.hookStyle;
+      if (d.differentiation) updates.differentiation = d.differentiation;
+      if (d.videoLength) updates.videoLength = d.videoLength;
+
+      const catFields: Record<string, string[]> = {
+        general:   ['genContent', 'genPoint1', 'genPoint2', 'genPoint3', 'genCaution', 'genReference'],
+        economy:   ['econData', 'econBullish', 'econNeutral', 'econBearish', 'econRisk', 'econSector'],
+        history:   ['histEra', 'histConnect', 'histPattern', 'histFacts', 'histLesson'],
+        psychology:['psychPhenomenon', 'psychResearch', 'psychApplication', 'psychBehavior'],
+        horror:    ['horrorMaterial', 'horrorTwist', 'horrorTension', 'horrorFact', 'horrorEnding'],
+        health:    ['healthTopic', 'healthResearch', 'healthMisconception', 'healthAction', 'healthCaution'],
+      };
+      for (const field of (catFields[targetCat] ?? [])) {
+        if (d[field]) updates[field] = d[field];
+      }
+      applyFields(targetCat, updates);
+      setScriptStatus('done');
+    } catch (err: unknown) {
+      setScriptError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다');
+      setScriptStatus('error');
+    }
+  }
+
   // ── Build Prompt ──
   function buildPrompt(): string {
     const g = get;
@@ -208,9 +266,12 @@ export default function PromptPage() {
 
     lines.push(`[카테고리] ${catLabel}`);
     lines.push(`[영상 주제 제목] ${g('topic')}`);
-    lines.push(`[핵심 앵글] ${g('angle')}`);
+    lines.push(`[핵심 앵글 / 대중의 착각] ${g('angle')}`);
+    if (g('videoLength')) lines.push(`[영상 길이 목표] ${g('videoLength')}`);
+    if (g('hookStyle')) lines.push(`[도입 훅 방향] ${g('hookStyle')}${g('hookHint') ? ` / 소재: ${g('hookHint')}` : ''}`);
+    if (g('differentiation')) { lines.push('[이 영상만의 차별점]'); lines.push(g('differentiation')); lines.push(''); }
     if (g('analogy')) lines.push(`[비유 방향] ${g('analogy')}`);
-    if (g('tone')) lines.push(`[영상 톤] ${g('tone')}`);
+    if (g('tone')) lines.push(`[영상 톤 & 강조 포인트] ${g('tone')}`);
     lines.push('');
 
     if (activeCategory === 'general') {
@@ -224,7 +285,6 @@ export default function PromptPage() {
       }
       if (g('genCaution')) { lines.push('[주의사항 / 반론]'); lines.push(g('genCaution')); lines.push(''); }
       if (g('genReference')) { lines.push('[참고 사례 / 자료]'); lines.push(g('genReference')); lines.push(''); }
-      if (g('genAudience')) { lines.push(`[대상 시청자 & 톤] ${g('genAudience')}`); lines.push(''); }
     }
 
     if (activeCategory === 'economy') {
@@ -238,7 +298,6 @@ export default function PromptPage() {
       }
       if (g('econRisk')) { lines.push('[리스크 메커니즘]'); lines.push(g('econRisk')); lines.push(''); }
       if (g('econSector')) { lines.push('[수혜주 / 주목 섹터]'); lines.push(g('econSector')); lines.push(''); }
-      if (g('econIndicator')) { lines.push(`[매일 볼 체크 지표] ${g('econIndicator')}`); lines.push(''); }
     }
 
     if (activeCategory === 'history') {
@@ -307,6 +366,7 @@ export default function PromptPage() {
 
   function handleUseAsScript() {
     sessionStorage.setItem('clipflow_script_topic', result);
+    sessionStorage.setItem('clipflow_script_category', activeCategory);
     router.push('/dashboard/script');
   }
 
@@ -320,6 +380,10 @@ export default function PromptPage() {
     const common: { label: string; value: string; required?: boolean }[] = [
       { label: '영상 주제', value: get('topic'), required: true },
       { label: '핵심 앵글', value: get('angle'), required: true },
+      { label: '영상 길이', value: get('videoLength') },
+      { label: '도입 훅 방향', value: get('hookStyle') },
+      { label: '도입 훅 소재', value: get('hookHint') },
+      { label: '경쟁 영상 차별점', value: get('differentiation') },
       { label: '비유 방향', value: get('analogy') },
       { label: '영상 톤', value: get('tone') },
       { label: '추가 요청사항', value: get('extra') },
@@ -332,7 +396,6 @@ export default function PromptPage() {
         { label: '포인트 3', value: get('genPoint3') },
         { label: '주의사항', value: get('genCaution') },
         { label: '참고 사례', value: get('genReference') },
-        { label: '대상 시청자', value: get('genAudience') },
       ];
       if (activeCategory === 'economy') return [
         { label: '날짜 & 수치', value: get('econData'), required: true },
@@ -341,7 +404,6 @@ export default function PromptPage() {
         { label: '비관 시나리오', value: get('econBearish') },
         { label: '리스크 메커니즘', value: get('econRisk') },
         { label: '수혜주/섹터', value: get('econSector') },
-        { label: '체크 지표', value: get('econIndicator') },
       ];
       if (activeCategory === 'history') return [
         { label: '시대 & 핵심 사건', value: get('histEra'), required: true },
@@ -468,7 +530,7 @@ export default function PromptPage() {
                           onClick={() => setShowTranscript(v => !v)}
                           className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors"
                         >
-                          <span className="text-[11.5px] font-mono text-white/40">{ytTranscriptSource === 'description' ? '영상 설명' : '원본 스크립트'} ({ytTranscript.length.toLocaleString()}자)</span>
+                          <span className="text-[11.5px] font-mono" style={{ color: '#8B9A3A' }}>{ytTranscriptSource === 'description' ? '영상 설명' : '원본 스크립트'} ({ytTranscript.length.toLocaleString()}자)</span>
                           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`text-white/30 transition-transform ${showTranscript ? 'rotate-180' : ''}`}>
                             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
@@ -490,6 +552,43 @@ export default function PromptPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* ── 대본 직접 분석 ── */}
+              <div className="border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#17BEBB] shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span className="text-[#17BEBB] text-[12.5px] font-bold font-mono tracking-widest">대본 붙여넣기로 {catInfo.label} 전용 필드 자동 분석</span>
+                  <span className="text-[11px] font-mono px-1.5 py-0.5 border border-[#17BEBB]/30 text-[#17BEBB]/60">AI</span>
+                </div>
+                <textarea
+                  value={scriptText}
+                  onChange={e => { setScriptText(e.target.value); setScriptStatus('idle'); setScriptError(''); }}
+                  rows={5}
+                  placeholder="기존 대본을 붙여넣으면 아래 필드를 자동으로 채워드립니다..."
+                  disabled={scriptStatus === 'loading'}
+                  className="w-full bg-black/40 text-white/80 border border-white/15 focus:border-[#17BEBB]/50 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2 resize-none transition-colors mb-2"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1">
+                    {scriptStatus === 'error' && <p className="text-red-400 text-[12px] font-mono">{scriptError}</p>}
+                    {scriptStatus === 'done' && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                        <span className="text-green-400 text-[12px] font-mono">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleScriptAnalyze}
+                    disabled={!scriptText.trim() || scriptStatus === 'loading'}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#17BEBB] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] font-mono whitespace-nowrap"
+                  >
+                    {scriptStatus === 'loading' ? <><span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />분석 중...</> : 'AI 분석 →'}
+                  </button>
+                </div>
               </div>
 
               {/* ── 공통 필드 ── */}
@@ -518,6 +617,41 @@ export default function PromptPage() {
                 <div>
                   <FieldLabel optional sub="도입부 특히 강하게 / 반전 극적으로 / 차분하게">영상 톤 & 강조 포인트</FieldLabel>
                   <input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />
+                </div>
+
+                {/* 영상 길이 */}
+                <div>
+                  <FieldLabel optional sub="영상 길이에 따라 대본 글자 수가 자동으로 조정됩니다">영상 목표 길이</FieldLabel>
+                  <select value={get('videoLength')} onChange={e => set('videoLength', e.target.value)} className={sCls}>
+                    <option value="">선택 안 함</option>
+                    <option value="5분 내외 (3,000자 이상)">5분 내외</option>
+                    <option value="10분 내외 (5,000자 이상)">10분 내외</option>
+                    <option value="15분 내외 (7,000자 이상)">15분 내외</option>
+                    <option value="20분 이상 (9,000자 이상)">20분 이상</option>
+                  </select>
+                </div>
+
+                {/* 도입 훅 방향 */}
+                <div>
+                  <FieldLabel optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택">도입 훅 방향</FieldLabel>
+                  <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls + ' mb-2'}>
+                    <option value="">AI 자동 선택</option>
+                    <option value="A형 — 도발적 질문: &quot;[핵심 주제], 지금 제대로 알고 있어?&quot;">A형 — 도발적 질문형</option>
+                    <option value="B형 — 충격 수치: &quot;[충격적 수치나 사실], 이게 우리한테 무슨 의미인지 알아?&quot;">B형 — 충격 수치형</option>
+                    <option value="C형 — 착각 지적: &quot;지금 [상황]인데, 대부분이 완전히 잘못 보고 있어.&quot;">C형 — 착각 지적형</option>
+                  </select>
+                  {get('hookStyle') && (
+                    <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
+                      placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
+                  )}
+                </div>
+
+                {/* 경쟁 영상 차별점 */}
+                <div>
+                  <FieldLabel optional sub="유사 주제 영상들과 다른 이 영상만의 관점 — 클수록 4단계 인사이트가 날카로워집니다">경쟁 영상과의 차별점</FieldLabel>
+                  <textarea value={get('differentiation')} onChange={e => set('differentiation', e.target.value)} rows={3}
+                    placeholder={`예:\n- 기존 영상들은 금리 인하 자체에 집중하지만, 이 영상은 '선반영 이후의 실망 매물' 타이밍에 집중\n- 단순 종목 추천이 아닌 수급 데이터 기반 근거 제시`}
+                    className={iCls} />
                 </div>
               </div>
 
@@ -564,11 +698,6 @@ export default function PromptPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <FieldLabel optional sub="대상 시청자와 말투를 지정하면 영상 분위기가 훨씬 일관됩니다">대상 시청자 & 톤</FieldLabel>
-                      <input value={get('genAudience')} onChange={e => set('genAudience', e.target.value)}
-                        placeholder="예: 20~30대 직장인 / 유머러스하고 친근한 말투 / 너무 전문적이지 않게" className={iCls} />
-                    </div>
                   </>
                 )}
 
@@ -608,10 +737,6 @@ export default function PromptPage() {
                       <textarea value={get('econSector')} onChange={e => set('econSector', e.target.value)} rows={3} placeholder="예: 방산 (한화에어로, LIG넥스원) / 조선 섹터 주목 / 반도체 단기 주의" className={iCls} />
                     </div>
 
-                    <div>
-                      <FieldLabel optional sub="기준선 숫자까지 써줘야 실제로 쓸 수 있어요">매일 볼 체크 지표</FieldLabel>
-                      <input value={get('econIndicator')} onChange={e => set('econIndicator', e.target.value)} placeholder="예: 환율 1,400원 기준 / 외국인 3일 연속 수급 / VIX 20 이하 유지" className={iCls} />
-                    </div>
                   </>
                 )}
 

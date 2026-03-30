@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { YoutubeTranscript } from '@/lib/youtube';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@/lib/supabase-server';
 
 function extractVideoId(url: string): string | null {
   const patterns = [
@@ -68,6 +69,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       genCaution: '영상에서 언급된 주의사항·반론·예외 케이스 (없으면 빈 문자열)',
       genReference: '영상에서 언급된 참고 자료·사례·출처 (없으면 빈 문자열)',
       genAudience: '영상이 타겟하는 시청자층 및 말투/톤 특징 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
   economy: {
@@ -82,6 +86,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       econRisk: '영상에서 언급된 리스크 발동 조건과 영향 경로 (없으면 빈 문자열)',
       econSector: '영상에서 언급된 주목 종목·섹터·자산 (없으면 빈 문자열)',
       econIndicator: '영상에서 언급된 체크해야 할 지표와 기준선 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
   history: {
@@ -94,6 +101,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       histPattern: '영상에서 언급된 반복되는 역사 패턴 (없으면 빈 문자열)',
       histFacts: '영상에서 언급된 핵심 수치·팩트를 줄바꿈으로 정리 (없으면 빈 문자열)',
       histLesson: '시청자가 가져갈 교훈 한 줄 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
   psychology: {
@@ -105,6 +115,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       psychResearch: '영상에서 언급된 연구자명·실험명·연도·결과 수치 (없으면 빈 문자열)',
       psychApplication: '영상에서 언급된 일상 적용 사례 (없으면 빈 문자열)',
       psychBehavior: '영상에서 제안하는 행동 변화 포인트 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
   horror: {
@@ -117,6 +130,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       horrorTension: '영상에서 긴장감을 고조시키는 구간 설정 (없으면 빈 문자열)',
       horrorFact: '영상에서 언급된 충격적인 수치·사실 (없으면 빈 문자열)',
       horrorEnding: '영상의 마무리 방향 또는 메시지 한 줄 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
   health: {
@@ -129,6 +145,9 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
       healthMisconception: '영상에서 뒤집는 잘못된 상식 (없으면 빈 문자열)',
       healthAction: '영상에서 제안하는 실천 행동 지침 (없으면 빈 문자열)',
       healthCaution: '영상에서 언급된 주의사항·면책 내용 (없으면 빈 문자열)',
+      hookStyle: '영상 도입부의 훅 스타일 — "도발적 질문형(A형)", "충격 수치형(B형)", "착각 지적형(C형)" 중 감지된 것과 첫 문장의 핵심 소재를 한 줄로 (없으면 빈 문자열)',
+      differentiation: '이 영상만의 독특한 관점이나 차별점 — 유사 영상들과 다르게 접근한 부분을 2~3줄로 (없으면 빈 문자열)',
+      videoLength: '영상 길이를 추정하여 아래 보기 중 하나만 정확히 출력: "5분 내외 (3,000자 이상)" 또는 "10분 내외 (5,000자 이상)" 또는 "15분 내외 (7,000자 이상)" 또는 "20분 이상 (9,000자 이상)" — 자막 길이가 짧으면 5분, 길면 20분 이상으로 추정',
     },
   },
 };
@@ -137,6 +156,17 @@ export async function POST(req: NextRequest) {
   try {
     const { url, category = 'economy' } = await req.json();
     if (!url) return NextResponse.json({ error: 'URL을 입력해주세요' }, { status: 400 });
+
+    // 사용자 Gemini API 키 조회
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const geminiApiKey = user?.user_metadata?.gemini_api_key;
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        { error: 'Google Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.' },
+        { status: 403 }
+      );
+    }
 
     const videoId = extractVideoId(url.trim());
     if (!videoId) return NextResponse.json({ error: '유효한 YouTube URL이 아닙니다' }, { status: 400 });
@@ -183,7 +213,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '영상 정보를 가져올 수 없습니다. 비공개 영상이거나 잘못된 URL일 수 있습니다.' }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
     const contentLabel = transcriptSource === 'description' ? '영상 설명(자막 없음, 설명란으로 대체)' : '자막';
     const transcriptForAI = fullTranscript.slice(0, 8000);

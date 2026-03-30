@@ -25,17 +25,18 @@ function getAI(apiKey?: string) {
 export type GoogleVoice = {
   id: string;
   name: string;
+  desc: string;
   gender: 'female' | 'male';
 };
 
 export const GOOGLE_VOICES: GoogleVoice[] = [
-  { id: 'Kore',   name: 'Kore (차분한 여성)',  gender: 'female' },
-  { id: 'Aoede',  name: 'Aoede (밝은 여성)',   gender: 'female' },
-  { id: 'Leda',   name: 'Leda (부드러운 여성)', gender: 'female' },
-  { id: 'Charon', name: 'Charon (중후한 남성)', gender: 'male'   },
-  { id: 'Fenrir', name: 'Fenrir (강한 남성)',   gender: 'male'   },
-  { id: 'Puck',   name: 'Puck (밝은 남성)',     gender: 'male'   },
-  { id: 'Orus',   name: 'Orus (안정적 남성)',   gender: 'male'   },
+  { id: 'Kore',   name: 'Kore',   desc: '차분한',   gender: 'female' },
+  { id: 'Aoede',  name: 'Aoede',  desc: '밝은',     gender: 'female' },
+  { id: 'Leda',   name: 'Leda',   desc: '부드러운', gender: 'female' },
+  { id: 'Charon', name: 'Charon', desc: '중후한',   gender: 'male'   },
+  { id: 'Fenrir', name: 'Fenrir', desc: '강한',     gender: 'male'   },
+  { id: 'Puck',   name: 'Puck',   desc: '밝은',     gender: 'male'   },
+  { id: 'Orus',   name: 'Orus',   desc: '안정적',   gender: 'male'   },
 ];
 
 export type ScriptScene = {
@@ -72,7 +73,7 @@ export async function splitScriptIntoScenes(
     : '';
 
   const characterInstruction = hasCharacter
-    ? `\n**중요 - 캐릭터 참조 이미지 있음**: imagePrompt에서 메인 캐릭터의 표정(기쁨/슬픔/놀람/진지함 등), 자세(서있는/앉아있는/걷는/손짓하는 등), 제스처, 시선 방향을 장면 내용에 맞게 구체적으로 묘사하세요. 배경과 조명도 장면 분위기에 맞게 묘사하세요. 절대로 참조 이미지의 포즈를 그대로 복사하지 마세요.${subCharacterInstruction}`
+    ? `\n**중요 - 메인 캐릭터 참조 이미지가 함께 전달됩니다**: 이미지 생성 시 참조 이미지의 캐릭터 외모(얼굴, 헤어스타일, 복장)를 반드시 유지하세요. imagePrompt에는 반드시 "same character as reference image,"를 앞에 붙이고, 장면에 맞는 표정(기쁨/슬픔/놀람/진지함 등), 자세(서있는/앉아있는/걷는/손짓하는 등), 배경, 조명을 구체적으로 묘사하세요.${subCharacterInstruction}`
     : '';
 
   const animList = (allowedAnimations && allowedAnimations.length > 0) 
@@ -89,9 +90,9 @@ export async function splitScriptIntoScenes(
 (6) textPosition: 텍스트 위치 ('bottom', 'center', 'top' 중 선택)`
     : `
 (5) textAnimationStyle: 텍스트 애니메이션 및 모션 그래픽 (반드시 다음 목록 중에서만 선택: ${animList})
-    - **중요: 모든 장면에 효과를 넣지 마세요.** 
-    - 강조가 필요한 순간에만 '알토란'처럼 적절히 섞어서 적용하세요. (30~50% 정도 적용 권장)
-    - 나머지 장면은 'none'을 사용하여 깔끔하게 유지하세요.
+    - **중요: 전체 장면의 40~60%에 반드시 애니메이션을 적용하세요. 'none'만 사용하는 것은 금지입니다.**
+    - 장면 분위기에 맞게 선택: 'clock-spin'(시간/기다림), 'pulse-ring'(강한 강조), 'sparkle'(신비/우아함), 'confetti'(축하/승리), 'rain'(슬픔/감성), 'snow'(겨울/평화), 'fire'(열정/강렬), 'heart'(사랑/행복), 'stars'(꿈/밤하늘), 'thunder'(충격/파워), 'chart-up'(성장/비즈니스), 'film-roll'(추억/기록), 'magnifier'(분석/발견), 'lock-secure'(보안/약속), 'camera-flash'(화제/강조), 'typewriter'(정보 전달), 'fly-in'(역동적 등장), 'pop-in'(경쾌한 강조), 'fade-zoom'(부드러운 전환)
+    - 나머지 장면만 'none'으로 유지하세요.
 (6) textPosition: 텍스트 위치 ('bottom', 'center', 'top' 중 선택)`;
 
   const imagePromptInstruction = isTypographyMode
@@ -107,13 +108,16 @@ export async function splitScriptIntoScenes(
           {
             text: `당신은 영상 제작 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 장면으로 나누어주세요.
 
-**[핵심 규칙]**
-1. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
-2. **대본 원본 유지**: text 필드에는 대본 원문을 누락 없이 정확히 배분하세요.
-3. **간결성**: imagePrompt와 motionPrompt는 각각 250자 내외로 작성하세요.
+**[절대 규칙 — 위반 시 전체 작업 실패]**
+1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지. 원문 그대로 잘라서 넣으세요.
+2. **균등 분배**: 각 장면의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외(±50자)로 균등하게 배분하세요. 어떤 장면도 50자 미만이 되어서는 안 됩니다.
+3. **문장 단위 분할**: 문장 중간에서 자르지 말고 마침표(. ! ?)나 줄바꿈 기준으로 분할하세요.
+4. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
+5. **imagePrompt/motionPrompt**: 각각 영어로 250자 내외로 작성하세요.
+6. **언어 규칙**: text 필드는 반드시 한국어 원문 그대로. 영어 키워드(AI, GDP 등)는 원문에 있는 경우만 유지.
 
 필드:
-(1) text: 대본 원문
+(1) text: 대본 원문 (한국어 기본, 영어 키워드는 포인트로만)
 (2) imagePrompt: 이미지 생성 프롬프트(영어, ${imagePromptInstruction})
 (3) motionPrompt: 동작 묘사 프롬프트(영어)
 (4) shouldAnimate: 비디오 변환 여부
@@ -181,7 +185,7 @@ export async function generateImage(
   const parts: any[] = [];
   if (characterBase64) {
     parts.push({ inlineData: { mimeType: characterMimeType, data: characterBase64 } });
-    parts.push({ text: `CHARACTER REFERENCE: Use this character face and style. Scene: ${fullPrompt}` });
+    parts.push({ text: `CHARACTER REFERENCE IMAGE PROVIDED: You must preserve this character's exact appearance (face, hairstyle, clothing style) in the generated image. Generate a new scene with this character: ${fullPrompt}. Keep the character visually consistent with the reference.` });
   } else {
     parts.push({ text: fullPrompt });
   }

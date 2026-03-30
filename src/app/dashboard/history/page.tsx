@@ -154,9 +154,26 @@ export default function HistoryPage() {
               ) : (
                 <button
                   onClick={() => setPlaying(v.id)}
-                  className="w-full h-full flex items-center justify-center text-white/20 hover:text-white/60 transition-colors"
+                  className="w-full h-full flex items-center justify-center group"
                 >
-                  <span className="text-2xl">▶</span>
+                  {v.scenes?.[0]?.imageUrl ? (
+                    <>
+                      <img
+                        src={v.scenes[0].imageUrl}
+                        alt={v.title}
+                        className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                      <span className="relative text-3xl text-white/60 group-hover:text-white/90 transition-colors drop-shadow-lg">▶</span>
+                      {v.title && (
+                        <span className="absolute bottom-2 left-2 right-2 text-white/80 text-[11px] font-mono line-clamp-2 leading-snug drop-shadow">
+                          {v.title}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-2xl text-white/20 group-hover:text-white/60 transition-colors">▶</span>
+                  )}
                 </button>
               )}
               {playing === v.id && (

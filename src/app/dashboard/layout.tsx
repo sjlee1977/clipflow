@@ -12,7 +12,7 @@ const NAV_ITEMS = [
     items: [
       { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: '⌘' },
       { href: '/dashboard/script', label: '대본 만들기', icon: '✎' },
-      { href: '/dashboard', label: '영상 만들기', icon: '▶' },
+      { href: '/dashboard/video', label: '영상 만들기', icon: '▶' },
     ],
   },
   {

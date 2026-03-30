@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       speed = 1.0,
       format = 'shorts',
       ttsProvider = 'minimax',
+      fontFamily = 'Noto Sans KR',
     } = await req.json();
 
     if (!Array.isArray(inputScenes) || inputScenes.length === 0) {
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
     const compositionId = format === 'landscape' ? 'ClipFlowLandscape' : format === 'square' ? 'ClipFlowSquare' : 'ClipFlowShorts';
     const { renderId, bucketName } = await startRender({
       compositionId,
-      inputProps: { scenes, fps: FPS },
+      inputProps: { scenes, fps: FPS, fontFamily },
     });
 
     return NextResponse.json({ renderId, bucketName });

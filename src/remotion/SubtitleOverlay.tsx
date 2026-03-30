@@ -5,6 +5,7 @@ type Props = {
   subtitles: SubtitleWord[];
   style?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
   position?: 'bottom' | 'center' | 'top';
+  fontFamily?: string;
 };
 
 const ClockSpin: React.FC<{ frame: number }> = ({ frame }) => {
@@ -209,10 +210,11 @@ const CameraFlash: React.FC<{ frame: number }> = ({ frame }) => {
   return <AbsoluteFill style={{ backgroundColor: 'white', opacity }} />;
 };
 
-export const SubtitleOverlay: React.FC<Props> = ({ 
-  subtitles, 
+export const SubtitleOverlay: React.FC<Props> = ({
+  subtitles,
   style = 'none',
-  position = 'bottom' 
+  position = 'bottom',
+  fontFamily = 'Noto Sans KR',
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -306,7 +308,7 @@ export const SubtitleOverlay: React.FC<Props> = ({
             padding: '12px 28px',
             background: position === 'center' ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.4)',
             borderRadius: 16,
-            fontFamily: 'Pretendard, sans-serif',
+            fontFamily: `"${fontFamily}", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`,
           }}
         >
           {text}

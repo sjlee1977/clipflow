@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const SCRIPT_LLM_MODELS = [
   // ── Claude 4.6 & 4.5 (Official API IDs) ────────────────
@@ -13,29 +13,34 @@ const SCRIPT_LLM_MODELS = [
   { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
 ];
 
-type ScriptType = 'shorts' | 'youtube' | 'ad';
-type Tone = 'professional' | 'casual' | 'emotional' | 'funny' | 'dramatic';
+type ToneId = 'urgent_direct' | 'dramatic_tension' | 'calm_analytical' | 'trust_clear' | 'storytelling' | 'friendly_casual';
 
-const SCRIPT_TYPES: { id: ScriptType; label: string; desc: string }[] = [
-  { id: 'youtube', label: '유튜브', desc: '5~20분 분량' },
-  { id: 'shorts', label: '쇼츠 / 릴스', desc: '60초 이내 숏폼' },
-  { id: 'ad', label: '광고', desc: '15~30초 임팩트' },
+const TONES: { id: ToneId; label: string; sub: string }[] = [
+  { id: 'urgent_direct',    label: '긴박·직설',    sub: '경제/주식' },
+  { id: 'dramatic_tension', label: '드라마틱·긴장', sub: '공포' },
+  { id: 'calm_analytical',  label: '차분·분석적',  sub: '심리학' },
+  { id: 'trust_clear',      label: '신뢰·명확',    sub: '건강' },
+  { id: 'storytelling',     label: '스토리텔링',   sub: '역사' },
+  { id: 'friendly_casual',  label: '친근·반말',    sub: '일반' },
 ];
 
-const YOUTUBE_LENGTHS = [
-  { id: '3000', label: '3,000자', desc: '약 8~9분' },
-  { id: '5000', label: '5,000자', desc: '약 15분' },
-  { id: '7000', label: '7,000자', desc: '약 20분' },
-  { id: '9000', label: '9,000자 이상', desc: '약 25분+' },
-];
+const CATEGORY_DEFAULT_TONES: Record<string, ToneId> = {
+  economy:    'urgent_direct',
+  horror:     'dramatic_tension',
+  psychology: 'calm_analytical',
+  health:     'trust_clear',
+  history:    'storytelling',
+  general:    'friendly_casual',
+};
 
-const TONES: { id: Tone; label: string }[] = [
-  { id: 'professional', label: '전문적' },
-  { id: 'casual', label: '친근한' },
-  { id: 'emotional', label: '감성적' },
-  { id: 'funny', label: '유머러스' },
-  { id: 'dramatic', label: '드라마틱' },
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  economy:    '경제 / 주식',
+  horror:     '공포',
+  psychology: '심리학',
+  health:     '건강',
+  history:    '역사',
+  general:    '일반',
+};
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
@@ -121,12 +126,22 @@ export default function ScriptPage() {
     if (saved) { sessionStorage.removeItem('clipflow_script_topic'); return saved; }
     return '';
   });
-  const [scriptType, setScriptType] = useState<ScriptType>('shorts');
-  const [youtubeLength, setYoutubeLength] = useState('7000');
-  const [tone, setTone] = useState<Tone>('professional');
+  const [tone, setTone] = useState<ToneId>('friendly_casual');
+  const [category, setCategory] = useState('');
   const [llmModelId, setLlmModelId] = useState('claude-sonnet-4-6');
   const [keywords, setKeywords] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
+
+  // Read category from sessionStorage (set by prompt page)
+  useEffect(() => {
+    const savedCat = sessionStorage.getItem('clipflow_script_category');
+    if (savedCat) {
+      sessionStorage.removeItem('clipflow_script_category');
+      setCategory(savedCat);
+      const defaultTone = CATEGORY_DEFAULT_TONES[savedCat];
+      if (defaultTone) setTone(defaultTone);
+    }
+  }, []);
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [topicFocused, setTopicFocused] = useState(false);
@@ -145,7 +160,7 @@ export default function ScriptPage() {
       const res = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, scriptType, youtubeLength, tone, keywords, targetAudience, llmModelId }),
+        body: JSON.stringify({ topic, tone, category, keywords, targetAudience, llmModelId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -174,11 +189,10 @@ export default function ScriptPage() {
 
   function handleUseScript() {
     sessionStorage.setItem('clipflow_script', script);
-    window.location.href = '/dashboard';
+    window.location.href = '/dashboard/video';
   }
 
   const selectedLlm = SCRIPT_LLM_MODELS.find(m => m.id === llmModelId);
-  const selectedType = SCRIPT_TYPES.find(t => t.id === scriptType);
   const selectedTone = TONES.find(t => t.id === tone);
 
   return (
@@ -200,7 +214,7 @@ export default function ScriptPage() {
                 {/* 상단: SCRIPT INPUT + 글자수 */}
                 <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
                   <span className="text-[10.5px] font-mono tracking-widest uppercase" style={{ color: '#8B9A3A' }}>Script Input</span>
-                  <span className="text-white/20 text-[10px] font-mono tabular-nums">{topic.length}자</span>
+                  <span className="text-[10px] font-mono tabular-nums" style={{ color: '#8B9A3A' }}>{topic.length}자</span>
                 </div>
                 <textarea
                   value={topic}
@@ -295,60 +309,44 @@ export default function ScriptPage() {
 
       <aside className="w-96 shrink-0 flex flex-col border-l border-white/5 overflow-y-auto">
         <div className="flex-1 px-4 py-5 space-y-0">
-          <PanelSection label="영상 유형">
-            <div className="space-y-0.5">
-              {SCRIPT_TYPES.map(t => (
-                <div key={t.id}>
-                  <OptionItem
-                    active={scriptType === t.id}
-                    onClick={() => setScriptType(t.id)}
-                  >
-                    <div className="flex flex-col items-start py-0.5">
-                      <span>{t.label}</span>
-                      <span className="text-[11.5px] opacity-60 font-normal">{t.desc}</span>
-                    </div>
-                  </OptionItem>
-                  {t.id === 'youtube' && scriptType === 'youtube' && (
-                    <div className="ml-4 mt-1 mb-2 space-y-0.5 border-l border-yellow-400/20 pl-2">
-                      {YOUTUBE_LENGTHS.map(l => (
-                        <button
-                          key={l.id}
-                          onClick={() => setYoutubeLength(l.id)}
-                          className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono transition-colors ${
-                            youtubeLength === l.id
-                              ? 'text-yellow-400 bg-yellow-400/5'
-                              : 'text-white/50 hover:text-white/80'
-                          }`}
-                        >
-                          <span>{l.label}</span>
-                          <span className="text-[11px] opacity-60">{l.desc}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+          {category && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-[11px] font-mono text-white/30 uppercase tracking-widest">카테고리</span>
+              <span className="text-[12px] font-mono text-[#17BEBB]/70 border border-[#17BEBB]/20 px-2 py-0.5">
+                {CATEGORY_LABELS[category] ?? category}
+              </span>
             </div>
-          </PanelSection>
+          )}
 
-          <PanelSection label="톤 / 분위기">
-            <div className="flex flex-wrap gap-1">
-              {TONES.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTone(t.id)}
-                  disabled={status === 'loading'}
-                  className={`px-3 py-1.5 text-[12px] font-mono border transition-colors ${
-                    tone === t.id
-                      ? 'border-yellow-400 text-yellow-400'
-                      : 'border-white/20 text-white/55 hover:border-white/40 hover:text-white/80'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+          {/* 일반 카테고리이거나 카테고리 미설정일 때만 톤 선택 표시 */}
+          {(!category || category === 'general') ? (
+            <PanelSection label="톤 / 분위기">
+              <div className="flex flex-col gap-1">
+                {TONES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTone(t.id)}
+                    disabled={status === 'loading'}
+                    className={`flex items-center justify-between px-3 py-1.5 text-[12px] font-mono border transition-colors ${
+                      tone === t.id
+                        ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                        : 'border-white/10 text-white/55 hover:border-white/30 hover:text-white/80'
+                    }`}
+                  >
+                    <span>{t.label}</span>
+                    <span className={`text-[10.5px] ${tone === t.id ? 'text-yellow-400/60' : 'text-white/20'}`}>{t.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </PanelSection>
+          ) : (
+            <div className="border-b border-white/5 pb-4 mb-4">
+              <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-2">톤 / 분위기</p>
+              <p className="text-white/30 text-[12px] font-mono leading-relaxed">
+                이 카테고리는 전용 프롬프트의<br />내장 톤으로 자동 적용됩니다.
+              </p>
             </div>
-          </PanelSection>
+          )}
 
           <PanelSection label="추가 옵션">
             <div className="space-y-4 px-1">
@@ -408,15 +406,10 @@ export default function ScriptPage() {
           <div className="mt-8 pt-8 border-t border-white/5 space-y-1.5">
             <p className="text-[#17BEBB]/60 text-[12.6px] tracking-widest uppercase mb-2">대본 설정 요약</p>
             <div className="flex justify-between text-[12.6px] font-mono">
-              <span className="text-white/40">유형</span>
-              <span className="text-white/70">
-                {selectedType?.label}
-                {scriptType === 'youtube' && ` / ${YOUTUBE_LENGTHS.find(l => l.id === youtubeLength)?.label}`}
-              </span>
-            </div>
-            <div className="flex justify-between text-[12.6px] font-mono">
               <span className="text-white/40">톤</span>
-              <span className="text-white/70">{selectedTone?.label}</span>
+              <span className="text-white/70">
+                {(!category || category === 'general') ? selectedTone?.label : '카테고리 내장'}
+              </span>
             </div>
             <div className="flex justify-between text-[12.6px] font-mono">
               <span className="text-white/40">AI 모델</span>

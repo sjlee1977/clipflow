@@ -15,9 +15,10 @@ import { SubtitleOverlay } from './SubtitleOverlay';
 type SceneProps = {
   scene: SceneType;
   globalOffset: number;
+  fontFamily?: string;
 };
 
-export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset }) => {
+export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, fontFamily }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const duration = scene.durationInFrames;
@@ -97,10 +98,11 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset }) =>
       )}
 
       {/* 자막 */}
-      <SubtitleOverlay 
-        subtitles={scene.subtitles} 
+      <SubtitleOverlay
+        subtitles={scene.subtitles}
         style={scene.textAnimationStyle}
         position={scene.textPosition}
+        fontFamily={fontFamily}
       />
     </AbsoluteFill>
   );

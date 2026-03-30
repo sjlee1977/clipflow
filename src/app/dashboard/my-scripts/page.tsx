@@ -16,7 +16,15 @@ export default function MyScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const PAGE_SIZE = 6;
+
+  const handleCopy = (script: Script) => {
+    navigator.clipboard.writeText(script.content).then(() => {
+      setCopiedId(script.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
 
   useEffect(() => {
     const fetchScripts = async () => {
@@ -132,6 +140,12 @@ export default function MyScriptsPage() {
                       {new Date(script.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCopy(script)}
+                        className="text-[12px] font-mono px-2 py-1 transition-colors text-white/40 hover:text-white/80"
+                      >
+                        {copiedId === script.id ? '복사됨 ✓' : '복사'}
+                      </button>
                       <button
                         onClick={() => handleDelete(script.id)}
                         className="text-[12px] font-mono text-red-500/50 hover:text-red-500 px-2 py-1 transition-colors"
