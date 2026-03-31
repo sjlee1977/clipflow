@@ -110,7 +110,7 @@ export async function splitScriptIntoScenes(
 
 **[절대 규칙 — 위반 시 전체 작업 실패]**
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지. 원문 그대로 잘라서 넣으세요.
-2. **균등 분배**: 각 장면의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외(±50자)로 균등하게 배분하세요. 어떤 장면도 50자 미만이 되어서는 안 됩니다.
+2. **균등 분배**: 각 장면의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외(±30자)로 균등하게 배분하세요. 어떤 장면도 100자 미만이 되어서는 안 됩니다. 짧은 문장(100자 미만)은 반드시 앞뒤 문장과 합쳐서 하나의 장면으로 만드세요.
 3. **문장 단위 분할**: 문장 중간에서 자르지 말고 마침표(. ! ?)나 줄바꿈 기준으로 분할하세요.
 4. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
 5. **imagePrompt/motionPrompt**: 각각 영어로 250자 내외로 작성하세요.
@@ -141,7 +141,11 @@ ${script}`,
         ],
       },
     ],
-    config: { responseMimeType: 'application/json', maxOutputTokens: 8192 },
+    config: {
+      responseMimeType: 'application/json',
+      maxOutputTokens: 65536,
+      thinkingConfig: { thinkingBudget: 0 },  // thinking 비활성화 → 전체 예산을 JSON 출력에 사용
+    },
   });
 
   const content = response.text;
@@ -199,8 +203,7 @@ export async function generateImage(
 ): Promise<string> {
   const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg', subCharacters = [] } = options;
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');
-  let model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
-  if (model === 'gemini-2.5-flash-image') model = 'gemini-2.5-flash';
+  const model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
 
   const parts: any[] = [];
   
@@ -222,11 +225,15 @@ export async function generateImage(
     parts.push({ text: fullPrompt });
   }
 
-  const response = await getAI(apiKey).models.generateContent({
+  const imageGenPromise = getAI(apiKey).models.generateContent({
     model,
     contents: [{ role: 'user', parts }],
     config: { responseModalities: ['IMAGE', 'TEXT'] },
   });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Gemini 이미지 생성 타임아웃 (90초 초과)')), 90000)
+  );
+  const response = await Promise.race([imageGenPromise, timeoutPromise]);
 
   const imagePart = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.mimeType?.startsWith('image/'));
   if (!imagePart?.inlineData?.data) {
@@ -308,6 +315,98 @@ export async function generateSpeech(text: string, filename: string, voiceName =
 
   const url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
   return { url, durationMs };
+}
+
+export type SlideSceneData = {
+  text: string;
+  title: string;
+  bullets?: string[];
+  layout: 'title' | 'bullets' | 'quote';
+};
+export type SlideSplitResult = {
+  slides: SlideSceneData[];
+  usage: { promptTokens: number; completionTokens: number };
+};
+
+export async function splitScriptIntoSlides(
+  script: string,
+  llmModelId = 'gemini-2.5-flash',
+  sceneCount = 1,
+  apiKey?: string
+): Promise<SlideSplitResult> {
+  const model = llmModelId.startsWith('google/') ? llmModelId.slice('google/'.length) : llmModelId;
+
+  const response = await getAI(apiKey).models.generateContent({
+    model,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `당신은 PPT 슬라이드 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 슬라이드로 나누어주세요.
+
+**[절대 규칙]**
+1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지.
+2. **균등 분배**: 각 슬라이드의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외로 균등하게 배분하세요.
+3. **JSON만 출력**: 반드시 {"slides": [...]} 형태의 유효한 JSON만 출력하세요.
+
+필드:
+- text: 대본 원문 (이 슬라이드에서 나레이션될 텍스트, 원문 그대로)
+- title: 슬라이드 제목 (15자 이내, 핵심 키워드)
+- layout: 슬라이드 레이아웃
+  - "title": 챕터 제목/강조 키워드 슬라이드 (제목만 크게)
+  - "bullets": 본문/정보 슬라이드 (제목 + 불릿 포인트)
+  - "quote": 인용/핵심 문장 슬라이드 (큰 인용부호와 함께)
+- bullets: layout이 "bullets"인 경우만, 2~4개의 핵심 포인트 (각 30자 이내)
+
+반드시 아래 JSON 형태로만 응답하세요:
+{"slides": [
+  {
+    "text": "...",
+    "title": "...",
+    "layout": "bullets",
+    "bullets": ["...", "..."]
+  }
+]}
+
+대본:
+${script}`,
+          },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: 'application/json',
+      maxOutputTokens: 65536,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+  });
+
+  const content = response.text;
+  if (!content) throw new Error('Gemini 응답이 없습니다');
+
+  let jsonStr = content.trim()
+    .replace(/```json\n?|```/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/,\s*([}\]])/g, '$1')
+    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    throw new Error('슬라이드 JSON 파싱 실패. 다시 시도해주세요.');
+  }
+
+  const slides: SlideSceneData[] = parsed.slides ?? (Array.isArray(parsed) ? parsed : []);
+  const metaUsage = (response as any).usageMetadata ?? {};
+  return {
+    slides,
+    usage: {
+      promptTokens: metaUsage.promptTokenCount ?? 0,
+      completionTokens: metaUsage.candidatesTokenCount ?? 0,
+    },
+  };
 }
 
 function pcmToWav(pcmData: Buffer, sampleRate: number, channels: number, bitsPerSample: number): Buffer {

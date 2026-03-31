@@ -23,8 +23,9 @@ export async function createFalVideoTask(
   duration?: 5 | 10,
   apiKey?: string
 ): Promise<string> {
-  // WAN 2.1은 기본적으로 5초(81프레임)
-  console.log('[fal-video] createTask', { model: MODEL, imageUrl: imageUrl.slice(0, 80), duration });
+  // WAN 2.1: num_frames 81 = 5초(16fps), 최대 81프레임까지 지원
+  const numFrames = 81; // WAN v2.1은 최대 5초 고정
+  console.log('[fal-video] createTask', { model: MODEL, imageUrl: imageUrl.slice(0, 80), numFrames });
 
   const res = await fetch(`${FAL_BASE}/${MODEL}`, {
     method: 'POST',
@@ -32,7 +33,7 @@ export async function createFalVideoTask(
     body: JSON.stringify({
       image_url: imageUrl,
       prompt: prompt || 'Cinematic motion, smooth camera movement, high quality',
-      duration: duration ? String(duration) : '5',
+      num_frames: numFrames,
     }),
   });
 
@@ -81,7 +82,14 @@ export async function queryFalVideoTask(combined: string, apiKey?: string): Prom
   }
 
   if (statusData.status === 'COMPLETED') {
-    // fal.ai가 제공한 response_url 직접 사용
+    // 1차: status 응답에 output이 포함된 경우
+    const inlineUrl = statusData.output?.video?.url ?? statusData.video?.url;
+    if (inlineUrl) {
+      console.log('[fal-video] video url from status response:', inlineUrl);
+      return { task_status: 'succeed', video_url: inlineUrl };
+    }
+
+    // 2차: response_url 별도 조회
     const resultRes = await fetch(responseUrl, { headers: headers(apiKey) });
     const resultRaw = await resultRes.text();
     console.log('[fal-video] result raw response:', resultRes.status, resultRaw.slice(0, 300));
@@ -89,7 +97,10 @@ export async function queryFalVideoTask(combined: string, apiKey?: string): Prom
     try { result = JSON.parse(resultRaw); } catch {
       throw new Error(`fal.ai 결과 응답 파싱 실패 [${resultRes.status}]: ${resultRaw.slice(0, 200)}`);
     }
-    const videoUrl = result.video?.url ?? result.output?.video?.url;
+    const videoUrl = result.video?.url ?? result.output?.video?.url ?? result.videos?.[0]?.url;
+    if (!videoUrl) {
+      console.error('[fal-video] video_url not found in response:', resultRaw.slice(0, 300));
+    }
     return { task_status: 'succeed', video_url: videoUrl };
   }
 

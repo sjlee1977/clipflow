@@ -47,7 +47,7 @@ export default function MyScriptsPage() {
 
   const handleUseScript = (script: Script) => {
     sessionStorage.setItem('clipflow_script', script.content);
-    router.push('/dashboard');
+    router.push('/dashboard/video');
   };
 
   const handleDelete = async (id: string) => {

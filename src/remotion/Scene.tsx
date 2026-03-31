@@ -9,6 +9,8 @@ import {
   useVideoConfig,
   Video,
 } from 'remotion';
+import { noise2D } from '@remotion/noise';
+import { Gif } from '@remotion/gif';
 import { Scene as SceneType } from './types';
 import { SubtitleOverlay } from './SubtitleOverlay';
 
@@ -27,36 +29,39 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
   const seed = scene.imageUrl.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const animType = seed % 4; // 0: Zoom In, 1: Zoom Out, 2: Pan Left, 3: Pan Right
 
-  // Ken Burns effect: 다양화
-  const scale = interpolate(
+  // Ken Burns effect: 기본 이동 값
+  const baseScale = interpolate(
     frame,
     [0, duration],
-    animType === 1 ? [1.2, 1.05] : [1.05, 1.2], // Zoom In (default) or Zoom Out
+    animType === 1 ? [1.2, 1.05] : [1.05, 1.2],
     { easing: Easing.out(Easing.ease), extrapolateRight: 'clamp' }
   );
 
-  const translateX = interpolate(
+  const baseTranslateX = interpolate(
     frame,
     [0, duration],
-    animType === 2 ? [-5, 5] : animType === 3 ? [5, -5] : [0, 0], // Pan Left or Right
+    animType === 2 ? [-5, 5] : animType === 3 ? [5, -5] : [0, 0],
     { easing: Easing.out(Easing.quad), extrapolateRight: 'clamp' }
   );
 
-  const translateY = interpolate(
+  const baseTranslateY = interpolate(
     frame,
     [0, duration],
-    animType === 0 ? [-2, 2] : [0, 0], // Zoom In 시 약간의 수직 이동 추가
+    animType === 0 ? [-2, 2] : [0, 0],
     { easing: Easing.out(Easing.quad), extrapolateRight: 'clamp' }
   );
 
-  // 페이드 인/아웃
-  const fadeIn = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: 'clamp' });
-  const fadeOut = interpolate(frame, [duration - 15, duration], [1, 0], { extrapolateLeft: 'clamp' });
-  const opacity = Math.min(fadeIn, fadeOut);
+  // @remotion/noise: 자연스러운 미세 흔들림 추가
+  const noiseX = noise2D('translateX', frame * 0.005, seed * 0.001) * 2;
+  const noiseY = noise2D('translateY', frame * 0.005, seed * 0.001) * 1.5;
+
+  const scale = baseScale;
+  const translateX = baseTranslateX + noiseX;
+  const translateY = baseTranslateY + noiseY;
 
   return (
-    <AbsoluteFill style={{ opacity }}>
-      {/* 배경 이미지 또는 비디오 (Ken Burns) */}
+    <AbsoluteFill>
+      {/* 배경 이미지 또는 비디오 (Ken Burns + Noise) */}
       <AbsoluteFill
         style={{
           transform: `scale(${scale}) translateX(${translateX}%) translateY(${translateY}%)`,
@@ -91,6 +96,17 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
           background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.7) 100%)',
         }}
       />
+
+      {/* GIF 오버레이 (@remotion/gif) */}
+      {scene.gifUrl && (
+        <AbsoluteFill style={{ zIndex: 5 }}>
+          <Gif
+            src={scene.gifUrl}
+            fit="contain"
+            style={{ width: '100%', height: '100%' }}
+          />
+        </AbsoluteFill>
+      )}
 
       {/* 오디오 */}
       {scene.audioUrl && (

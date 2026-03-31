@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { generateImage } from '@/lib/openrouter';
-import { uploadImageToS3 } from '@/lib/kling';
+import { generateImage as generateImageViaGoogle } from '@/lib/google';
 import { generateFalImage } from '@/lib/fal-image';
 import { createClient } from '@/lib/supabase-server';
 
@@ -13,36 +12,45 @@ const STYLE_PROMPTS: Record<string, string> = {
   watercolor: 'watercolor illustration, soft brushstrokes, artistic, painterly',
   cartoon: 'cartoon style, flat design, bold outlines, vibrant illustration',
   noir: 'film noir, black and white, high contrast, moody shadows, dramatic',
+  lineart: 'minimalist line art, black and white only, simple outline illustration, doodle style, flat design, clean strokes, icon style, white background, no color, no shading',
+  none: 'minimalist background, solid dark color, simple texture, non-distracting, professional, clean',
 };
 
 export async function POST(req: NextRequest) {
   try {
-    let { imagePrompt, imageModelId, format = 'shorts', imageStyle, characterImageBase64 } = await req.json();
+    let { imagePrompt, imageModelId, format = 'landscape', imageStyle, characterImageBase64, subCharacters } = await req.json();
     if (!imagePrompt || !imageModelId) {
       return Response.json({ error: '필수 파라미터 누락' }, { status: 400 });
     }
 
-    // 오픈라우터 크레딧 부족 및 구글 Native 오류 방지 (강제로 fal 폴백 처리를 적용)
-    if (!imageModelId.startsWith('fal/')) {
-      imageModelId = 'fal/z-image-turbo';
-    }
-
     const stylePrompt = imageStyle ? (STYLE_PROMPTS[imageStyle] ?? '') : '';
     const styledPrompt = stylePrompt ? `${imagePrompt}, ${stylePrompt}` : imagePrompt;
-    
-    // 유저 메타데이터에 fal api key가 있을 수 있으므로 추출
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const falApiKey = user?.user_metadata?.fal_api_key as string | undefined;
+    const meta = user?.user_metadata ?? {};
+    const geminiApiKey = meta.gemini_api_key as string | undefined;
+    const falApiKey = meta.fal_api_key as string | undefined;
+
+    // 캐릭터 이미지가 있으면 Gemini 강제 사용
+    const hasCharacterImages = !!characterImageBase64 || (Array.isArray(subCharacters) && subCharacters.length > 0);
+    if (hasCharacterImages && !imageModelId.startsWith('google/')) {
+      imageModelId = 'google/gemini-2.5-flash-image';
+    }
 
     let imageUrl: string;
-    
+
     if (imageModelId.startsWith('fal/')) {
+      if (!falApiKey) return Response.json({ error: 'fal.ai API 키가 설정되지 않았습니다.' }, { status: 400 });
       imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
     } else {
-      const aspectRatio = format === 'landscape' ? '16:9' : '9:16';
-      const imageBuffer = await generateImage(styledPrompt, imageModelId, aspectRatio, characterImageBase64);
-      imageUrl = await uploadImageToS3(imageBuffer);
+      if (!geminiApiKey) return Response.json({ error: 'Gemini API 키가 설정되지 않았습니다.' }, { status: 400 });
+      imageUrl = await generateImageViaGoogle(
+        styledPrompt,
+        { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters },
+        imageModelId,
+        geminiApiKey
+      );
     }
 
     return Response.json({ imageUrl });

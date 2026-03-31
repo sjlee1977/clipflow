@@ -1,4 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, spring, useVideoConfig } from 'remotion';
+import { makeStar } from '@remotion/shapes';
 import { SubtitleWord } from './types';
 
 type Props = {
@@ -34,6 +35,7 @@ const PulseRing: React.FC<{ frame: number }> = ({ frame }) => {
 };
 
 const Sparkle: React.FC<{ frame: number }> = ({ frame }) => {
+  const { path, width, height } = makeStar({ innerRadius: 5, outerRadius: 13, points: 5 });
   return (
     <AbsoluteFill>
       {[...Array(8)].map((_, i) => {
@@ -42,10 +44,11 @@ const Sparkle: React.FC<{ frame: number }> = ({ frame }) => {
         const y = (Math.cos(seed + frame * 0.06) * 45 + 50) + '%';
         const opacity = interpolate(Math.sin(frame * 0.15 + i), [-1, 1], [0, 0.7]);
         const scale = interpolate(Math.sin(frame * 0.1 + i), [-1, 1], [0.5, 1.2]);
+        const rotation = frame * 3 + i * 45;
         return (
-          <div key={i} style={{ position: 'absolute', left: x, top: y, opacity, transform: `scale(${scale})` }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-              <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+          <div key={i} style={{ position: 'absolute', left: x, top: y, opacity, transform: `scale(${scale}) rotate(${rotation}deg)` }}>
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+              <path d={path} fill="white" />
             </svg>
           </div>
         );

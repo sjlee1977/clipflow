@@ -37,10 +37,20 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
 export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v2-6', duration: 5 | 10 = 10, ak?: string, sk?: string) {
-  // 고성능(v3 등)은 pro, 가성비(v2-6 등)는 std 모드를 매핑합니다.
-  const mode = model === 'kling-v3' ? 'pro' : 'std';
-  
-  const body = { model, mode, image: imageUrl, prompt, duration };
+  if (!imageUrl || !imageUrl.startsWith('http')) {
+    throw new Error('유효한 이미지 URL이 없습니다. 이미지가 완전히 생성된 후 다시 시도해주세요.');
+  }
+  // master 모델은 mode 파라미터 없음. 나머지는 pro 고정 (1080p, 5s/10s 모두 지원)
+  const noModeModels = ['kling-v2-master', 'kling-v2-1-master'];
+  const useMode = !noModeModels.includes(model);
+
+  const body: Record<string, unknown> = {
+    model_name: model,
+    image_url: imageUrl,
+    prompt,
+    duration: String(duration),
+  };
+  if (useMode) body.mode = 'pro';
   console.log('[kling] createKlingVideoTask body:', JSON.stringify(body));
 
   const res = await fetch(`${KLING_API_URL}/videos/image2video`, {
@@ -66,7 +76,9 @@ export async function createKlingVideoTask(imageUrl: string, prompt: string, mod
     throw new Error(`Kling API 오류 [${json.code}]: ${json.message ?? '응답 원문: ' + raw.slice(0, 300)}`);
   }
 
-  return json.data?.task_id;
+  const taskId = json.data?.task_id;
+  if (!taskId) throw new Error(`Kling task_id 없음. 응답: ${raw.slice(0, 300)}`);
+  return taskId;
 }
 
 export async function queryKlingVideoTask(taskId: string, ak?: string, sk?: string) {
@@ -74,17 +86,24 @@ export async function queryKlingVideoTask(taskId: string, ak?: string, sk?: stri
     headers: { 'Authorization': `Bearer ${getKlingToken(ak, sk)}` },
   });
   const json = await res.json();
+
+  if (!res.ok || json.code !== 0) {
+    throw new Error(`Kling 상태 조회 오류 [${json.code ?? res.status}]: ${json.message ?? JSON.stringify(json).slice(0, 200)}`);
+  }
+
   const data = json.data;
-  // MiniMax 형식에 맞춰 정규화
+  if (!data) throw new Error(`Kling 응답에 data 없음: ${JSON.stringify(json).slice(0, 200)}`);
+
   const statusMap: Record<string, string> = {
     'submitted': 'processing',
     'processing': 'processing',
     'succeeded': 'succeed',
     'failed': 'failed',
   };
+
   return {
     task_status: statusMap[data.task_status as string] || 'processing',
-    video_url: data.video_list?.[0]?.url,
+    video_url: data.task_result?.videos?.[0]?.url ?? data.video_list?.[0]?.url,
     task_status_msg: data.task_status_msg,
   };
 }

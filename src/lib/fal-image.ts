@@ -33,11 +33,23 @@ export async function generateFalImage(
   const endpoint = endpointMap[modelId] ?? 'fal-ai/z-image/turbo/lora';
   const image_size = FORMAT_TO_SIZE[format] ?? 'landscape_16_9';
 
-  const res = await fetch(`${FAL_BASE}/${endpoint}`, {
-    method: 'POST',
-    headers: headers(apiKey),
-    body: JSON.stringify({ prompt, image_size, num_images: 1 }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000); // 60초 타임아웃
+
+  let res: Response;
+  try {
+    res = await fetch(`${FAL_BASE}/${endpoint}`, {
+      method: 'POST',
+      headers: headers(apiKey),
+      body: JSON.stringify({ prompt, image_size, num_images: 1 }),
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw new Error('fal.ai 이미지 생성 타임아웃 (60초 초과)');
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const rawText = await res.text();
   let data: any;

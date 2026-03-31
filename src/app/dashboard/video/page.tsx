@@ -7,13 +7,14 @@ const LLM_MODELS = [
 ];
 
 const IMAGE_MODELS = [
-  { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', price: '균형' },
+  { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash (이미지)', price: '균형' },
   { id: 'fal/z-image-turbo', name: 'Z-Image Turbo (fal.ai)', price: '빠름' },
   { id: 'fal/z-image-base', name: 'Z-Image Base (fal.ai)', price: '고품질' },
 ];
 
 const VIDEO_MODELS = [
-  { id: 'kling-v2-6', name: 'Kling v2.6 (고성능)', price: '고품질' },
+  { id: 'kling-v3', name: 'Kling v3 (최신)', price: '최고품질' },
+  { id: 'kling-v2-6', name: 'Kling v2.6', price: '고품질' },
   { id: 'kling-v1-6', name: 'Kling v1.6 (가성비)', price: '균형' },
   { id: 'fal-wan-v2.1', name: 'WAN 2.1 (fal.ai)', price: '빠름' },
 ];
@@ -61,6 +62,7 @@ const IMAGE_STYLES = [
   { id: 'watercolor', label: '수채화' },
   { id: 'cartoon', label: '카툰' },
   { id: 'noir', label: '누아르' },
+  { id: 'lineart', label: '라인아트' },
   { id: 'none', label: '선택 없음' },
 ] as const;
 
@@ -101,6 +103,8 @@ type PreviewScene = {
   isLoading?: boolean;
   textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
   textPosition?: 'bottom' | 'center' | 'top';
+  slideData?: { layout: string; title?: string; bullets?: string[] };
+  pptTheme?: string;
 };
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
@@ -188,9 +192,9 @@ export default function DashboardPage() {
   const [script, setScript] = useState('');
   const [format, setFormat] = useState<Format>('landscape');
   const [imageModelId, setImageModelId] = useState('google/gemini-2.5-flash-image');
-  const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash-lite');
+  const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash');
   const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google' | 'elevenlabs'>('google');
-  const [videoModelId, setVideoModelId] = useState('fal-wan-v2.1');
+  const [videoModelId, setVideoModelId] = useState('kling-v2-6');
   const [voiceId, setVoiceId] = useState('Kore');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
@@ -215,6 +219,8 @@ export default function DashboardPage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [genTotal, setGenTotal] = useState(0);
   const [genCompleted, setGenCompleted] = useState(0);
+  const [pptMode, setPptMode] = useState(false);
+  const [pptTheme, setPptTheme] = useState<'simple-modern' | 'dark' | 'colorful'>('dark');
 
   // [장면 보존 및 복구]
   useEffect(() => {
@@ -243,6 +249,7 @@ export default function DashboardPage() {
           if (data.imageStyle) setImageStyle(data.imageStyle);
           if (data.voiceId) setVoiceId(data.voiceId);
           if (data.ttsProvider) setTtsProvider(data.ttsProvider);
+          if (data.videoModelId) setVideoModelId(data.videoModelId);
           if (data.videoUrl) { setVideoUrl(data.videoUrl); setStatus('done'); } else setStatus('preview');
         }
       } catch (err) {
@@ -268,9 +275,9 @@ export default function DashboardPage() {
   // [상태 자동 저장] 장면이나 설정이 바뀌면 실시간 보존 (새로고침 사고 대비)
   useEffect(() => {
     if (scenes.length > 0) {
-      const stateToSave = { 
-        scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, 
-        videoUrl: status === 'done' ? videoUrl : '' 
+      const stateToSave = {
+        scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, videoModelId,
+        videoUrl: status === 'done' ? videoUrl : ''
       };
       sessionStorage.setItem('clipflow_active_scenes', JSON.stringify(stateToSave));
     }
@@ -332,15 +339,17 @@ export default function DashboardPage() {
       const res = await fetch('/api/generate-scenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          script, 
-          imageModelId, 
-          llmModelId, 
-          format, 
-          characterImageBase64, 
-          imageStyle, 
+        body: JSON.stringify({
+          script,
+          imageModelId,
+          llmModelId,
+          format,
+          characterImageBase64,
+          imageStyle,
           subCharacters: subCharacters.map(c => ({ base64: c.base64, name: c.name })),
-          allowedAnimations: useTextAnims ? selectedTextAnims : ['none']
+          allowedAnimations: useTextAnims ? selectedTextAnims : ['none'],
+          pptMode,
+          pptTheme,
         }),
       });
       if (!res.ok || !res.body) throw new Error('장면 생성 실패');
@@ -370,14 +379,16 @@ export default function DashboardPage() {
           }
           if (event.type === 'scene') {
             setGenCompleted(prev => prev + 1);
-            const sceneData = { 
-              text: event.text, 
-              imagePrompt: event.imagePrompt, 
+            const sceneData = {
+              text: event.text,
+              imagePrompt: event.imagePrompt,
               imageUrl: event.imageUrl,
               motionPrompt: event.motionPrompt,
               shouldAnimate: event.shouldAnimate,
               textAnimationStyle: event.textAnimationStyle,
-              textPosition: event.textPosition
+              textPosition: event.textPosition,
+              slideData: event.slideData,
+              pptTheme: event.pptTheme,
             };
             newScenes[event.index] = sceneData;
             setScenes(prev => {
@@ -389,17 +400,6 @@ export default function DashboardPage() {
           if (event.type === 'done') {
             if (event.usage) setUsageInfo(event.usage);
             setStatus('preview');
-            // 자동 애니메이션 시작 (RPM 초과 방지 위해 3초 간격)
-            const animTargets = newScenes
-              .map((s, idx) => ({ s, idx }))
-              .filter(({ s }) => s && !s.videoUrl); // 비디오 없는 모든 장면 대상
-
-            animTargets.forEach(({ idx }, i) => {
-              setTimeout(() => {
-                console.log(`[AutoAnim] Triggering scene ${idx + 1}`);
-                handleAnimateScene(idx, newScenes);
-              }, i * 3500);
-            });
           }
         }
       }
@@ -430,7 +430,7 @@ export default function DashboardPage() {
           prompt: scene.motionPrompt || scene.text,
           provider,
           model: videoModelId,
-          duration: (index === 0 || index === scenes.length - 1) ? 5 : 10,
+          duration: (index === 0 || index === targetScenes.length - 1) ? 5 : 10,
         }),
       });
       const data = await res.json();
@@ -440,7 +440,7 @@ export default function DashboardPage() {
 
       const poll = async () => {
         try {
-          const sRes = await fetch(`/api/animate-scene?taskId=${taskId}&provider=${provider}`);
+          const sRes = await fetch(`/api/animate-scene?taskId=${encodeURIComponent(taskId)}&provider=${provider}`);
           const sData = await sRes.json();
           if (!sRes.ok) throw new Error(sData.error || '상태 확인 실패');
 
@@ -465,7 +465,7 @@ export default function DashboardPage() {
 
       poll();
     } catch (err: any) {
-      setError(err.message);
+      setError(`AI 비디오 시작 실패 (장면 ${index + 1}): ${err.message}`);
       setScenes(prev => prev.map((s, i) => i === index ? { ...s, isAnimating: false } : s));
       setAnimatingCount(prev => Math.max(0, prev - 1));
     }
@@ -675,7 +675,34 @@ export default function DashboardPage() {
         {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
           <div className="flex flex-col h-full">
             {/* 입력 카드 */}
-            <div className="relative mt-10 flex flex-col">
+            {/* 모드 토글 */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setPptMode(false)} className={`text-[12px] font-mono px-3 py-1.5 border transition-colors ${!pptMode ? 'border-orange-400 text-orange-400 bg-orange-400/10' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
+                ◼ 일반 모드
+              </button>
+              <button onClick={() => setPptMode(true)} className={`text-[12px] font-mono px-3 py-1.5 border transition-colors ${pptMode ? 'border-orange-400 text-orange-400 bg-orange-400/10' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
+                ▦ PPT 모드
+              </button>
+            </div>
+
+            {/* PPT 테마 선택 */}
+            {pptMode && (
+              <div className="flex gap-2 mb-4">
+                {[
+                  { id: 'simple-modern', label: '심플 모던', desc: '흰 배경 · 깔끔' },
+                  { id: 'dark', label: '다크', desc: '어두운 · 세련' },
+                  { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
+                ].map(t => (
+                  <button key={t.id} onClick={() => setPptTheme(t.id as any)}
+                    className={`flex flex-col items-start px-3 py-2 border text-left transition-colors ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
+                    <span className={`text-[12px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/70'}`}>{t.label}</span>
+                    <span className="text-[10px] font-mono text-white/30 mt-0.5">{t.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+          <div className="relative mt-10 flex flex-col">
               {/* 탭 레이블 */}
               <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
                 <span className="w-1 h-1 bg-orange-400 rounded-full" />
@@ -839,6 +866,26 @@ export default function DashboardPage() {
                       <div className="w-full h-full flex items-center justify-center bg-black/60">
                         <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                       </div>
+                    ) : scene.slideData ? (
+                      <div className={`w-full h-full flex flex-col items-center justify-center p-1 text-center ${
+                        scene.pptTheme === 'simple-modern' ? 'bg-white' :
+                        scene.pptTheme === 'colorful' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' :
+                        'bg-[#0d0d0d] border border-white/10'
+                      }`}>
+                        <span className={`text-[7px] font-bold leading-tight ${scene.pptTheme === 'simple-modern' ? 'text-gray-800' : 'text-white'}`}>
+                          {scene.slideData.title?.slice(0, 12) || 'SLIDE'}
+                        </span>
+                        {scene.slideData.layout === 'bullets' && scene.slideData.bullets && (
+                          <div className="mt-0.5 space-y-0.5">
+                            {scene.slideData.bullets.slice(0, 2).map((b, bi) => (
+                              <div key={bi} className={`flex items-center gap-0.5 ${scene.pptTheme === 'simple-modern' ? 'text-gray-600' : 'text-white/70'}`}>
+                                <span className="text-[5px]">•</span>
+                                <span className="text-[5px] truncate max-w-[50px]">{b}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <img src={scene.imageUrl} alt={`장면 ${i + 1}`} className="w-full h-full object-cover" />
                     )}
@@ -942,12 +989,12 @@ export default function DashboardPage() {
               </button>
             )}
 
-            {status === 'error' && error && (
+            {(status === 'error' || status === 'preview') && error && (
               <div className="mt-8 border-l-2 border-red-500 pl-4 py-1.5 bg-red-500/5">
                 <p className="text-red-400 font-mono text-[12.5px] leading-relaxed">
                   <span className="font-bold flex items-center gap-1.5 mb-1">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    영상 생성 실패
+                    {error.includes('비디오') ? '비디오 변환 실패' : '오류 발생'}
                   </span>
                   {error.includes('Quota exceeded') || error.includes('429') ? (
                     <>
@@ -957,10 +1004,10 @@ export default function DashboardPage() {
                 </p>
                 <div className="mt-3 flex items-center gap-4">
                   <button
-                    onClick={() => { setStatus('preview'); setError(''); }}
+                    onClick={() => { if (status === 'error') setStatus('preview'); setError(''); }}
                     className="text-white/40 hover:text-white/80 font-mono transition-colors text-[12px] flex items-center gap-1"
                   >
-                    <span>↺</span> 다시 시도
+                    <span>↺</span> {status === 'error' ? '다시 시도' : '오류 닫기'}
                   </button>
                   {(error.includes('Quota exceeded') || error.includes('429')) && (
                     <div className="flex gap-2">
@@ -1223,6 +1270,7 @@ export default function DashboardPage() {
                 </div>
               </PanelAccordion>
 
+              {!pptMode && (
               <PanelAccordion label="이미지 AI" value={IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">
                   {IMAGE_MODELS.map(m => (
@@ -1232,6 +1280,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </PanelAccordion>
+              )}
 
               <PanelAccordion label="영상 AI" value={VIDEO_MODELS.find(m => m.id === videoModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">

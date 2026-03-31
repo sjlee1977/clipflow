@@ -1,9 +1,14 @@
-import { AbsoluteFill, Sequence, delayRender, continueRender } from 'remotion';
+import { AbsoluteFill, delayRender, continueRender } from 'remotion';
+import { TransitionSeries, linearTiming } from '@remotion/transitions';
+import { fade } from '@remotion/transitions/fade';
 import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { SceneComponent } from './Scene';
+import { SlideSceneComponent } from './SlideScene';
 import { VideoProps } from './types';
 import { KOREAN_FONTS, DEFAULT_FONT_ID } from '../lib/fonts';
+
+export const TRANSITION_FRAMES = 15;
 
 export const SubtitleWordSchema = z.object({
   text: z.string(),
@@ -14,6 +19,7 @@ export const SubtitleWordSchema = z.object({
 export const SceneSchema = z.object({
   imageUrl: z.string(),
   videoUrl: z.string().optional(),
+  gifUrl: z.string().optional(),
   audioUrl: z.string(),
   durationInFrames: z.number(),
   subtitles: z.array(SubtitleWordSchema),
@@ -47,20 +53,27 @@ export const VideoComposition: React.FC<VideoProps> = ({ scenes, fontFamily = DE
     };
   }, [fontFamily, handle]);
 
-  let offset = 0;
-
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
-      {scenes.map((scene, i) => {
-        const start = offset;
-        offset += scene.durationInFrames;
-
-        return (
-          <Sequence key={i} from={start} durationInFrames={scene.durationInFrames}>
-            <SceneComponent scene={scene} globalOffset={start} fontFamily={fontFamily} />
-          </Sequence>
-        );
-      })}
+      <TransitionSeries>
+        {scenes.map((scene, i) => (
+          <>
+            {i > 0 && (
+              <TransitionSeries.Transition
+                presentation={fade()}
+                timing={linearTiming({ durationInFrames: TRANSITION_FRAMES })}
+              />
+            )}
+            <TransitionSeries.Sequence key={i} durationInFrames={scene.durationInFrames}>
+              {scene.slideData ? (
+                <SlideSceneComponent scene={scene} slideIndex={i} fontFamily={fontFamily} />
+              ) : (
+                <SceneComponent scene={scene} globalOffset={0} fontFamily={fontFamily} />
+              )}
+            </TransitionSeries.Sequence>
+          </>
+        ))}
+      </TransitionSeries>
     </AbsoluteFill>
   );
 };

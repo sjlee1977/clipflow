@@ -7,21 +7,74 @@ import { createClient } from '@/lib/supabase-server';
 const FPS = 30;
 const PADDING_FRAMES = 15; // 오디오 끝 후 0.5초 여유
 
-/** 텍스트를 1~2행(최대 20자) 단위로 분할 후 프레임 비례 배분 */
+/**
+ * 텍스트를 자연스러운 문장/절 단위로 분할 후 프레임 비례 배분.
+ * 규칙:
+ * - 괄호() [] 안의 내용은 절대 분할하지 않음 (한 덩어리로 처리)
+ * - 우선순위: ① 문장 끝(. ! ? …) → ② 절 구분(, — ·) → ③ 공백 → ④ 최대 글자 수
+ */
 function splitIntoSubtitles(text: string, totalFrames: number) {
-  const MAX_CHARS = 20;
+  const MAX_CHARS = 28;
+  const MIN_CHARS = 6;
+
+  // 괄호 쌍이 열린 인덱스 집합 반환: 분할 불가 구간
+  function isInsideBracket(str: string, pos: number): boolean {
+    let depth = 0;
+    for (let i = 0; i < pos; i++) {
+      if (str[i] === '(' || str[i] === '[') depth++;
+      if (str[i] === ')' || str[i] === ']') depth = Math.max(0, depth - 1);
+    }
+    return depth > 0;
+  }
+
+  // 괄호를 포함한 다음 안전한 분할 위치 탐색
+  function findSplitAt(remaining: string): number {
+    const limit = Math.min(MAX_CHARS, remaining.length - 1);
+
+    // 먼저 MAX_CHARS 안에 열린 괄호가 있으면 닫는 괄호 이후까지 확장
+    let safeLimit = limit;
+    let depth = 0;
+    for (let i = 0; i <= limit; i++) {
+      if (remaining[i] === '(' || remaining[i] === '[') depth++;
+      if (remaining[i] === ')' || remaining[i] === ']') depth = Math.max(0, depth - 1);
+    }
+    // 괄호가 열린 채로 끝났으면 닫힐 때까지 확장 (최대 50자 더)
+    if (depth > 0) {
+      for (let i = limit + 1; i < Math.min(remaining.length, MAX_CHARS + 50); i++) {
+        if (remaining[i] === ')' || remaining[i] === ']') {
+          depth--;
+          if (depth === 0) { safeLimit = i; break; }
+        }
+      }
+    }
+
+    // ① 문장 끝
+    for (let i = safeLimit; i >= MIN_CHARS; i--) {
+      if (/[.!?…。！？]/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
+        return i + 1;
+      }
+    }
+    // ② 절 구분
+    for (let i = safeLimit; i >= MIN_CHARS; i--) {
+      if (/[,—·、，]/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
+        return i + 1;
+      }
+    }
+    // ③ 공백
+    for (let i = safeLimit; i >= MIN_CHARS; i--) {
+      if (/\s/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
+        return i + 1;
+      }
+    }
+    // ④ 강제 분할 (괄호 구간 이후)
+    return safeLimit + 1;
+  }
+
   const chunks: string[] = [];
   let remaining = text.trim();
 
   while (remaining.length > MAX_CHARS) {
-    let splitAt = -1;
-    for (let i = MAX_CHARS; i >= Math.ceil(MAX_CHARS / 2); i--) {
-      if (/[.!?,。！？，\s]/.test(remaining[i] ?? '')) {
-        splitAt = i + 1;
-        break;
-      }
-    }
-    if (splitAt === -1) splitAt = MAX_CHARS;
+    const splitAt = findSplitAt(remaining);
     chunks.push(remaining.slice(0, splitAt).trim());
     remaining = remaining.slice(splitAt).trim();
   }
@@ -63,18 +116,20 @@ export async function POST(req: NextRequest) {
     const ts = Date.now();
 
     // 1. TTS 생성
-    type SceneInput = { 
-      text: string; 
-      imageUrl: string; 
+    type SceneInput = {
+      text: string;
+      imageUrl: string;
       videoUrl?: string;
       textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
       textPosition?: 'bottom' | 'center' | 'top';
+      slideData?: { layout: string; title?: string; bullets?: string[] };
+      pptTheme?: string;
     };
-    
+
     async function processTTS(s: SceneInput, i: number) {
       let audioUrl: string;
       let durationMs: number;
-      
+
       if (ttsProvider === 'google') {
         ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
       } else if (ttsProvider === 'elevenlabs') {
@@ -83,7 +138,7 @@ export async function POST(req: NextRequest) {
       } else {
         ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
       }
-      
+
       let durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
 
       if (s.videoUrl) {
@@ -98,6 +153,8 @@ export async function POST(req: NextRequest) {
         subtitles: splitIntoSubtitles(s.text, durationInFrames),
         textAnimationStyle: s.textAnimationStyle,
         textPosition: s.textPosition,
+        slideData: s.slideData,
+        pptTheme: s.pptTheme,
       };
     }
 

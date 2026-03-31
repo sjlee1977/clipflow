@@ -1,5 +1,5 @@
 import { Composition } from 'remotion';
-import { VideoComposition, VideoSchema } from './VideoComposition';
+import { VideoComposition, VideoSchema, TRANSITION_FRAMES } from './VideoComposition';
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -18,12 +18,11 @@ export const RemotionRoot: React.FC = () => {
           fps: 30,
         }}
         calculateMetadata={({ props }) => {
-          const totalFrames = props.scenes.reduce(
-            (sum, s) => sum + s.durationInFrames,
-            0
-          );
+          const totalFrames = props.scenes.reduce((sum, s) => sum + s.durationInFrames, 0);
+          const overlap = Math.max(0, props.scenes.length - 1) * TRANSITION_FRAMES;
+          const finalFrames = Math.max(0, totalFrames - overlap);
           return {
-            durationInFrames: totalFrames > 0 ? totalFrames : 900,
+            durationInFrames: finalFrames > 0 ? finalFrames : 900,
           };
         }}
       />
