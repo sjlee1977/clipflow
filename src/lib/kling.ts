@@ -36,8 +36,11 @@ export async function uploadImageToS3(buffer: Buffer): Promise<string> {
 
 const KLING_API_URL = 'https://api.klingai.com/v1';
 
-export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v1', duration: 5 | 10 = 10, ak?: string, sk?: string) {
-  const body = { model_name: model, image_url: imageUrl, prompt, duration };
+export async function createKlingVideoTask(imageUrl: string, prompt: string, model: string = 'kling-v2-6', duration: 5 | 10 = 10, ak?: string, sk?: string) {
+  // 고성능(v3 등)은 pro, 가성비(v2-6 등)는 std 모드를 매핑합니다.
+  const mode = model === 'kling-v3' ? 'pro' : 'std';
+  
+  const body = { model, mode, image: imageUrl, prompt, duration };
   console.log('[kling] createKlingVideoTask body:', JSON.stringify(body));
 
   const res = await fetch(`${KLING_API_URL}/videos/image2video`, {
