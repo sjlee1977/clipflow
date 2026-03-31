@@ -4,7 +4,7 @@ import { generateFalImage } from '@/lib/fal-image';
 import { createClient } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
-  const {
+  let {
     script,
     imageModelId = 'google/gemini-2.5-flash-image',
     llmModelId = 'google/gemini-2.5-flash',
@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
   const meta = user?.user_metadata ?? {};
   const geminiApiKey = meta.gemini_api_key as string | undefined;
   const falApiKey = meta.fal_api_key as string | undefined;
+
+  // 오픈라우터 크레딧 부족 및 구글 Native 400 에러를 방지하기 위해 강제로 fal 이미지 모델로 폴백 처리
+  if (!imageModelId.startsWith('fal/')) {
+    imageModelId = 'fal/z-image-turbo';
+  }
 
   const stylePrompts: Record<string, string> = {
     cinematic: 'cinematic film style, movie still, dramatic lighting, anamorphic lens',
@@ -127,6 +132,10 @@ export async function POST(req: NextRequest) {
         // Google Gemini API 503 (High Demand) 에러 처리
         if (errMsg.includes('503') && errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
           errMsg = '구글(Gemini) AI 서버가 현재 전 세계적인 트래픽 과부하로 응답이 지연되고 있습니다 (503). 1~2분 뒤 다시 시도해주세요.';
+        }
+        
+        if (errMsg.includes('This model only supports text output') || errMsg.includes('INVALID_ARGUMENT')) {
+          errMsg = '선택하신 구글 이미지 모델은 텍스트 전용(오류코드 400)이며, 현재 오픈라우터 크레딧이 소진되어 이미지 생성이 불가능합니다. 옵션에서 Fal 모델로 변경해주세요.';
         }
         
         send({ type: 'error', message: errMsg });
