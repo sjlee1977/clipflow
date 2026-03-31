@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { splitScriptIntoScenes as splitViaGemini, generateImage as generateImageViaGoogle } from '@/lib/google';
+import { generateImage as generateImageViaOpenRouter } from '@/lib/openrouter';
 import { generateFalImage } from '@/lib/fal-image';
+import { uploadImageToS3 } from '@/lib/kling';
 import { createClient } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
@@ -81,15 +83,19 @@ export async function POST(req: NextRequest) {
             batch.map(async ({ s, index }) => {
               const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
               let imageUrl: string;
+              const isFalImage = imageModelId.startsWith('fal/');
+              
               if (isFalImage) {
                 imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
               } else {
-                imageUrl = await generateImageViaGoogle(
+                const aspectRatio = format === 'landscape' ? '16:9' : '9:16';
+                const imageBuffer = await generateImageViaOpenRouter(
                   styledPrompt,
-                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters },
                   imageModelId,
-                  geminiApiKey
+                  aspectRatio,
+                  characterImageBase64 ?? undefined
                 );
+                imageUrl = await uploadImageToS3(imageBuffer);
               }
               const scene = { 
                 index, 
