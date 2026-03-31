@@ -24,6 +24,9 @@ export const IMAGE_MODELS: ImageModel[] = [
   { id: 'openai/gpt-5-image-mini',                name: 'GPT-5 Image Mini', price: '~$0.005/장', speed: 'medium', quality: 'best',  provider: 'OpenAI' },
   { id: 'google/gemini-3-pro-image-preview',       name: 'Gemini 3 Pro',    price: '~$0.020/장', speed: 'slow',   quality: 'best',  provider: 'Google' },
   { id: 'openai/gpt-5-image',                      name: 'GPT-5 Image',     price: '~$0.025/장', speed: 'slow',   quality: 'best',  provider: 'OpenAI' },
+  // ── Fal AI 모델 (오픈라우터 외안/직접 연결) ─────────────────────────
+  { id: 'fal/z-image-turbo',                       name: 'Fal z-image Turbo', price: '~$0.015/장', speed: 'fast',   quality: 'great', provider: 'Fal.ai' },
+  { id: 'fal/z-image-base',                        name: 'Fal z-image Base',  price: '~$0.030/장', speed: 'medium', quality: 'best',  provider: 'Fal.ai' }
 ];
 
 export const VIDEO_MODELS = [
