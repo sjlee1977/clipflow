@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
-        const CONCURRENCY = 2;
+        const CONCURRENCY = 1;
 
         for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
           const batch = scriptScenes.slice(i, i + CONCURRENCY).map((s, j) => ({ s, index: i + j }));
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
               } else {
                 imageUrl = await generateImageViaGoogle(
                   styledPrompt,
-                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined },
+                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters },
                   imageModelId,
                   geminiApiKey
                 );
@@ -105,6 +105,9 @@ export async function POST(req: NextRequest) {
               send({ type: 'scene', ...scene });
             })
           );
+          if (i + CONCURRENCY < scriptScenes.length) {
+            await new Promise(r => setTimeout(r, 4500));
+          }
         }
 
         send({

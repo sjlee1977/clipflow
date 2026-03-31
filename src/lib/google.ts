@@ -170,6 +170,7 @@ type GenerateImageOptions = {
   stylePrompt?: string;
   characterBase64?: string;
   characterMimeType?: string;
+  subCharacters?: { base64: string; name: string }[];
 };
 
 export async function generateImage(
@@ -178,15 +179,27 @@ export async function generateImage(
   modelId = 'google/gemini-2.5-flash-image',
   apiKey?: string
 ): Promise<string> {
-  const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg' } = options;
+  const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg', subCharacters = [] } = options;
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');
   let model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
   if (model === 'gemini-2.5-flash-image') model = 'gemini-2.5-flash';
 
   const parts: any[] = [];
+  
   if (characterBase64) {
     parts.push({ inlineData: { mimeType: characterMimeType, data: characterBase64 } });
-    parts.push({ text: `CHARACTER REFERENCE IMAGE PROVIDED: You must preserve this character's exact appearance (face, hairstyle, clothing style) in the generated image. Generate a new scene with this character: ${fullPrompt}. Keep the character visually consistent with the reference.` });
+    parts.push({ text: `CHARACTER 1 (Main Character) REFERENCE:` });
+  }
+  
+  subCharacters.forEach((sc, i) => {
+    if (sc.base64) {
+      parts.push({ inlineData: { mimeType: 'image/jpeg', data: sc.base64 } });
+      parts.push({ text: `CHARACTER ${i + 2} (${sc.name}) REFERENCE:` });
+    }
+  });
+
+  if (parts.length > 0) {
+    parts.push({ text: `\nIMPORTANT: Use these provided character reference images. You must preserve their exact appearances (face, hairstyle, clothing style) in the generated image whenever they appear in the scene description. Generate a new scene with these characters:\n\nSCENE DESCRIPTION: ${fullPrompt}\n\nKeep the characters visually consistent with their references.` });
   } else {
     parts.push({ text: fullPrompt });
   }
