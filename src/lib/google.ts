@@ -141,18 +141,36 @@ ${script}`,
         ],
       },
     ],
-    config: { responseMimeType: 'application/json' },
+    config: { responseMimeType: 'application/json', maxOutputTokens: 8192 },
   });
 
   const content = response.text;
   if (!content) throw new Error('Gemini 응답이 없습니다');
 
+  let jsonStr = content.trim();
+
+  // 잘못된 JSON 자동 복구: 제어문자 제거, 줄바꿈 정리
+  jsonStr = jsonStr
+    .replace(/```json\n?|```/g, '')                   // 마크다운 코드블록 제거
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // 제어문자 제거
+    .replace(/,\s*([}\]])/g, '$1')                        // trailing comma 제거
+    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');           // 키 따옴표 누락 보정
+
   let parsed: any;
   try {
-    const cleaned = content.replace(/```json\n?|```/g, '').trim();
-    parsed = JSON.parse(cleaned);
+    parsed = JSON.parse(jsonStr);
   } catch {
-    throw new Error('Gemini JSON 파싱 실패');
+    // 마지막 완성된 장면까지만 추출 시도
+    const partial = jsonStr.match(/("scenes"\s*:\s*\[[\s\S]*)\s*\{[^}]*$/);
+    if (partial) {
+      try {
+        parsed = JSON.parse(jsonStr.slice(0, jsonStr.lastIndexOf('},') + 1) + ']}');
+      } catch {
+        throw new Error('Gemini JSON 파싱 실패 — 출력이 잘렸습니다. 다시 시도하거나 대본 길이를 줄여주세요.');
+      }
+    } else {
+      throw new Error('Gemini JSON 파싱 실패 — 출력이 잘렸습니다. 다시 시도하거나 대본 길이를 줄여주세요.');
+    }
   }
 
   const scenes: ScriptScene[] = parsed.scenes ?? (Array.isArray(parsed) ? parsed : []);
