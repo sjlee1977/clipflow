@@ -180,7 +180,8 @@ export async function generateImage(
 ): Promise<string> {
   const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg' } = options;
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');
-  const model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
+  let model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
+  if (model === 'gemini-2.5-flash-image') model = 'gemini-2.5-flash';
 
   const parts: any[] = [];
   if (characterBase64) {
@@ -197,7 +198,12 @@ export async function generateImage(
   });
 
   const imagePart = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.mimeType?.startsWith('image/'));
-  if (!imagePart?.inlineData?.data) throw new Error('이미지 생성 실패');
+  if (!imagePart?.inlineData?.data) {
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason === 'SAFETY') throw new Error('안전 필터에 의해 이미지 생성이 차단되었습니다. 프롬프트를 수정해주세요.');
+    if (finishReason) throw new Error(`이미지 생성 실패 (차단 사유: ${finishReason})`);
+    throw new Error('이미지 생성 실패: 모델이 이미지를 반환하지 않았습니다.');
+  }
 
   const mimeType = imagePart.inlineData.mimeType ?? 'image/png';
   const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
