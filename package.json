@@ -26,7 +26,7 @@
     "@remotion/gif": "^4.0.441",
     "@remotion/lambda": "^4.0.438",
     "@remotion/media-utils": "^4.0.441",
-    "@remotion/noise": "^4.0.441",
+    "@remotion/noise": "^4.0.443",
     "@remotion/player": "^4.0.441",
     "@remotion/shapes": "^4.0.441",
     "@remotion/transitions": "^4.0.441",

@@ -16,6 +16,12 @@ export const SubtitleWordSchema = z.object({
   endFrame: z.number(),
 });
 
+export const SlideDataSchema = z.object({
+  layout: z.string(),
+  title: z.string().optional(),
+  bullets: z.array(z.string()).optional(),
+});
+
 export const SceneSchema = z.object({
   imageUrl: z.string(),
   videoUrl: z.string().optional(),
@@ -23,6 +29,8 @@ export const SceneSchema = z.object({
   audioUrl: z.string(),
   durationInFrames: z.number(),
   subtitles: z.array(SubtitleWordSchema),
+  slideData: SlideDataSchema.optional(),
+  pptTheme: z.string().optional(),
 });
 
 export const VideoSchema = z.object({
@@ -31,8 +39,15 @@ export const VideoSchema = z.object({
   fontFamily: z.string().optional(),
 });
 
+const PPT_EXTRA_FONTS = [
+  'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
+  'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap',
+];
+
 export const VideoComposition: React.FC<VideoProps> = ({ scenes, fontFamily = DEFAULT_FONT_ID }) => {
   const [handle] = useState(() => delayRender(`Loading font: ${fontFamily}`));
+  const hasPptSlides = scenes.some(s => s.slideData);
+  const [pptHandle] = useState(() => delayRender('Loading PPT fonts'));
 
   useEffect(() => {
     const font = KOREAN_FONTS.find(f => f.id === fontFamily);
@@ -52,6 +67,27 @@ export const VideoComposition: React.FC<VideoProps> = ({ scenes, fontFamily = DE
       document.head.removeChild(link);
     };
   }, [fontFamily, handle]);
+
+  useEffect(() => {
+    if (!hasPptSlides) {
+      continueRender(pptHandle);
+      return;
+    }
+    const links: HTMLLinkElement[] = [];
+    let loaded = 0;
+    PPT_EXTRA_FONTS.forEach(href => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = link.onerror = () => {
+        loaded++;
+        if (loaded === PPT_EXTRA_FONTS.length) continueRender(pptHandle);
+      };
+      document.head.appendChild(link);
+      links.push(link);
+    });
+    return () => links.forEach(l => { if (document.head.contains(l)) document.head.removeChild(l); });
+  }, [hasPptSlides, pptHandle]);
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>

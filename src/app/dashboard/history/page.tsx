@@ -26,6 +26,49 @@ const IMAGE_STYLE_LABELS: Record<string, string> = {
   '3d': '3D', watercolor: '수채화', cartoon: '카툰', noir: '누아르',
 };
 
+const ALL_VOICES: { id: string; name: string }[] = [
+  { id: 'ko-KR-Standard-A', name: 'Standard A' },
+  { id: 'ko-KR-Standard-B', name: 'Standard B' },
+  { id: 'ko-KR-Standard-C', name: 'Standard C' },
+  { id: 'ko-KR-Standard-D', name: 'Standard D' },
+  { id: 'ko-KR-Wavenet-A', name: 'Wavenet A' },
+  { id: 'ko-KR-Wavenet-B', name: 'Wavenet B' },
+  { id: 'ko-KR-Wavenet-C', name: 'Wavenet C' },
+  { id: 'ko-KR-Wavenet-D', name: 'Wavenet D' },
+  { id: 'ko-KR-Neural2-A', name: 'Neural2 A' },
+  { id: 'ko-KR-Neural2-B', name: 'Neural2 B' },
+  { id: 'ko-KR-Neural2-C', name: 'Neural2 C' },
+  { id: 'female1', name: '여성 1' },
+  { id: 'female2', name: '여성 2' },
+  { id: 'male1', name: '남성 1' },
+  { id: 'male2', name: '남성 2' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella' },
+  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni' },
+  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh' },
+  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
+  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam' },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel' },
+  { id: 'oWAxZDx7w5VEj9dCyTzz', name: 'Grace' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily' },
+  { id: 'ThT5KcBeq8keWAlS799P', name: 'Rachel' },
+  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill' },
+  { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger' },
+  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum' },
+  { id: 'ODq5zmih8GrVes37Dizd', name: 'Patrick' },
+  { id: 'SOYHLrjzK2X1ezoPC6cr', name: 'Harry' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam' },
+  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will' },
+  { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris' },
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian' },
+  { id: 't0jbNlBVZ17f02VDIeMI', name: 'Jessie' },
+];
+
 const PAGE_SIZE = 6;
 
 async function downloadVideo(url: string, title: string) {
@@ -72,9 +115,8 @@ export default function HistoryPage() {
       imageStyle: v.image_style,
       voiceId: v.voice_id,
       ttsProvider: v.tts_provider,
-      videoUrl: v.video_url,
     }));
-    router.push('/dashboard');
+    router.push('/dashboard/video');
   }
 
   useEffect(() => {
@@ -207,7 +249,10 @@ export default function HistoryPage() {
                 )}
                 {v.tts_provider && (
                   <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
-                    {v.tts_provider === 'google' ? 'Google TTS' : 'MiniMax TTS'}
+                    {v.tts_provider === 'google' ? 'Google TTS' : v.tts_provider === 'minimax' ? 'MiniMax TTS' : 'ElevenLabs'}
+                    {v.voice_id && ALL_VOICES.find(vo => vo.id === v.voice_id) && (
+                      <> · {ALL_VOICES.find(vo => vo.id === v.voice_id)!.name}</>
+                    )}
                   </span>
                 )}
               </div>

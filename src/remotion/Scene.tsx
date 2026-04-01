@@ -78,7 +78,7 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
               objectFit: 'cover',
             }}
           />
-        ) : (
+        ) : scene.imageUrl ? (
           <Img
             src={scene.imageUrl}
             style={{
@@ -87,6 +87,8 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
               objectFit: 'cover',
             }}
           />
+        ) : (
+          <AbsoluteFill style={{ backgroundColor: '#0d0d0d' }} />
         )}
       </AbsoluteFill>
 

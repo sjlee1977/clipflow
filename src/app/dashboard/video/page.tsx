@@ -250,7 +250,15 @@ export default function DashboardPage() {
           if (data.voiceId) setVoiceId(data.voiceId);
           if (data.ttsProvider) setTtsProvider(data.ttsProvider);
           if (data.videoModelId) setVideoModelId(data.videoModelId);
-          if (data.videoUrl) { setVideoUrl(data.videoUrl); setStatus('done'); } else setStatus('preview');
+          // savedEdit(히스토리)에서 온 경우 항상 preview로 — 자막/이미지 편집 + 재렌더링 가능
+          if (savedEdit) {
+            setStatus('preview');
+          } else if (data.videoUrl) {
+            setVideoUrl(data.videoUrl);
+            setStatus('done');
+          } else {
+            setStatus('preview');
+          }
         }
       } catch (err) {
         console.error('[Dashboard] Restore failed:', err);
@@ -675,33 +683,6 @@ export default function DashboardPage() {
         {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
           <div className="flex flex-col h-full">
             {/* 입력 카드 */}
-            {/* 모드 토글 */}
-            <div className="flex gap-2 mb-4">
-              <button onClick={() => setPptMode(false)} className={`text-[12px] font-mono px-3 py-1.5 border transition-colors ${!pptMode ? 'border-orange-400 text-orange-400 bg-orange-400/10' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
-                ◼ 일반 모드
-              </button>
-              <button onClick={() => setPptMode(true)} className={`text-[12px] font-mono px-3 py-1.5 border transition-colors ${pptMode ? 'border-orange-400 text-orange-400 bg-orange-400/10' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
-                ▦ PPT 모드
-              </button>
-            </div>
-
-            {/* PPT 테마 선택 */}
-            {pptMode && (
-              <div className="flex gap-2 mb-4">
-                {[
-                  { id: 'simple-modern', label: '심플 모던', desc: '흰 배경 · 깔끔' },
-                  { id: 'dark', label: '다크', desc: '어두운 · 세련' },
-                  { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
-                ].map(t => (
-                  <button key={t.id} onClick={() => setPptTheme(t.id as any)}
-                    className={`flex flex-col items-start px-3 py-2 border text-left transition-colors ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
-                    <span className={`text-[12px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/70'}`}>{t.label}</span>
-                    <span className="text-[10px] font-mono text-white/30 mt-0.5">{t.desc}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
           <div className="relative mt-10 flex flex-col">
               {/* 탭 레이블 */}
               <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
@@ -1132,13 +1113,13 @@ export default function DashboardPage() {
             <>
               <PanelSection label="스타일">
                 <div className="flex flex-wrap gap-1 mb-4">
-                  {IMAGE_STYLES.map(s => (
+                  {IMAGE_STYLES.filter(s => s.id !== 'none').map(s => (
                     <button
                       key={s.id}
-                      onClick={() => setImageStyle(s.id)}
+                      onClick={() => { setImageStyle(s.id); setPptMode(false); }}
                       disabled={isProcessing}
                       className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
-                        imageStyle === s.id
+                        !pptMode && imageStyle === s.id
                           ? 'border-yellow-400 text-yellow-400'
                           : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
                       }`}
@@ -1146,31 +1127,65 @@ export default function DashboardPage() {
                       {s.label}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setPptMode(!pptMode)}
+                    disabled={isProcessing}
+                    className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
+                      pptMode
+                        ? 'border-orange-400 text-orange-400'
+                        : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    PPT
+                  </button>
+                  <button
+                    onClick={() => { setImageStyle('none'); setPptMode(false); }}
+                    disabled={isProcessing}
+                    className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
+                      !pptMode && imageStyle === 'none'
+                        ? 'border-yellow-400 text-yellow-400'
+                        : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    선택 없음
+                  </button>
                 </div>
 
-                <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2 mt-6">자막 폰트</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {KOREAN_FONTS.map((font) => (
-                    <button
-                      key={font.id}
-                      onClick={() => setFontFamily(font.id)}
-                      className={`px-2 py-2 text-left text-[12px] font-mono border transition-colors ${
-                        fontFamily === font.id
-                          ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300'
-                          : 'border-white/10 bg-white/[0.02] text-white/50 hover:text-white/80 hover:border-white/20'
-                      }`}
-                    >
-                      {font.label}
-                    </button>
-                  ))}
+                {pptMode && (
+                  <div className="flex gap-1.5 mb-4">
+                    {([
+                      { id: 'simple-modern', label: '심플 모던', desc: '흰 배경 · 깔끔' },
+                      { id: 'dark', label: '다크', desc: '어두운 · 세련' },
+                      { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
+                    ] as const).map(t => (
+                      <button key={t.id} onClick={() => setPptTheme(t.id)}
+                        className={`flex flex-col items-start px-2 py-2 border text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
+                        <span className={`text-[11px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/60'}`}>{t.label}</span>
+                        <span className="text-[9px] font-mono text-white/30 mt-0.5">{t.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+
+                <div className="mt-6">
+                <PanelAccordion label="자막 폰트" value={KOREAN_FONTS.find(f => f.id === fontFamily)?.label ?? ''} closeOnSelect>
+                  <div className="space-y-0.5">
+                    {KOREAN_FONTS.map((font) => (
+                      <OptionItem key={font.id} active={fontFamily === font.id} onClick={() => setFontFamily(font.id)}>
+                        {font.label}
+                      </OptionItem>
+                    ))}
+                  </div>
+                </PanelAccordion>
                 </div>
 
                 <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2 mt-6">텍스트 애니메이션</p>
-                <button 
+                <button
                   onClick={() => setUseTextAnims(!useTextAnims)}
                   className={`w-full px-3 py-4 rounded-md border transition-all text-left group ${
-                    useTextAnims 
-                    ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-100' 
+                    useTextAnims
+                    ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-100'
                     : 'border-white/10 bg-white/5 text-white/30 hover:border-white/20'
                   }`}
                 >
@@ -1183,11 +1198,12 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <p className="text-[11px] opacity-60 leading-relaxed">
-                    {useTextAnims 
+                    {useTextAnims
                       ? "21종의 시네마틱 효과(꽃가루, 시계, 하트 등)를 AI가 대본에 맞춰 자동 연출합니다."
                       : "특수효과 없이 깔끔한 자막 스타일로 영상을 제작합니다."}
                   </p>
                 </button>
+
               </PanelSection>
 
               <PanelSection label="비율">
