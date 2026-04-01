@@ -120,12 +120,7 @@ function OptionItem({ active, onClick, children, sub }: {
 }
 
 export default function ScriptPage() {
-  const [topic, setTopic] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    const saved = sessionStorage.getItem('clipflow_script_topic');
-    if (saved) { sessionStorage.removeItem('clipflow_script_topic'); return saved; }
-    return '';
-  });
+  const [topic, setTopic] = useState('');
   const [tone, setTone] = useState<ToneId>('friendly_casual');
   const [category, setCategory] = useState('');
   const [llmModelId, setLlmModelId] = useState('claude-sonnet-4-6');
@@ -134,6 +129,8 @@ export default function ScriptPage() {
 
   // Read category from sessionStorage (set by prompt page)
   useEffect(() => {
+    const savedTopic = sessionStorage.getItem('clipflow_script_topic');
+    if (savedTopic) { sessionStorage.removeItem('clipflow_script_topic'); setTopic(savedTopic); }
     const savedCat = sessionStorage.getItem('clipflow_script_category');
     if (savedCat) {
       sessionStorage.removeItem('clipflow_script_category');

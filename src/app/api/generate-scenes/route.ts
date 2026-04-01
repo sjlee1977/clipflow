@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             controller.close();
             return;
           }
-          const targetCharsPerScene = 150;
+          const targetCharsPerScene = 175;
           const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
           const { slides, usage: llmUsage } = await splitScriptIntoSlides(script, llmModelId, sceneCount, geminiApiKey);
           send({ type: 'total', count: slides.length });
@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // 1. 장면 분할 (200자당 1장면, 최대 50장면)
-        // 최소 100자, 최대 200자 기준으로 자연스러운 문장 단위로 분할
-        const targetCharsPerScene = 150;
+        // 1. 장면 분할 (175자 기준으로 장면 수 추정, 최대 50장면)
+        // LLM이 150~200자 범위 내에서 문맥에 맞게 최적 분량 결정
+        const targetCharsPerScene = 175;
         const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
         console.log(`[generate-scenes] script.length=${script.length}, sceneCount=${sceneCount}`);
         const hasCharacter = !!characterImageBase64;
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
               } else {
                 imageUrl = await generateImageViaGoogle(
                   styledPrompt,
-                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters },
+                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters, format },
                   imageModelId,
                   geminiApiKey
                 );

@@ -3,6 +3,32 @@ import { createVideoTask, queryVideoTask } from '@/lib/minimax-video';
 import { createKlingVideoTask, queryKlingVideoTask } from '@/lib/kling';
 import { createFalVideoTask, queryFalVideoTask } from '@/lib/fal-video';
 import { createClient } from '@/lib/supabase-server';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION ?? 'ap-northeast-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+const BUCKET = process.env.S3_BUCKET ?? 'remotionlambda-apnortheast2-17lxfxukvf';
+
+async function reuploadVideoToS3(videoUrl: string): Promise<string> {
+  try {
+    const res = await fetch(videoUrl);
+    if (!res.ok) throw new Error(`download failed: ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const key = `videos/${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: buf, ContentType: 'video/mp4' }));
+    const s3Url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
+    console.log('[animate-scene] video re-uploaded to S3:', key);
+    return s3Url;
+  } catch (e) {
+    console.warn('[animate-scene] S3 re-upload failed, using original URL:', e);
+    return videoUrl;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -80,6 +106,11 @@ export async function GET(req: NextRequest) {
       status = await queryFalVideoTask(taskId, falApiKey);
     } else {
       status = await queryVideoTask(taskId);
+    }
+
+    // 완료 시 Kling CDN URL → S3로 재업로드 (Lambda 렌더링 속도 최적화)
+    if (status.task_status === 'succeed' && status.video_url) {
+      status.video_url = await reuploadVideoToS3(status.video_url);
     }
 
     return NextResponse.json(status);

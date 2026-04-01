@@ -61,9 +61,10 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
 
   return (
     <AbsoluteFill>
-      {/* 배경 이미지 또는 비디오 (Ken Burns + Noise) */}
+      {/* 배경 이미지 또는 비디오 */}
       <AbsoluteFill
-        style={{
+        style={scene.videoUrl ? undefined : {
+          // Ken Burns + Noise: 정지 이미지에만 적용, AI 비디오에는 적용 안 함
           transform: `scale(${scale}) translateX(${translateX}%) translateY(${translateY}%)`,
           transformOrigin: 'center center',
         }}
@@ -71,7 +72,6 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
         {scene.videoUrl ? (
           <Video
             src={scene.videoUrl}
-            loop
             style={{
               width: '100%',
               height: '100%',

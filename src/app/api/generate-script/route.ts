@@ -604,35 +604,33 @@ export async function POST(req: NextRequest) {
     let savedScriptId = null;
     try {
       const adminSupabase = await createAdminClient();
-      const { data: savedData, error: insertError } = await adminSupabase
+      const title = topic.length > 50 ? topic.slice(0, 50) + '...' : topic;
+
+      // 1차: metadata 포함 시도
+      let { data: savedData, error: insertError } = await adminSupabase
         .from('scripts')
-        .insert({
-          user_id: user.id,
-          title: topic.length > 50 ? topic.slice(0, 50) + '...' : topic,
-          content: script,
-          // type, llm_model 컬럼이 테이블에 없을 가능성이 있어 제거함
-          metadata: {
-            topic,
-            scriptType,
-            llmModelId: model,
-            generated_at: new Date().toISOString(),
-          }
-        })
+        .insert({ user_id: user.id, title, content: script, metadata: { topic, scriptType, llmModelId: model, generated_at: new Date().toISOString() } })
         .select('id')
         .single();
 
+      // metadata 컬럼 없을 경우 2차: 기본 필드만으로 재시도
       if (insertError) {
-        console.error('[generate-script] 라이브러리 저장 실패 상세:', {
-          error: insertError,
-          userId: user.id,
-          topic: topic.slice(0, 20)
-        });
+        console.warn('[generate-script] 1차 저장 실패, metadata 제외 재시도:', insertError.message);
+        ({ data: savedData, error: insertError } = await adminSupabase
+          .from('scripts')
+          .insert({ user_id: user.id, title, content: script })
+          .select('id')
+          .single());
+      }
+
+      if (insertError) {
+        console.error('[generate-script] 저장 최종 실패:', insertError.message, '| user:', user.id);
       } else if (savedData) {
         savedScriptId = savedData.id;
-        console.log('[generate-script] 라이브러리 저장 성공:', savedScriptId);
+        console.log('[generate-script] 저장 성공:', savedScriptId);
       }
     } catch (saveErr) {
-      console.error('[generate-script] 저장 프로세스 중 예외 발생:', saveErr);
+      console.error('[generate-script] 저장 예외:', saveErr);
     }
 
     return NextResponse.json({ 

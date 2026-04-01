@@ -87,13 +87,13 @@ export async function splitScriptIntoScenes(
 (5) textAnimationStyle: 텍스트 애니메이션 및 모션 그래픽 (반드시 다음 목록 중에서만 선택: ${animList})
     - **중요: 타이포그래피 중심 영상이므로 모든 장면(100%)에 애니메이션/효과를 적용하세요.**
     - 'clock-spin': 시간/기다림, 'pulse-ring': 강한 강조, 'sparkle': 신비/우아함, 'confetti': 축하/승리, 'rain': 슬픔/감성, 'snow': 겨울/평화, 'fire': 열정/강렬, 'heart': 사랑/행복, 'stars': 꿈/밤하늘, 'thunder': 충격/파워, 'chart-up': 성장/비즈니스, 'film-roll': 추억/기록, 'magnifier': 분석/발견, 'lock-secure': 보안/약속, 'camera-flash': 화제/강조
-(6) textPosition: 텍스트 위치 ('bottom', 'center', 'top' 중 선택)`
+(6) textPosition: 반드시 'bottom'으로 고정`
     : `
 (5) textAnimationStyle: 텍스트 애니메이션 및 모션 그래픽 (반드시 다음 목록 중에서만 선택: ${animList})
     - **중요: 전체 장면의 40~60%에 반드시 애니메이션을 적용하세요. 'none'만 사용하는 것은 금지입니다.**
     - 장면 분위기에 맞게 선택: 'clock-spin'(시간/기다림), 'pulse-ring'(강한 강조), 'sparkle'(신비/우아함), 'confetti'(축하/승리), 'rain'(슬픔/감성), 'snow'(겨울/평화), 'fire'(열정/강렬), 'heart'(사랑/행복), 'stars'(꿈/밤하늘), 'thunder'(충격/파워), 'chart-up'(성장/비즈니스), 'film-roll'(추억/기록), 'magnifier'(분석/발견), 'lock-secure'(보안/약속), 'camera-flash'(화제/강조), 'typewriter'(정보 전달), 'fly-in'(역동적 등장), 'pop-in'(경쾌한 강조), 'fade-zoom'(부드러운 전환)
     - 나머지 장면만 'none'으로 유지하세요.
-(6) textPosition: 텍스트 위치 ('bottom', 'center', 'top' 중 선택)`;
+(6) textPosition: 반드시 'bottom'으로 고정`;
 
   const imagePromptInstruction = isTypographyMode
     ? `주로 **추상적이고 미니멀한 단색 또는 심플한 텍스처 배경**을 묘사하세요.`
@@ -110,7 +110,11 @@ export async function splitScriptIntoScenes(
 
 **[절대 규칙 — 위반 시 전체 작업 실패]**
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지. 원문 그대로 잘라서 넣으세요.
-2. **균등 분배**: 각 장면의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외(±30자)로 균등하게 배분하세요. 어떤 장면도 100자 미만이 되어서는 안 됩니다. 짧은 문장(100자 미만)은 반드시 앞뒤 문장과 합쳐서 하나의 장면으로 만드세요.
+2. **엄격한 분량 준수 (절대 위반 금지)**:
+   - 전체 대본 ${script.length}자 ÷ ${sceneCount}장면 = 장면당 평균 **${Math.round(script.length / sceneCount)}자**
+   - 각 장면은 **150자 이상 200자 이하**여야 합니다
+   - 짧은 질문·전환 문구 등 150자 미만이 되는 내용은 절대 별도 장면으로 만들지 말고, 앞 장면 또는 뒤 장면에 합쳐서 150자 이상이 되도록 하세요
+   - **출력 전 각 장면의 글자 수를 직접 세어 검증하고, 150자 미만이면 반드시 재조정하세요**
 3. **문장 단위 분할**: 문장 중간에서 자르지 말고 마침표(. ! ?)나 줄바꿈 기준으로 분할하세요.
 4. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
 5. **imagePrompt/motionPrompt**: 각각 영어로 250자 내외로 작성하세요.
@@ -119,8 +123,8 @@ export async function splitScriptIntoScenes(
 필드:
 (1) text: 대본 원문 (한국어 기본, 영어 키워드는 포인트로만)
 (2) imagePrompt: 이미지 생성 프롬프트(영어, ${imagePromptInstruction})
-(3) motionPrompt: 동작 묘사 프롬프트(영어)
-(4) shouldAnimate: 비디오 변환 여부
+(3) motionPrompt: 동작 묘사 프롬프트(영어) — **인물 신체 동작 + 환경/배경 동작을 함께 묘사**하세요. 예: "person swaying shoulders and nodding head while rain streaks down the window behind them, soft ambient light flickering". 인물 동작(팔·손·머리·몸통)과 환경 동작(비·바람·불꽃·흐르는 물·구름 등)을 모두 구체적으로 작성하세요. 배경 동작만 단독으로 쓰지 말고, 반드시 인물 동작도 포함하세요.
+(4) shouldAnimate: AI 비디오 변환 여부 — **전체 장면 수의 20% 이하(소수점 내림)만 true**로 설정하세요. 예: 4장면→최대 0개(없음), 5장면→최대 1개, 10장면→최대 2개, 20장면→최대 4개. true 조건(가장 임팩트 있는 1~2개만): 영상의 핵심 클라이맥스 장면, 인물의 강렬한 감정 표현 장면. 나머지는 모두 false.
 ${advancedEffectsPrompt.trim()}${characterInstruction}
 
 반드시 아래 JSON 형태로만 응답하세요:
@@ -193,6 +197,13 @@ type GenerateImageOptions = {
   characterBase64?: string;
   characterMimeType?: string;
   subCharacters?: { base64: string; name: string }[];
+  format?: string;
+};
+
+const FORMAT_TO_ASPECT: Record<string, string> = {
+  shorts: '9:16',
+  landscape: '16:9',
+  square: '1:1',
 };
 
 export async function generateImage(
@@ -201,7 +212,8 @@ export async function generateImage(
   modelId = 'google/gemini-2.5-flash-image',
   apiKey?: string
 ): Promise<string> {
-  const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg', subCharacters = [] } = options;
+  const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg', subCharacters = [], format = 'landscape' } = options;
+  const aspectRatio = FORMAT_TO_ASPECT[format] ?? '16:9';
   const fullPrompt = [prompt, stylePrompt].filter(Boolean).join(', ');
   const model = modelId.startsWith('google/') ? modelId.slice('google/'.length) : modelId;
 
@@ -228,7 +240,7 @@ export async function generateImage(
   const imageGenPromise = getAI(apiKey).models.generateContent({
     model,
     contents: [{ role: 'user', parts }],
-    config: { responseModalities: ['IMAGE', 'TEXT'] },
+    config: { responseModalities: ['IMAGE', 'TEXT'], generationConfig: { aspectRatio } } as any,
   });
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Gemini 이미지 생성 타임아웃 (90초 초과)')), 90000)
@@ -347,7 +359,11 @@ export async function splitScriptIntoSlides(
 
 **[절대 규칙]**
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지.
-2. **균등 분배**: 각 슬라이드의 글자 수는 ${Math.round(script.length / sceneCount)}자 내외로 균등하게 배분하세요.
+2. **엄격한 분량 준수 (절대 위반 금지)**:
+   - 전체 대본 ${script.length}자 ÷ ${sceneCount}슬라이드 = 슬라이드당 평균 **${Math.round(script.length / sceneCount)}자**
+   - 각 슬라이드는 **150자 이상 200자 이하**여야 합니다
+   - 짧은 문장·전환 문구 등 150자 미만이 되는 내용은 절대 별도 슬라이드로 만들지 말고, 앞 또는 뒤 슬라이드에 합치세요
+   - **출력 전 각 슬라이드의 글자 수를 직접 세어 검증하고, 150자 미만이면 반드시 재조정하세요**
 3. **JSON만 출력**: 반드시 {"slides": [...]} 형태의 유효한 JSON만 출력하세요.
 
 필드:

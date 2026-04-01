@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       if (!geminiApiKey) return Response.json({ error: 'Gemini API 키가 설정되지 않았습니다.' }, { status: 400 });
       imageUrl = await generateImageViaGoogle(
         styledPrompt,
-        { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters },
+        { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters, format },
         imageModelId,
         geminiApiKey
       );
