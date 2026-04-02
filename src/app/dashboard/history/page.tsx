@@ -23,7 +23,7 @@ type Video = {
 
 const IMAGE_STYLE_LABELS: Record<string, string> = {
   cinematic: '영화', realistic: '실사', anime: '애니', documentary: '다큐',
-  '3d': '3D', watercolor: '수채화', cartoon: '카툰', noir: '누아르',
+  '3d': '3D', watercolor: '수채화', cartoon: '카툰', noir: '누아르', kinetic: '키네틱',
 };
 
 const ALL_VOICES: { id: string; name: string }[] = [

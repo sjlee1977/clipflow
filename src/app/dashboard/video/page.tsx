@@ -65,6 +65,7 @@ const IMAGE_STYLES = [
   { id: 'cartoon', label: '카툰' },
   { id: 'noir', label: '누아르' },
   { id: 'lineart', label: '라인아트' },
+  { id: 'kinetic', label: '키네틱' },
   { id: 'none', label: '선택 없음' },
 ] as const;
 
@@ -96,6 +97,7 @@ type TextAnimationId = typeof TEXT_ANIMATIONS[number]['id'];
 
 type PreviewScene = {
   text: string;
+  displayText?: string; // 키네틱 모드: 화면 중앙 초대형 표시용 핵심 포인트
   imageUrl: string;
   imagePrompt: string;
   motionPrompt?: string;
@@ -103,7 +105,7 @@ type PreviewScene = {
   videoUrl?: string;
   isAnimating?: boolean;
   isLoading?: boolean;
-  textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
+  textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
   textPosition?: 'bottom' | 'center' | 'top';
   slideData?: { layout: string; title?: string; bullets?: string[] };
   pptTheme?: string;
@@ -195,7 +197,7 @@ export default function DashboardPage() {
   const [format, setFormat] = useState<Format>('landscape');
   const [imageModelId, setImageModelId] = useState('google/gemini-2.5-flash-image');
   const [llmModelId, setLlmModelId] = useState('google/gemini-2.5-flash');
-  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google' | 'elevenlabs'>('google');
+  const [ttsProvider, setTtsProvider] = useState<'minimax' | 'google' | 'elevenlabs' | 'none'>('google');
   const [videoModelId, setVideoModelId] = useState('kling-v2-6');
   const [voiceId, setVoiceId] = useState('Kore');
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
@@ -245,7 +247,11 @@ export default function DashboardPage() {
       try {
         const data = JSON.parse(source!);
         if (data.scenes?.length) {
-          setScenes(data.scenes);
+          // 키네틱 스타일이었다면 복구 시 이미지 URL 제거 (이전 스타일 이미지 혼입 방지)
+          const restoredScenes = data.imageStyle === 'kinetic'
+            ? data.scenes.map((s: PreviewScene) => ({ ...s, imageUrl: '' }))
+            : data.scenes;
+          setScenes(restoredScenes);
           if (data.format) setFormat(data.format);
           if (data.imageModelId) setImageModelId(data.imageModelId);
           if (data.imageStyle) setImageStyle(data.imageStyle);
@@ -391,6 +397,7 @@ export default function DashboardPage() {
             setGenCompleted(prev => prev + 1);
             const sceneData = {
               text: event.text,
+              displayText: event.displayText,
               imagePrompt: event.imagePrompt,
               imageUrl: event.imageUrl,
               motionPrompt: event.motionPrompt,
@@ -910,8 +917,14 @@ export default function DashboardPage() {
                             {scene.slideData.title?.slice(0, 12) || 'SLIDE'}
                           </span>
                         </div>
-                      ) : (
+                      ) : scene.imageUrl ? (
                         <img src={scene.imageUrl} alt={`장면 ${i + 1}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-black border border-white/5 p-1.5">
+                          <span className="text-[9px] text-white/80 font-bold text-center leading-tight" style={{ wordBreak: 'keep-all' }}>
+                            {scene.displayText?.slice(0, 16) || '키네틱'}
+                          </span>
+                        </div>
                       )}
                       {/* 비디오 뱃지 */}
                       {scene.videoUrl && (
@@ -1383,6 +1396,18 @@ export default function DashboardPage() {
             <>
               <PanelSection label="보이스">
                 <div className="space-y-1">
+                  {/* 음성 없음 */}
+                  <button
+                    onClick={() => setTtsProvider('none')}
+                    className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
+                      ttsProvider === 'none'
+                        ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                        : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
+                    }`}
+                  >
+                    <span>음성 없음</span>
+                    <span className="text-[11px] text-white/30 font-mono">자막만 표시</span>
+                  </button>
                   {/* Google TTS */}
                   <PanelAccordion
                     label="Google TTS"
@@ -1468,12 +1493,12 @@ export default function DashboardPage() {
                     <span className="text-yellow-400 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
                   </div>
                   <input
-                    type="range" min={0.5} max={2.0} step={0.25} value={playbackRate}
+                    type="range" min={0.5} max={2.0} step={0.05} value={playbackRate}
                     onChange={e => setPlaybackRate(parseFloat(e.target.value))}
                     className="w-full accent-yellow-400 h-0.5"
                   />
                   <div className="flex justify-between text-white/15 text-[12px] font-mono mt-2">
-                    <span>0.5x</span><span>1.0x</span><span>2.0x</span>
+                    <span>0.5x</span><span>0.75x</span><span>1.0x</span><span>1.5x</span><span>2.0x</span>
                   </div>
                 </div>
               </PanelSection>
@@ -1495,7 +1520,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">목소리</span>
-                  <span className="text-white/40">{selectedVoice?.name}</span>
+                  <span className="text-white/40">{ttsProvider === 'none' ? '없음' : selectedVoice?.name}</span>
                 </div>
               </div>
             </>

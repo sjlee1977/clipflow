@@ -118,9 +118,10 @@ export async function POST(req: NextRequest) {
     // 1. TTS 생성
     type SceneInput = {
       text: string;
+      displayText?: string;
       imageUrl: string;
       videoUrl?: string;
-      textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom';
+      textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
       textPosition?: 'bottom' | 'center' | 'top';
       slideData?: { layout: string; title?: string; bullets?: string[] };
       pptTheme?: string;
@@ -128,29 +129,41 @@ export async function POST(req: NextRequest) {
 
     async function processTTS(s: SceneInput, i: number) {
       let audioUrl: string;
-      let durationMs: number;
+      let durationInFrames: number;
 
-      if (ttsProvider === 'google') {
-        ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
-      } else if (ttsProvider === 'elevenlabs') {
-        const { generateSpeechToS3: elevenTTSToS3 } = await import('@/lib/elevenlabs');
-        ({ url: audioUrl, durationMs } = await elevenTTSToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
+      if (ttsProvider === 'none') {
+        // 음성 없음: 텍스트 길이 기반으로 duration 계산 (한국어 분당 약 200자 읽기 속도)
+        const charsPerSec = 200 / 60 * speed;
+        const estimatedSec = Math.max(3, s.text.replace(/\s+/g, '').length / charsPerSec);
+        audioUrl = '';
+        durationInFrames = Math.max(90, Math.round(estimatedSec * FPS) + PADDING_FRAMES);
       } else {
-        ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
+        let durationMs: number;
+        if (ttsProvider === 'google') {
+          ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
+        } else if (ttsProvider === 'elevenlabs') {
+          const { generateSpeechToS3: elevenTTSToS3 } = await import('@/lib/elevenlabs');
+          ({ url: audioUrl, durationMs } = await elevenTTSToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
+        } else {
+          ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
+        }
+        durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
       }
-
-      let durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
 
       if (s.videoUrl) {
         durationInFrames = Math.max(durationInFrames, 150);
       }
 
+      // 키네틱 모드도 나레이션 자막을 타이밍에 맞게 분할 (displayText가 핵심 포인트를 화면에 크게 표시)
+      const subtitles = splitIntoSubtitles(s.text, durationInFrames);
+
       return {
         imageUrl: s.imageUrl,
+        displayText: s.displayText,
         videoUrl: s.videoUrl,
         audioUrl,
         durationInFrames,
-        subtitles: splitIntoSubtitles(s.text, durationInFrames),
+        subtitles,
         textAnimationStyle: s.textAnimationStyle,
         textPosition: s.textPosition,
         slideData: s.slideData,
@@ -159,7 +172,10 @@ export async function POST(req: NextRequest) {
     }
 
     let scenes: any[] = [];
-    if (ttsProvider === 'google') {
+    if (ttsProvider === 'none') {
+      // 음성 없음: 모든 씬 병렬 처리 (API 호출 없음)
+      scenes = await Promise.all(inputScenes.map((s: SceneInput, i: number) => processTTS(s, i)));
+    } else if (ttsProvider === 'google') {
       for (let i = 0; i < inputScenes.length; i++) {
         scenes.push(await processTTS(inputScenes[i], i));
       }

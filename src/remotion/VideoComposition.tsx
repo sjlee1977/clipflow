@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useState, useEffect } from 'react';
 import { SceneComponent } from './Scene';
 import { SlideSceneComponent } from './SlideScene';
+import { KineticSceneComponent } from './KineticScene';
 import { VideoProps } from './types';
 import { KOREAN_FONTS, DEFAULT_FONT_ID } from '../lib/fonts';
 
@@ -20,15 +21,24 @@ export const SlideDataSchema = z.object({
   layout: z.string(),
   title: z.string().optional(),
   bullets: z.array(z.string()).optional(),
+  comparisonData: z.object({
+    leftTitle: z.string(),
+    rightTitle: z.string(),
+    leftItems: z.array(z.string()),
+    rightItems: z.array(z.string()),
+  }).optional(),
 });
 
 export const SceneSchema = z.object({
   imageUrl: z.string(),
+  displayText: z.string().optional(),
   videoUrl: z.string().optional(),
   gifUrl: z.string().optional(),
   audioUrl: z.string(),
   durationInFrames: z.number(),
   subtitles: z.array(SubtitleWordSchema),
+  textAnimationStyle: z.string().optional(),
+  textPosition: z.enum(['bottom', 'center', 'top']).optional(),
   slideData: SlideDataSchema.optional(),
   pptTheme: z.string().optional(),
 });
@@ -103,6 +113,8 @@ export const VideoComposition: React.FC<VideoProps> = ({ scenes, fontFamily = DE
             <TransitionSeries.Sequence key={i} durationInFrames={scene.durationInFrames}>
               {scene.slideData ? (
                 <SlideSceneComponent scene={scene} slideIndex={i} fontFamily={fontFamily} />
+              ) : !scene.imageUrl ? (
+                <KineticSceneComponent scene={scene} sceneIndex={i} fontFamily={fontFamily} />
               ) : (
                 <SceneComponent scene={scene} globalOffset={0} fontFamily={fontFamily} />
               )}

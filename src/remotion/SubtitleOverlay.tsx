@@ -4,7 +4,7 @@ import { SubtitleWord } from './types';
 
 type Props = {
   subtitles: SubtitleWord[];
-  style?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
+  style?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash' | 'stagger-words' | 'kinetic-bounce' | 'focus-highlight';
   position?: 'bottom' | 'center' | 'top';
   fontFamily?: string;
 };
@@ -148,14 +148,16 @@ const Stars: React.FC<{ frame: number }> = ({ frame }) => {
 };
 
 const Thunder: React.FC<{ frame: number }> = ({ frame }) => {
-  const isFlash = Math.floor(frame / 2) % 15 === 0 && frame % 15 < 3;
+  // 씬 시작 시 1회만 번개: 0~4프레임 플래시, 10~13프레임 잔광
+  const isMainFlash = frame < 5;
+  const isAfterGlow = frame >= 10 && frame < 14;
+  const opacity = isMainFlash ? 0.85 : isAfterGlow ? 0.3 : 0;
+  if (opacity === 0) return null;
   return (
-    <AbsoluteFill style={{ backgroundColor: isFlash ? 'rgba(255,255,255,0.8)' : 'transparent' }}>
-      {isFlash && (
-        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M50 0 L30 50 L60 40 L40 100" stroke="white" strokeWidth="2" fill="none" />
-        </svg>
-      )}
+    <AbsoluteFill style={{ backgroundColor: `rgba(200,220,255,${opacity})` }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M50 0 L30 50 L60 40 L40 100" stroke="white" strokeWidth="2" fill="none" opacity={isMainFlash ? 1 : 0.4} />
+      </svg>
     </AbsoluteFill>
   );
 };
@@ -209,9 +211,13 @@ const LockSecure: React.FC<{ frame: number }> = ({ frame }) => {
 };
 
 const CameraFlash: React.FC<{ frame: number }> = ({ frame }) => {
-  const opacity = interpolate(frame % 30, [0, 2, 10], [0, 0.9, 0], { extrapolateRight: 'clamp' });
+  // 씬 시작 시 1회만 플래시
+  const opacity = interpolate(frame, [0, 2, 12], [0, 0.9, 0], { extrapolateRight: 'clamp' });
   return <AbsoluteFill style={{ backgroundColor: 'white', opacity }} />;
 };
+
+// 배경 효과 컴포넌트 목록 (씬 전체 duration 동안 지속)
+const BG_EFFECTS = ['clock-spin','pulse-ring','sparkle','confetti','rain','snow','fire','heart','stars','thunder','chart-up','film-roll','magnifier','lock-secure','camera-flash'];
 
 export const SubtitleOverlay: React.FC<Props> = ({
   subtitles,
@@ -226,7 +232,39 @@ export const SubtitleOverlay: React.FC<Props> = ({
     (s) => frame >= s.startFrame && frame < s.endFrame
   );
 
-  if (!currentSubtitle) return null;
+  // 위치 스타일
+  const positionStyles: Record<string, React.CSSProperties> = {
+    bottom: { justifyContent: 'flex-end', paddingBottom: 80 },
+    center: { justifyContent: 'center' },
+    top: { justifyContent: 'flex-start', paddingTop: 80 },
+  };
+
+  // 배경 효과는 자막 여부와 무관하게 씬 전체에서 항상 렌더링
+  const isBgEffect = BG_EFFECTS.includes(style);
+
+  // 자막 없을 때: 배경 효과만 렌더링 (텍스트 없음)
+  if (!currentSubtitle) {
+    if (!isBgEffect) return null;
+    return (
+      <AbsoluteFill style={{ alignItems: 'center', ...positionStyles[position] }}>
+        {style === 'clock-spin' && <ClockSpin frame={frame} />}
+        {style === 'pulse-ring' && <PulseRing frame={frame} />}
+        {style === 'sparkle' && <Sparkle frame={frame} />}
+        {style === 'confetti' && <Confetti frame={frame} />}
+        {style === 'rain' && <Rain frame={frame} />}
+        {style === 'snow' && <Snow frame={frame} />}
+        {style === 'fire' && <Fire frame={frame} />}
+        {style === 'heart' && <Heart frame={frame} />}
+        {style === 'stars' && <Stars frame={frame} />}
+        {style === 'thunder' && <Thunder frame={frame} />}
+        {style === 'chart-up' && <ChartUp frame={frame} />}
+        {style === 'film-roll' && <FilmRoll />}
+        {style === 'magnifier' && <Magnifier frame={frame} />}
+        {style === 'lock-secure' && <LockSecure frame={frame} />}
+        {style === 'camera-flash' && <CameraFlash frame={frame} />}
+      </AbsoluteFill>
+    );
+  }
 
   const currentFrameInSubtitle = frame - currentSubtitle.startFrame;
   const subtitleDuration = currentSubtitle.endFrame - currentSubtitle.startFrame;
@@ -243,10 +281,10 @@ export const SubtitleOverlay: React.FC<Props> = ({
   if (style === 'typewriter') {
     const charsToShow = Math.floor(interpolate(currentFrameInSubtitle, [0, Math.min(20, subtitleDuration * 0.8)], [0, text.length], { extrapolateRight: 'clamp' }));
     text = text.slice(0, charsToShow);
-    translateY = 0; // 타이핑 시에는 이동 생략
+    translateY = 0;
   }
 
-  // 2. Fly-in (Spring 기반 부드러운 이동)
+  // 2. Fly-in
   if (style === 'fly-in') {
     const spr = spring({ frame: currentFrameInSubtitle, fps, config: { damping: 12 } });
     translateY = interpolate(spr, [0, 1], [100, 0]);
@@ -258,13 +296,6 @@ export const SubtitleOverlay: React.FC<Props> = ({
     scale = interpolate(spr, [0, 1], [0.8, 1]);
   }
 
-  // 위치 스타일 지정
-  const positionStyles: Record<string, React.CSSProperties> = {
-    bottom: { justifyContent: 'flex-end', paddingBottom: 80 },
-    center: { justifyContent: 'center' },
-    top: { justifyContent: 'flex-start', paddingTop: 80 },
-  };
-
   return (
     <AbsoluteFill
       style={{
@@ -272,22 +303,23 @@ export const SubtitleOverlay: React.FC<Props> = ({
         ...positionStyles[position],
       }}
     >
-      {style === 'clock-spin' && <ClockSpin frame={currentFrameInSubtitle} />}
-      {style === 'pulse-ring' && <PulseRing frame={currentFrameInSubtitle} />}
-      {style === 'sparkle' && <Sparkle frame={currentFrameInSubtitle} />}
-      {style === 'confetti' && <Confetti frame={currentFrameInSubtitle} />}
-      {style === 'rain' && <Rain frame={currentFrameInSubtitle} />}
-      {style === 'snow' && <Snow frame={currentFrameInSubtitle} />}
-      {style === 'fire' && <Fire frame={currentFrameInSubtitle} />}
-      {style === 'heart' && <Heart frame={currentFrameInSubtitle} />}
-      {style === 'stars' && <Stars frame={currentFrameInSubtitle} />}
-      {style === 'thunder' && <Thunder frame={currentFrameInSubtitle} />}
-      {style === 'chart-up' && <ChartUp frame={currentFrameInSubtitle} />}
+      {/* 배경 효과: 씬 전체 frame 기준으로 지속 실행 */}
+      {style === 'clock-spin' && <ClockSpin frame={frame} />}
+      {style === 'pulse-ring' && <PulseRing frame={frame} />}
+      {style === 'sparkle' && <Sparkle frame={frame} />}
+      {style === 'confetti' && <Confetti frame={frame} />}
+      {style === 'rain' && <Rain frame={frame} />}
+      {style === 'snow' && <Snow frame={frame} />}
+      {style === 'fire' && <Fire frame={frame} />}
+      {style === 'heart' && <Heart frame={frame} />}
+      {style === 'stars' && <Stars frame={frame} />}
+      {style === 'thunder' && <Thunder frame={frame} />}
+      {style === 'chart-up' && <ChartUp frame={frame} />}
       {style === 'film-roll' && <FilmRoll />}
-      {style === 'magnifier' && <Magnifier frame={currentFrameInSubtitle} />}
-      {style === 'lock-secure' && <LockSecure frame={currentFrameInSubtitle} />}
-      {style === 'camera-flash' && <CameraFlash frame={currentFrameInSubtitle} />}
-      
+      {style === 'magnifier' && <Magnifier frame={frame} />}
+      {style === 'lock-secure' && <LockSecure frame={frame} />}
+      {style === 'camera-flash' && <CameraFlash frame={frame} />}
+
       <div
         style={{
           opacity,
@@ -304,19 +336,30 @@ export const SubtitleOverlay: React.FC<Props> = ({
             color: '#FFFFFF',
             textShadow: '0 2px 12px rgba(0,0,0,0.9), 0 0 25px rgba(0,0,0,0.6)',
             lineHeight: 1.3,
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            display: 'inline-block',
             padding: '12px 28px',
             background: position === 'center' ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.4)',
             borderRadius: 16,
             fontFamily: `"${fontFamily}", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`,
+            wordBreak: 'keep-all',
           }}
         >
-          {text}
-          {style === 'typewriter' && 
-           currentFrameInSubtitle < Math.min(20, subtitleDuration * 0.8) && 
+          {text.split(' ').map((rawWord, i) => {
+            const isMarkup = rawWord.startsWith('**') && rawWord.endsWith('**');
+            const word = isMarkup ? rawWord.slice(2, -2) : rawWord;
+            return (
+              <span key={i} style={{ 
+                color: isMarkup ? '#facc15' : 'inherit',
+                fontSize: isMarkup ? '1.15em' : 'inherit',
+                marginRight: '0.25em',
+                display: 'inline-block'
+              }}>
+                {word}
+              </span>
+            );
+          })}
+          {style === 'typewriter' &&
+           currentFrameInSubtitle < Math.min(20, subtitleDuration * 0.8) &&
            Math.floor(frame / 10) % 2 === 0 && (
             <span style={{ marginLeft: 2, color: '#facc15' }}>|</span>
           )}

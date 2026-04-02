@@ -282,7 +282,7 @@ const BulletsLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: 
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 1,
       }}>
-      <div style={{ padding: t.isColorful ? '60px 160px' : '60px 140px', width: '100%' }}>
+      <div style={{ padding: t.isColorful ? '60px 160px' : '60px 140px', width: '100%', textAlign: 'center' }}>
         {/* 제목 */}
         <div style={{
           fontSize: 62,
@@ -293,7 +293,7 @@ const BulletsLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: 
           letterSpacing: '0.02em',
           marginBottom: 16,
           opacity: titleOpacity,
-          transform: `translateX(${titleX}px)`,
+          transform: `translateY(${interpolate(titleX, [-40, 0], [20, 0])}px)`,
         }}>
           {renderHighlighted(scene.slideData?.title || '', t.isColorful ? t.accent2 : t.accent, {
             fontSize: 62, fontWeight: 800, fontFamily: bodyFont, lineHeight: 1.2,
@@ -305,13 +305,13 @@ const BulletsLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: 
         <div style={{
           width: 56, height: 4,
           background: t.line, borderRadius: 2,
-          marginBottom: 40,
-          transform: `scaleX(${lineScale})`, transformOrigin: 'left',
+          margin: '0 auto 40px',
+          transform: `scaleX(${lineScale})`, transformOrigin: 'center',
           opacity: lineScale,
         }} />
 
         {/* 불릿 목록 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center' }}>
           {bullets.map((bullet, bi) => {
             const delay = 18 + bi * 10;
             const bs = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 18, stiffness: 140 }, durationInFrames: 28 });
@@ -322,7 +322,7 @@ const BulletsLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: 
               <div key={bi} style={{
                 display: 'flex', alignItems: 'center', gap: 20,
                 opacity: bOpacity,
-                transform: `translateX(${interpolate(bs, [0, 1], [60, 0])}px)`,
+                transform: `translateY(${interpolate(bs, [0, 1], [24, 0])}px)`,
               }}>
                 {/* 마커 */}
                 {t.isColorful && p ? (
@@ -417,6 +417,141 @@ const QuoteLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: st
   );
 };
 
+// ─── COMPARISON 레이아웃 ──────────────────────────────────────────────────────
+const ComparisonLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = t.isColorful ? pal(slideIndex) : null;
+  const data = scene.slideData?.comparisonData;
+
+  const titleOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: 'clamp' });
+  const leftSlide = spring({ frame: Math.max(0, frame - 15), fps, config: { damping: 20, stiffness: 100 } });
+  const rightSlide = spring({ frame: Math.max(0, frame - 25), fps, config: { damping: 20, stiffness: 100 } });
+
+  if (!data) return <TitleLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} />}
+
+      <div style={{
+        padding: '60px 100px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        zIndex: 1,
+      }}>
+        {/* 상단 제목 */}
+        <div style={{
+          fontSize: 54,
+          fontWeight: 800,
+          fontFamily: bodyFont,
+          color: t.title,
+          textAlign: 'center',
+          marginBottom: 40,
+          opacity: titleOpacity,
+        }}>
+          {renderHighlighted(scene.slideData?.title || '', t.accent, { fontSize: 54, fontWeight: 800, fontFamily: bodyFont })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 60, flex: 1, alignItems: 'stretch' }}>
+          {/* 왼쪽 박스 */}
+          <div style={{
+            flex: 1,
+            background: t.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+            borderRadius: 24,
+            border: `2px solid ${t.accent}44`,
+            padding: 40,
+            display: 'flex',
+            flexDirection: 'column',
+            transform: `translateX(${interpolate(leftSlide, [0, 1], [-100, 0])}px)`,
+            opacity: leftSlide,
+            boxShadow: t.isDark ? '0 10px 30px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.05)',
+          }}>
+            <div style={{
+              fontSize: 36,
+              fontWeight: 800,
+              color: t.isColorful ? t.accent : t.title,
+              marginBottom: 30,
+              textAlign: 'center',
+              borderBottom: `2px solid ${t.accent}22`,
+              paddingBottom: 15,
+            }}>
+              {data.leftTitle}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+              {data.leftItems.map((item, i) => {
+                const itemEntry = spring({ frame: Math.max(0, frame - 35 - i * 8), fps, config: { damping: 15 } });
+                return (
+                  <div key={i} style={{
+                    fontSize: 28,
+                    color: t.body,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    opacity: itemEntry,
+                    transform: `translateX(${interpolate(itemEntry, [0, 1], [20, 0])}px)`,
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.accent }} />
+                    {item}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 오른쪽 박스 */}
+          <div style={{
+            flex: 1,
+            background: t.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+            borderRadius: 24,
+            border: `2px solid ${t.accent2 ? t.accent2 : t.accent}44`,
+            padding: 40,
+            display: 'flex',
+            flexDirection: 'column',
+            transform: `translateX(${interpolate(rightSlide, [0, 1], [100, 0])}px)`,
+            opacity: rightSlide,
+            boxShadow: t.isDark ? '0 10px 30px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.05)',
+          }}>
+            <div style={{
+              fontSize: 36,
+              fontWeight: 800,
+              color: t.accent2 ? t.accent2 : t.title,
+              marginBottom: 30,
+              textAlign: 'center',
+              borderBottom: `2px solid ${t.accent2 ? t.accent2 : t.accent}22`,
+              paddingBottom: 15,
+            }}>
+              {data.rightTitle}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+              {data.rightItems.map((item, i) => {
+                const itemEntry = spring({ frame: Math.max(0, frame - 45 - i * 8), fps, config: { damping: 15 } });
+                return (
+                  <div key={i} style={{
+                    fontSize: 28,
+                    color: t.body,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    opacity: itemEntry,
+                    transform: `translateX(${interpolate(itemEntry, [0, 1], [20, 0])}px)`,
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.accent2 ? t.accent2 : t.accent }} />
+                    {item}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export const SlideSceneComponent: React.FC<SlideSceneProps> = ({ scene, slideIndex, fontFamily }) => {
   const bodyFont = fontFamily ?? 'sans-serif';
@@ -427,6 +562,9 @@ export const SlideSceneComponent: React.FC<SlideSceneProps> = ({ scene, slideInd
   }
   if (layout === 'quote') {
     return <QuoteLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+  }
+  if (layout === 'comparison') {
+    return <ComparisonLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
   }
   return <TitleLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
 };

@@ -44,8 +44,10 @@ export async function POST(req: NextRequest) {
     noir: 'film noir, black and white, high contrast, moody shadows, dramatic',
     lineart: 'minimalist line art, black and white only, simple outline illustration, doodle style, flat design, clean strokes, icon style, white background, no color, no shading',
     none: 'minimalist background, solid dark color, simple texture, non-distracting, professional, clean',
+    kinetic: '',  // 키네틱 모드: 배경 이미지 생성 없음 (순수 텍스트 애니메이션)
   };
-  const stylePrompt = imageStyle && imageStyle !== 'none' ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
+  const isKineticMode = imageStyle === 'kinetic';
+  const stylePrompt = imageStyle && imageStyle !== 'none' && !isKineticMode ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -123,41 +125,61 @@ export async function POST(req: NextRequest) {
 
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
-        // fal.ai 직접 엔드포인트는 동시 3개, Gemini는 순차 처리 (rate limit)
-        const CONCURRENCY = isFalImage ? 3 : 1;
 
-        for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
-          const batch = scriptScenes.slice(i, i + CONCURRENCY).map((s, j) => ({ s, index: i + j }));
-          await Promise.all(
-            batch.map(async ({ s, index }) => {
-              const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
-              let imageUrl: string;
-              if (isFalImage) {
-                imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
-              } else {
-                imageUrl = await generateImageViaGoogle(
-                  styledPrompt,
-                  { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters, format },
-                  imageModelId,
-                  geminiApiKey
-                );
-              }
-              const scene = { 
-                index, 
-                text: s.text, 
-                imagePrompt: s.imagePrompt, 
-                motionPrompt: s.motionPrompt, 
-                imageUrl, 
-                shouldAnimate: s.shouldAnimate,
-                textAnimationStyle: s.textAnimationStyle,
-                textPosition: s.textPosition
-              };
-              results.push(scene);
-              send({ type: 'scene', ...scene });
-            })
-          );
-          if (i + CONCURRENCY < scriptScenes.length) {
-            await new Promise(r => setTimeout(r, isFalImage ? 500 : 3000));
+        // 키네틱 모드: 이미지 생성 없이 바로 씬 전송 (Scene.tsx가 #0d0d0d 배경으로 렌더링)
+        if (isKineticMode) {
+          scriptScenes.forEach((s, index) => {
+            const scene = {
+              index,
+              text: s.text,
+              displayText: s.displayText,
+              imagePrompt: '',
+              motionPrompt: s.motionPrompt,
+              imageUrl: '',
+              shouldAnimate: false,
+              textAnimationStyle: s.textAnimationStyle,
+              textPosition: s.textPosition,
+            };
+            results.push(scene);
+            send({ type: 'scene', ...scene });
+          });
+        } else {
+          // fal.ai 직접 엔드포인트는 동시 3개, Gemini는 순차 처리 (rate limit)
+          const CONCURRENCY = isFalImage ? 3 : 1;
+
+          for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
+            const batch = scriptScenes.slice(i, i + CONCURRENCY).map((s, j) => ({ s, index: i + j }));
+            await Promise.all(
+              batch.map(async ({ s, index }) => {
+                const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
+                let imageUrl: string;
+                if (isFalImage) {
+                  imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
+                } else {
+                  imageUrl = await generateImageViaGoogle(
+                    styledPrompt,
+                    { stylePrompt, characterBase64: characterImageBase64 ?? undefined, subCharacters, format },
+                    imageModelId,
+                    geminiApiKey
+                  );
+                }
+                const scene = {
+                  index,
+                  text: s.text,
+                  imagePrompt: s.imagePrompt,
+                  motionPrompt: s.motionPrompt,
+                  imageUrl,
+                  shouldAnimate: s.shouldAnimate,
+                  textAnimationStyle: s.textAnimationStyle,
+                  textPosition: s.textPosition
+                };
+                results.push(scene);
+                send({ type: 'scene', ...scene });
+              })
+            );
+            if (i + CONCURRENCY < scriptScenes.length) {
+              await new Promise(r => setTimeout(r, isFalImage ? 500 : 3000));
+            }
           }
         }
 
@@ -166,8 +188,8 @@ export async function POST(req: NextRequest) {
           usage: {
             promptTokens: llmUsage.promptTokens,
             completionTokens: llmUsage.completionTokens,
-            imageCount: scriptScenes.length,
-            imageModelId,
+            imageCount: isKineticMode ? 0 : scriptScenes.length,
+            imageModelId: isKineticMode ? 'none' : imageModelId,
             llmModelId,
           },
         });
