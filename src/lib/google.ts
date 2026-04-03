@@ -89,48 +89,41 @@ export async function splitScriptIntoScenes(
   // isKineticMode is already declared above
 
   const kineticEffectsPrompt = `
-(5) textAnimationStyle: **키네틱 타이포그래피 감독 모드** — 아래 규칙을 반드시 준수하세요.
+(5) textAnimationStyle: **키네틱 타이포그래피 연출가로서, 각 장면의 감정·내용·에너지를 먼저 분석하고 가장 어울리는 효과를 선택하라.**
 
-    [애니메이션 레퍼런스 테이블]
-    진입 효과:
-    - 'fly-in'      → 아래서 위로 슬라이드 | 인트로, 제품 소개, 역동적 등장
-    - 'typewriter'  → 글자 하나씩 등장     | 스토리텔링, 팩트 나열, 긴장감 조성
-    - 'pop-in'      → 스프링 바운스        | 놀람, 유머, 경쾌한 강조
-    - 'fade-zoom'   → 페이드+줌인          | 몽환적, 평화로운, 시적인 장면
+    선택 사고 순서:
+    ① 이 장면의 핵심 감정은? (충격, 감동, 긴장, 유머, 희망, 분석, 결론 등)
+    ② 그 감정을 시각적으로 가장 잘 살려주는 효과는?
+    ③ 앞 장면과 다른 효과인가?
 
-    에너지 효과:
-    - 'pulse-ring'  → 방사형 링 파동       | 강한 발표, 에너지, 경고성 강조
-    - 'sparkle'     → 별빛 버스트          | 성취, 축하, 신비로움, 우아함
-    - 'thunder'     → 번개 플래시          | 클라이맥스, 충격적 사실, 반전
-    - 'fire'        → 불꽃 상승            | 열정, 긴박감, 격렬한 감정
+    [효과별 적합 상황]
+    - 'typewriter'      한 글자씩 타자 치듯 등장 → 긴장감 고조, 충격 사실 폭로, 스토리 전환점, 숫자/통계 강조
+    - 'fly-in'          아래서 슬라이드 진입      → 힘찬 등장, 새 챕터 시작, 역동적 주장
+    - 'pop-in'          스프링 바운스 등장        → 놀라움, 반전, 유머, 경쾌한 포인트
+    - 'fade-zoom'       서서히 줌인 등장          → 몽환적 회상, 평화로운 장면, 시적 여운
+    - 'stagger-words'   단어가 시간차로 진입      → 리듬감 있는 나열, 강한 설득, 빠른 템포
+    - 'kinetic-bounce'  단어들이 바운스하며 박힘  → 역동적 에너지, 키워드 강조, 통통 튀는 장면
+    - 'focus-highlight' 단어가 순차 조명됨        → 논리 전개, 핵심 팩트 하나씩 전달
+    - 'pulse-ring'      방사형 링 파동            → 강한 선언, 경고, 에너지 폭발
+    - 'thunder'         번개 플래시               → 클라이맥스, 충격 반전, 가장 강한 한 방
+    - 'fire'            불꽃 상승                 → 열정, 긴박감, 격렬한 감정의 정점
+    - 'sparkle'         별빛 파티클               → 성취, 우아함, 신비로운 순간
+    - 'confetti'        색종이 낙하               → 성공 마무리, 기쁨
+    - 'heart'           하트 부유                 → 감동의 절정, 따뜻한 공감
+    - 'rain'            빗방울 낙하               → 슬픔, 감성적 회상, 무게감
+    - 'snow'            눈송이 부유               → 고요함, 평화, 기억
+    - 'stars'           별 깜빡임                 → 꿈, 희망, 밤하늘, 소망
+    - 'chart-up'        상승 차트                 → 성장 통계, 비즈니스 수치
+    - 'clock-spin'      회전 시계                 → 시간 관련, 마감, 과거
+    - 'magnifier'       돋보기 스캔               → 분석, 세부 발견, 집중
+    - 'lock-secure'     자물쇠 잠금               → 결론 확정, 약속, 마무리 선언
+    - 'camera-flash'    카메라 플래시             → 결정적 순간, 화제성, 진실 포착
+    - 'film-roll'       필름 테두리               → 회상, 추억, 영화적 장면
 
-    감성/서사 효과:
-    - 'heart'       → 하트 부유            | 감동적 절정, 감사, 따뜻함
-    - 'rain'        → 빗방울 낙하          | 우울함, 감성적 회상, 성찰
-    - 'snow'        → 눈송이 부유          | 고요함, 평화로움, 기억, 겨울
-    - 'stars'       → 별 깜빡임            | 꿈, 밤하늘, 소망, 희망
-    - 'confetti'    → 색종이 낙하          | 마무리, 성공, 파티, 기쁨
-
-    정보/비즈니스 효과:
-    - 'chart-up'    → 상승 차트 라인       | 통계, 성장 데이터, 비즈니스 성과
-    - 'clock-spin'  → 회전하는 시계        | 시간 관련, 마감, 기다림, 과거
-    - 'magnifier'   → 돋보기 스캔          | 세부 분석, 조사, 발견, 집중
-    - 'lock-secure' → 자물쇠 잠금          | 신뢰, 보안, 약속, 결론, 확정
-    - 'camera-flash'→ 카메라 플래시        | 진실의 순간, 포착, 화제성
-    - 'film-roll'   → 필름 테두리          | 영화적 순간, 회상, 추억, 노스탤지아
-
-    심화 타이포그래피 (상황/단어 강조형 - 텍스트에 중요한 키워드가 많거나 에너지가 높은 구간에 배치):
-    - 'stagger-words'   → 단어들이 시간차를 두고 빠르게 튀어나옴       | 리듬감, 빠른 템포, 강한 호소, 긴장감 유도
-    - 'kinetic-bounce'  → 단어들이 형태소 단위로 바운스되며 박힌 듯 등장 | 통통 튀는 강조, 역동적 전달, 시선 흡수
-    - 'focus-highlight' → 전체 문장 중 핵심 구간이 순차적으로 집중/확대됨| 논리 전개, 설득, 핵심 팩트 전달
-
-    [시퀀싱 규칙 — 반드시 준수]
-    1. 연속된 장면에 동일 스타일 절대 금지
-    2. 에너지 리듬 유지: 고에너지 → 저에너지 → 고에너지 (숨 쉬는 영상 리듬)
-    3. 첫 장면: fly-in, typewriter, fade-zoom 중 선택 (강렬하지 않게 주목 유도)
-    4. 마지막 장면: confetti, heart, sparkle, lock-secure 중 선택 (기억에 남는 마무리)
-    5. 동일 스타일 최대 2회 사용 (전체 영상에서)
-    6. **모든 장면(100%)에 반드시 애니메이션 적용 — 'none' 절대 사용 금지**
+    [원칙]
+    - 연속 두 장면에 같은 스타일 금지
+    - 전체 영상에서 동일 스타일 최대 1회
+    - 'none' 사용 금지
 
 (6) textPosition: 짧은 문장(50자 이하)은 'center', 긴 문장은 'bottom'`;
 
@@ -181,12 +174,21 @@ export async function splitScriptIntoScenes(
 (2) imagePrompt: 이미지 생성 프롬프트(영어, ${imagePromptInstruction})
 (3) motionPrompt: 동작 묘사 프롬프트(영어) — **인물 신체 동작 + 환경/배경 동작을 함께 묘사**하세요. 예: "person swaying shoulders and nodding head while rain streaks down the window behind them, soft ambient light flickering". 인물 동작(팔·손·머리·몸통)과 환경 동작(비·바람·불꽃·흐르는 물·구름 등)을 모두 구체적으로 작성하세요. 배경 동작만 단독으로 쓰지 말고, 반드시 인물 동작도 포함하세요.
 (4) shouldAnimate: AI 비디오 변환 여부 — **전체 장면 수의 20% 이하(소수점 내림)만 true**로 설정하세요. 예: 4장면→최대 0개(없음), 5장면→최대 1개, 10장면→최대 2개, 20장면→최대 4개. true 조건(가장 임팩트 있는 1~2개만): 영상의 핵심 클라이맥스 장면, 인물의 강렬한 감정 표현 장면. 나머지는 모두 false.
-${isKineticMode ? `(5-kinetic) displayText: **애플 광고 스타일 핵심 포인트** — 화면 중앙에 초대형 타이포그래피로 표시될 임팩트 문구.
-    - text(나레이션 전체)와 별개로, 이 장면의 핵심을 담은 짧은 슬로건/키워드 (5~25자 이내)
-    - 예시: "당신의 시간을", "지금 시작하라", "2024년, 변화", "AI가 바꾼다"
-    - 나레이션이 진행되는 동안 화면에 크게 표시되므로 강렬하고 기억에 남는 문구여야 함
-    - 빌드업 과정: 도입부는 짧은 의문/문제 제기 → 중반은 핵심 사실/수치 → 결말은 임팩트 결론
-    - **절대 금지: 전체 장면에서 동일한 displayText 반복 사용. 모든 장면의 displayText는 서로 달라야 함**
+${isKineticMode ? `(5-kinetic) displayText: **화면 중앙 초대형 타이포그래피** — 두 가지 형식 중 장면 내용에 맞게 선택:
+
+    [형식 A] 단일 슬로건 — 기본값, 대부분의 장면에 사용
+    - 5~15자 이내의 임팩트 문구
+    - 예: "당신의 시간을", "지금 시작하라", "AI가 바꾼다", "멈출 수 없다"
+    - 서사, 감정, 질문, 주장 장면 → 형식A 사용
+
+    [형식 B] 3단 레이아웃 — "상단라벨|핵심단어|하단설명" (파이프 구분)
+    - **전체 장면의 최대 2~3개에만 사용** — 숫자/통계/핵심 개념이 명확히 있을 때만
+    - 조건: 구체적 숫자(%, 배수, 순위, 금액), 고유명사 강조, 결론 확정 장면
+    - 상단라벨: 2~6자, 핵심단어: 1~8자 (** ** 래핑 시 accent 색), 하단설명: 2~8자
+    - 예: "연봉 상승|**30%**|3년 만에 달성", "실패율|**87%**|창업 1년 이내"
+    - **연속된 두 장면에 형식B 사용 금지**
+
+    - **절대 금지: 전체 장면에서 동일한 displayText 반복. 모든 장면의 displayText는 서로 달라야 함**
 ` : ''}${advancedEffectsPrompt.trim()}${characterInstruction}
 
 반드시 아래 JSON 형태로만 응답하세요:
@@ -288,8 +290,9 @@ ${script}`,
     scenes[scenes.length - 1].text = scenes[scenes.length - 1].text + ' ' + last.text;
   }
 
-  // 키네틱 모드: displayText 중복 제거 — 중복 시 해당 씬 text 앞부분으로 대체
+  // 키네틱 모드 후처리
   if (isKineticMode) {
+    // 1) displayText 중복 제거
     const seen = new Set<string>();
     for (const scene of scenes) {
       const dt = scene.displayText?.trim();
@@ -300,6 +303,23 @@ ${script}`,
         } else {
           seen.add(dt);
         }
+      }
+    }
+
+    // 2) 3단 레이아웃(|) 연속 사용 차단 + 전체 최대 3개 제한
+    let pipeCount = 0;
+    let prevWasPipe = false;
+    for (const scene of scenes) {
+      const dt = scene.displayText?.trim() ?? '';
+      const isPipe = dt.split('|').length === 3;
+      if (isPipe && (prevWasPipe || pipeCount >= 3)) {
+        // 파이프 제거 → 핵심단어만 단일 슬로건으로
+        const parts = dt.split('|');
+        scene.displayText = parts[1].replace(/\*\*/g, '').trim();
+        prevWasPipe = false;
+      } else {
+        pipeCount += isPipe ? 1 : 0;
+        prevWasPipe = isPipe;
       }
     }
   }

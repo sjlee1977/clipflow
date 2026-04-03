@@ -239,7 +239,9 @@ function useTextAnim(style: string, localFrame: number, fps: number, duration: n
     opacity = Math.min(interpolate(localFrame, [0, 12], [0, 1], { extrapolateRight: 'clamp' }), fadeOut);
   } else if (style === 'typewriter') {
     const cleanText = text.replace(/\*\*/g, '');
-    const chars = Math.floor(interpolate(localFrame, [0, Math.min(45, duration * 0.8)], [0, cleanText.length], { extrapolateRight: 'clamp' }));
+    // 씬 지속 시간의 70%에 걸쳐 한 글자씩 등장 (최소 30프레임, 최대 전체의 70%)
+    const typingDuration = Math.max(30, Math.floor(duration * 0.70));
+    const chars = Math.floor(interpolate(localFrame, [0, typingDuration], [0, cleanText.length], { extrapolateRight: 'clamp' }));
     displayText = cleanText.slice(0, chars);
     opacity = fadeOut;
     translateY = 0;
@@ -277,6 +279,102 @@ function useTextAnim(style: string, localFrame: number, fps: number, duration: n
   return { opacity, translateY, scale, letterSpacing, displayText };
 }
 
+// ─── 3단 레이아웃 렌더러 ("상단|핵심|하단" 포맷) ────────────────────────────
+function MultiLevelDisplay({
+  top, main, bottom, animStyle, sceneFrame, sceneDuration, fps, p, fontFamily,
+}: {
+  top: string; main: string; bottom: string;
+  animStyle: string; sceneFrame: number; sceneDuration: number;
+  fps: number; p: ReturnType<typeof pal>; fontFamily: string;
+}) {
+  const isMainAccent = main.startsWith('**') && main.endsWith('**');
+  const mainClean = main.replace(/\*\*/g, '');
+  const mainLen = mainClean.replace(/\s/g, '').length;
+  const mainFontSize = mainLen <= 2 ? 224 : mainLen <= 4 ? 184 : mainLen <= 6 ? 144 : mainLen <= 10 ? 112 : 88;
+
+  const fadeIn = interpolate(sceneFrame, [0, 12], [0, 1], { extrapolateRight: 'clamp' });
+  const fadeOut = interpolate(sceneFrame, [sceneDuration - 10, sceneDuration], [1, 0], { extrapolateLeft: 'clamp' });
+  const opacity = Math.min(fadeIn, fadeOut);
+
+  // 핵심 단어 등장 애니메이션
+  const mainSpr = spring({ frame: sceneFrame, fps, config: { damping: 12, stiffness: 120 } });
+  const mainScale = interpolate(mainSpr, [0, 1], [0.6, 1]);
+
+  // 상단/하단 라벨 지연 등장
+  const labelSpr = spring({ frame: Math.max(0, sceneFrame - 8), fps, config: { damping: 18, stiffness: 80 } });
+  const labelOpacity = interpolate(labelSpr, [0, 1], [0, 1]);
+  const labelTransY = interpolate(labelSpr, [0, 1], [20, 0]);
+
+  const monoStyle: React.CSSProperties = {
+    fontFamily: `"${fontFamily}", "Noto Sans KR", sans-serif`,
+    fontWeight: 700,
+    letterSpacing: '0.12em',
+    wordBreak: 'keep-all',
+  };
+
+  const separatorColor = p.dark ? `${p.accent}60` : `${p.accent}80`;
+
+  return (
+    <AbsoluteFill style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 80px 100px' }}>
+      <div style={{ opacity, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+        {/* 상단 소제목 */}
+        <span style={{
+          ...monoStyle,
+          fontSize: 38,
+          color: p.dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)',
+          opacity: labelOpacity,
+          transform: `translateY(${-labelTransY}px)`,
+          display: 'block',
+          marginBottom: 20,
+          textTransform: 'uppercase' as const,
+        }}>{top}</span>
+
+        {/* 구분선 */}
+        <div style={{
+          width: 200, height: 1,
+          background: `linear-gradient(90deg, transparent, ${separatorColor}, transparent)`,
+          opacity: labelOpacity,
+          marginBottom: 24,
+        }} />
+
+        {/* 핵심 단어 — 초대형 */}
+        <span style={{
+          ...monoStyle,
+          fontSize: mainFontSize,
+          fontWeight: 900,
+          color: isMainAccent ? p.accent : p.text,
+          textShadow: isMainAccent
+            ? `0 0 60px ${p.accent}66, 0 0 120px ${p.accent}33`
+            : p.dark ? `0 0 80px ${p.accent}33` : 'none',
+          transform: `scale(${mainScale})`,
+          display: 'block',
+          lineHeight: 1.0,
+          transformOrigin: 'center',
+        }}>{mainClean}</span>
+
+        {/* 구분선 */}
+        <div style={{
+          width: 200, height: 1,
+          background: `linear-gradient(90deg, transparent, ${separatorColor}, transparent)`,
+          opacity: labelOpacity,
+          marginTop: 24,
+          marginBottom: 20,
+        }} />
+
+        {/* 하단 부제 */}
+        <span style={{
+          ...monoStyle,
+          fontSize: 38,
+          color: p.dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)',
+          opacity: labelOpacity,
+          transform: `translateY(${labelTransY}px)`,
+          display: 'block',
+        }}>{bottom}</span>
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 // ─── 메인 텍스트 렌더러 (displayText 기준, 씬 전체 duration) ──────────────────
 function MainDisplay({
   text, animStyle, sceneFrame, sceneDuration, fps, p, fontFamily,
@@ -284,12 +382,30 @@ function MainDisplay({
   text: string; animStyle: string; sceneFrame: number; sceneDuration: number;
   fps: number; p: ReturnType<typeof pal>; fontFamily: string;
 }) {
+  // 3단 레이아웃 감지: "상단|핵심|하단"
+  const pipeParts = text.split('|');
+  if (pipeParts.length === 3) {
+    return (
+      <MultiLevelDisplay
+        top={pipeParts[0].trim()}
+        main={pipeParts[1].trim()}
+        bottom={pipeParts[2].trim()}
+        animStyle={animStyle}
+        sceneFrame={sceneFrame}
+        sceneDuration={sceneDuration}
+        fps={fps}
+        p={p}
+        fontFamily={fontFamily}
+      />
+    );
+  }
+
   const { opacity, translateY, scale, letterSpacing, displayText: animText } = useTextAnim(
     animStyle, sceneFrame, fps, sceneDuration, text
   );
   const textLen = text.replace(/\*\*/g, '').replace(/\s/g, '').length;
-  // 글자 수별 베이스 크기: 짧을수록 훨씬 크게 (확실한 시각적 차이)
-  const baseSize = textLen <= 4 ? 240 : textLen <= 7 ? 200 : textLen <= 11 ? 168 : textLen <= 15 ? 136 : textLen <= 20 ? 108 : 88;
+  // 글자 수별 베이스 크기 (전체 20% 축소 적용)
+  const baseSize = textLen <= 4 ? 192 : textLen <= 7 ? 160 : textLen <= 11 ? 134 : textLen <= 15 ? 109 : textLen <= 20 ? 86 : 70;
   // 에너지 레벨별 폰트 크기 배율
   const HIGH_CLIMAX = ['thunder', 'fire', 'pulse-ring', 'kinetic-bounce', 'pop-in'];
   const HIGH_ENERGY = ['sparkle', 'confetti', 'heart', 'stagger-words', 'fly-in', 'chart-up'];
