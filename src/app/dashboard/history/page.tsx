@@ -149,6 +149,9 @@ export default function HistoryPage() {
 
   function handleEditScenes(v: Video) {
     if (!v.scenes?.length) return;
+    // 기존 active 세션 완전 제거 → edit 데이터만 남김
+    sessionStorage.removeItem('clipflow_active_scenes');
+    sessionStorage.removeItem('clipflow_script');
     sessionStorage.setItem('clipflow_edit_scenes', JSON.stringify({
       scenes: v.scenes,
       format: v.format === 'landscape' ? 'landscape' : 'shorts',
@@ -157,6 +160,7 @@ export default function HistoryPage() {
       voiceId: v.voice_id,
       ttsProvider: v.tts_provider,
     }));
+    window.dispatchEvent(new Event('clipflow_edit_scenes_updated'));
     router.push('/dashboard/video');
   }
 

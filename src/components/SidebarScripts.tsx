@@ -68,7 +68,7 @@ export default function SidebarScripts() {
   return (
     <div className="px-2 py-3 space-y-1.5">
       <div className="flex items-center justify-between px-3 mb-2">
-        <span className="text-white/10 text-[9px] font-mono uppercase tracking-[0.2em]">Recent Scripts</span>
+        <span className="text-white/30 text-[11px] font-mono uppercase tracking-[0.2em]">Recent Scripts</span>
       </div>
       {scripts.map((s) => (
         <button
@@ -80,15 +80,15 @@ export default function SidebarScripts() {
           <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity" />
           
           <div className="flex items-center justify-between mb-1">
-            <span className="text-white/60 group-hover:text-white text-[12px] font-mono font-bold truncate pr-3 flex-1 transition-colors">
+            <span className="text-white/75 group-hover:text-white text-[13px] font-mono font-bold truncate pr-3 flex-1 transition-colors">
               {s.title}
             </span>
-            <span className="text-white/10 text-[10px] font-mono shrink-0">
+            <span className="text-white/25 text-[11px] font-mono shrink-0">
               TXT
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-white/20 text-[10px] font-mono group-hover:text-white/30 transition-colors">
+            <span className="text-white/40 text-[11px] font-mono group-hover:text-white/60 transition-colors">
               {new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
             </span>
             <div className="flex items-center gap-1 transform translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">

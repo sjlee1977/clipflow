@@ -59,15 +59,15 @@ function FieldLabel({
       <div className="flex items-center gap-1.5 flex-wrap">
         {required && <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block shrink-0" />}
         <span className="text-white/85 text-[13px] font-bold font-mono">{children}</span>
-        {optional && <span className="text-white/30 text-[12px] font-mono">(선택)</span>}
+        {optional && <span className="text-white/50 text-[12px] font-mono">(선택)</span>}
       </div>
-      {sub && <p className="text-white/35 text-[12px] font-mono mt-1 leading-relaxed">{sub}</p>}
+      {sub && <p className="text-white/60 text-[12px] font-mono mt-1 leading-relaxed">{sub}</p>}
     </div>
   );
 }
 
-const iCls = 'w-full bg-white/[0.04] text-white/80 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2.5 resize-none transition-colors';
-const sCls = `w-full bg-white/[0.04] text-white/80 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] font-mono px-3 py-2.5 transition-colors cursor-pointer [&>option]:bg-[#111] [&>option]:text-white/80`;
+const iCls = 'w-full bg-white/[0.04] text-white/90 border border-white/20 focus:border-white/45 focus:outline-none text-[13px] font-mono placeholder:text-white/35 px-3 py-2.5 resize-none transition-colors';
+const sCls = `w-full bg-white/[0.04] text-white/90 border border-white/20 focus:border-white/45 focus:outline-none text-[13px] font-mono px-3 py-2.5 transition-colors cursor-pointer [&>option]:bg-[#111] [&>option]:text-white/90`;
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
@@ -142,6 +142,13 @@ export default function PromptPage() {
 
   const resetCategory = () => {
     setAllData(prev => ({ ...prev, [activeCategory]: { ...DEFAULT_CAT_DATA } }));
+  };
+
+  const resetAll = () => {
+    const empty = Object.fromEntries(
+      CATEGORIES.map(c => [c.id, { ...DEFAULT_CAT_DATA }])
+    ) as Record<CategoryId, Record<string, string>>;
+    setAllData(empty);
   };
 
   const catInfo = CATEGORIES.find(c => c.id === activeCategory)!;
@@ -461,7 +468,7 @@ export default function PromptPage() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategory(cat.id); setPageStatus('idle'); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-[11.5px] font-mono font-bold tracking-wide border-b-2 transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-[13.5px] font-mono font-bold tracking-wide border-b-2 transition-colors ${
                     activeCategory === cat.id
                       ? cat.activeCls
                       : 'border-transparent text-white/35 hover:text-white/60'
@@ -481,12 +488,6 @@ export default function PromptPage() {
                   <div className={`w-2 h-2 rounded-full ${catInfo.dotCls}`} />
                   <span className={`text-[13px] font-bold font-mono ${catInfo.textCls}`}>{catInfo.label} 대본 요청 스크립트</span>
                 </div>
-                <button
-                  onClick={resetCategory}
-                  className="text-white/25 hover:text-red-400 text-[11.5px] font-mono transition-colors"
-                >
-                  입력 초기화
-                </button>
               </div>
 
               {/* ── YouTube 자동 분석 ── */}
@@ -593,7 +594,15 @@ export default function PromptPage() {
 
               {/* ── 공통 필드 ── */}
               <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
-                <p className="text-white/25 text-[11px] font-mono tracking-widest uppercase">공통 필드</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-white/80 text-[14px] font-light tracking-[0.05em]">공통 필드</p>
+                  <button
+                    onClick={resetAll}
+                    className="text-[13px] font-mono px-2.5 py-1 rounded border border-red-500/30 text-red-400/70 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/5 transition-colors"
+                  >
+                    전체 초기화
+                  </button>
+                </div>
 
                 {/* 영상 주제 */}
                 <div>

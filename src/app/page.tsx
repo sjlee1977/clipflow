@@ -9,7 +9,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const supabaseClient = createClient();
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    supabaseClient.auth.getSession().then(({ data: { session } }: { data: { session: import('@supabase/supabase-js').Session | null } }) => {
       setUser(session?.user ?? null);
     });
   }, []);

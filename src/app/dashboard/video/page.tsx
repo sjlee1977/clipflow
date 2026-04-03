@@ -219,6 +219,7 @@ export default function DashboardPage() {
 
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [scenes, setScenes] = useState<PreviewScene[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
   const [genTotal, setGenTotal] = useState(0);
@@ -278,14 +279,43 @@ export default function DashboardPage() {
       const updated = sessionStorage.getItem('clipflow_script');
       if (updated) {
         setScript(updated);
-        // 필요하다면 기존 장면 데이터 초기화 (신규 대본이므로)
         setScenes([]);
         setStatus('idle');
       }
     };
 
+    // 4. 히스토리에서 장면 편집 클릭 시 (페이지 이미 마운트된 경우 대응)
+    const handleEditScenesUpdate = () => {
+      const raw = sessionStorage.getItem('clipflow_edit_scenes');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.scenes?.length) {
+          const restoredScenes = data.imageStyle === 'kinetic'
+            ? data.scenes.map((s: PreviewScene) => ({ ...s, imageUrl: '' }))
+            : data.scenes;
+          setScenes(restoredScenes);
+          if (data.format) setFormat(data.format);
+          if (data.imageModelId) setImageModelId(data.imageModelId);
+          if (data.imageStyle) setImageStyle(data.imageStyle);
+          if (data.voiceId) setVoiceId(data.voiceId);
+          if (data.ttsProvider) setTtsProvider(data.ttsProvider);
+          setVideoUrl('');
+          setStatus('preview');
+        }
+      } catch (err) {
+        console.error('[Dashboard] Edit scenes restore failed:', err);
+      }
+      sessionStorage.removeItem('clipflow_edit_scenes');
+      sessionStorage.removeItem('clipflow_active_scenes');
+    };
+
     window.addEventListener('clipflow_script_updated', handleScriptUpdate);
-    return () => window.removeEventListener('clipflow_script_updated', handleScriptUpdate);
+    window.addEventListener('clipflow_edit_scenes_updated', handleEditScenesUpdate);
+    return () => {
+      window.removeEventListener('clipflow_script_updated', handleScriptUpdate);
+      window.removeEventListener('clipflow_edit_scenes_updated', handleEditScenesUpdate);
+    };
   }, []);
 
   // [상태 자동 저장] 장면이나 설정이 바뀌면 실시간 보존 (새로고침 사고 대비)
@@ -706,6 +736,25 @@ export default function DashboardPage() {
     /* 전체: 왼쪽 콘텐츠 + 오른쪽 패널 (w-56) */
     <div className="flex gap-0 -m-6 min-h-full">
 
+      {/* 라이트박스 */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt="원본 이미지"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            className="absolute top-4 right-6 text-white/60 hover:text-white text-3xl leading-none"
+            onClick={() => setLightboxUrl(null)}
+          >×</button>
+        </div>
+      )}
+
       {/* ─── 왼쪽: 메인 콘텐츠 ─── */}
       <div className="flex-1 min-w-0 p-6 border-r border-white/5">
 
@@ -872,80 +921,215 @@ export default function DashboardPage() {
             </div>
 
             {/* 장면 리스트 */}
-            <div className="space-y-3 mt-2">
+            <div className="space-y-2 mt-2">
               {scenes.map((scene, i) => (
                 <div
                   key={i}
-                  className={`relative group rounded-lg overflow-hidden transition-all duration-300 ${
+                  className={`group rounded-lg overflow-hidden transition-all duration-200 ${
                     scene.videoUrl
-                      ? 'bg-gradient-to-r from-[#0a1a1a] to-[#0d0d0d] border border-[#17BEBB]/25 shadow-[0_0_20px_rgba(23,190,187,0.06)]'
+                      ? 'bg-[#0c1a1a] border border-[#17BEBB]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
                       : scene.isAnimating
-                      ? 'bg-gradient-to-r from-[#1a1000] to-[#0d0d0d] border border-orange-400/20 shadow-[0_0_20px_rgba(251,146,60,0.06)]'
-                      : 'bg-[#0d0d0d] border border-white/[0.07] hover:border-white/[0.14] hover:shadow-[0_0_24px_rgba(255,255,255,0.03)]'
+                      ? 'bg-[#151005] border border-orange-400/35 shadow-[0_2px_12px_rgba(251,146,60,0.08)]'
+                      : 'bg-[#111] border border-white/15 hover:border-white/30'
                   }`}
                 >
-                  {/* 씬 번호 — 좌측 수직 레이블 */}
-                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-white/10 to-transparent group-hover:via-white/20 transition-all duration-300" />
-                  {scene.videoUrl && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-[#17BEBB]/60 to-transparent" />}
-                  {scene.isAnimating && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-orange-400/60 to-transparent animate-pulse" />}
-
-                  <div className="flex gap-0 pl-4">
+                  {/* ── 헤더 행: 씬번호 + 미리듣기 + AI애니메이션 + 스타일 + 재생성/교체 ── */}
+                  <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${
+                    scene.videoUrl ? 'border-[#17BEBB]/25 bg-[#17BEBB]/8' :
+                    scene.isAnimating ? 'border-orange-400/25 bg-orange-400/8' :
+                    'border-white/10 bg-white/[0.04]'
+                  }`}>
                     {/* 씬 번호 */}
-                    <div className="flex flex-col items-center justify-start pt-4 pr-3 shrink-0">
-                      <span className="text-[10px] font-mono tabular-nums text-white/20 group-hover:text-white/35 transition-colors tracking-widest">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                    </div>
+                    <span className={`text-[14px] font-bold tabular-nums shrink-0 ${
+                      scene.videoUrl ? 'text-[#17BEBB]' : scene.isAnimating ? 'text-orange-400' : 'text-white/80'
+                    }`}>
+                      씬 {i + 1}
+                    </span>
 
+                    <div className="w-px h-4 bg-white/20 shrink-0" />
+
+                    {/* 글자 수 뱃지 */}
+                    {!scene.isLoading && (
+                      <span className={`text-[12px] font-mono tabular-nums px-2 py-0.5 rounded shrink-0 ${
+                        scene.text.length < 150 ? 'text-red-400 bg-red-400/15 border border-red-400/30' :
+                        scene.text.length > 200 ? 'text-yellow-300 bg-yellow-400/15 border border-yellow-400/30' :
+                        'text-white/60 bg-white/8 border border-white/15'
+                      }`}>
+                        {scene.text.length}자
+                      </span>
+                    )}
+
+                    {/* 스페이서 */}
+                    <div className="flex-1" />
+
+                    {/* 미리듣기 */}
+                    {!scene.isLoading && (
+                      <button
+                        onClick={() => handlePlayScene(i, scene.text)}
+                        disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
+                        className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border transition-colors disabled:opacity-30 shrink-0
+                          border-white/25 text-white/70 hover:text-yellow-300 hover:border-yellow-400/50 hover:bg-yellow-400/8"
+                      >
+                        {loadingAudioIndex === i ? (
+                          <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />로딩</>
+                        ) : playingIndex === i ? (
+                          <>■ 정지</>
+                        ) : (
+                          <>▶ 미리듣기</>
+                        )}
+                      </button>
+                    )}
+
+                    {/* AI 애니메이션 */}
+                    {!scene.isLoading && (
+                      <button
+                        onClick={() => handleAnimateScene(i)}
+                        disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
+                        className={`flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border transition-all shrink-0 ${
+                          scene.videoUrl
+                            ? 'text-[#17BEBB] bg-[#17BEBB]/12 border-[#17BEBB]/50 cursor-default'
+                            : scene.isAnimating
+                            ? 'text-orange-300 bg-orange-400/12 border-orange-400/40 animate-pulse cursor-wait'
+                            : 'text-[#17BEBB] border-[#17BEBB]/40 hover:border-[#17BEBB]/70 hover:bg-[#17BEBB]/8 disabled:opacity-30 disabled:cursor-not-allowed'
+                        }`}
+                      >
+                        {scene.isAnimating ? (
+                          <><span className="w-3 h-3 border border-orange-400/50 border-t-orange-300 rounded-full animate-spin" />변환 중</>
+                        ) : scene.videoUrl ? (
+                          <>✓ AI 비디오</>
+                        ) : (
+                          <>✦ AI 애니메이션</>
+                        )}
+                      </button>
+                    )}
+
+                    {status === 'preview' && !scene.isLoading && (
+                      <>
+                        <div className="w-px h-4 bg-white/20 shrink-0" />
+                        {/* 텍스트 애니메이션 스타일 */}
+                        <select
+                          value={scene.textAnimationStyle ?? 'none'}
+                          onChange={e => updateSceneStyle(i, e.target.value as PreviewScene['textAnimationStyle'])}
+                          className="text-[13px] font-medium bg-[#1a1a1a] border border-white/25 text-white/75 hover:border-white/45 hover:text-white rounded px-2.5 py-1.5 cursor-pointer focus:outline-none shrink-0"
+                        >
+                          <option value="none" className="bg-[#1a1a1a]">없음</option>
+                          <optgroup label="진입" className="bg-[#1a1a1a]">
+                            <option value="fly-in" className="bg-[#1a1a1a]">fly-in</option>
+                            <option value="typewriter" className="bg-[#1a1a1a]">typewriter</option>
+                            <option value="pop-in" className="bg-[#1a1a1a]">pop-in</option>
+                            <option value="fade-zoom" className="bg-[#1a1a1a]">fade-zoom</option>
+                          </optgroup>
+                          <optgroup label="타이포" className="bg-[#1a1a1a]">
+                            <option value="stagger-words" className="bg-[#1a1a1a]">stagger-words</option>
+                            <option value="kinetic-bounce" className="bg-[#1a1a1a]">kinetic-bounce</option>
+                            <option value="focus-highlight" className="bg-[#1a1a1a]">focus-highlight</option>
+                          </optgroup>
+                          <optgroup label="에너지" className="bg-[#1a1a1a]">
+                            <option value="pulse-ring" className="bg-[#1a1a1a]">pulse-ring</option>
+                            <option value="sparkle" className="bg-[#1a1a1a]">sparkle</option>
+                            <option value="thunder" className="bg-[#1a1a1a]">thunder</option>
+                            <option value="fire" className="bg-[#1a1a1a]">fire</option>
+                            <option value="confetti" className="bg-[#1a1a1a]">confetti</option>
+                            <option value="heart" className="bg-[#1a1a1a]">heart</option>
+                          </optgroup>
+                          <optgroup label="감성" className="bg-[#1a1a1a]">
+                            <option value="rain" className="bg-[#1a1a1a]">rain</option>
+                            <option value="snow" className="bg-[#1a1a1a]">snow</option>
+                            <option value="stars" className="bg-[#1a1a1a]">stars</option>
+                          </optgroup>
+                          <optgroup label="정보" className="bg-[#1a1a1a]">
+                            <option value="chart-up" className="bg-[#1a1a1a]">chart-up</option>
+                            <option value="clock-spin" className="bg-[#1a1a1a]">clock-spin</option>
+                            <option value="magnifier" className="bg-[#1a1a1a]">magnifier</option>
+                            <option value="lock-secure" className="bg-[#1a1a1a]">lock-secure</option>
+                            <option value="camera-flash" className="bg-[#1a1a1a]">camera-flash</option>
+                            <option value="film-roll" className="bg-[#1a1a1a]">film-roll</option>
+                          </optgroup>
+                        </select>
+                        {/* 재생성 */}
+                        <button
+                          onClick={() => handleRegenerateImage(i)}
+                          disabled={regeneratingIndex !== null}
+                          className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-orange-300 hover:border-orange-400/45 hover:bg-orange-400/8 transition-colors disabled:opacity-30 shrink-0"
+                        >
+                          ↺ 재생성
+                        </button>
+                        {/* 교체 */}
+                        <button
+                          onClick={() => replaceInputRefs.current[i]?.click()}
+                          className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
+                        >
+                          ↑ 교체
+                        </button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={el => { replaceInputRefs.current[i] = el; }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleReplaceImage(i, f); e.target.value = ''; }}
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  {/* ── 바디: 썸네일 + 텍스트 ── */}
+                  <div className="flex gap-3 p-3">
                     {/* 썸네일 */}
-                    <div className="relative w-[100px] h-[72px] shrink-0 self-center overflow-hidden rounded bg-white/[0.03] mr-4">
+                    <div
+                      className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md bg-black/40 border border-white/10 ${scene.imageUrl ? 'cursor-zoom-in hover:border-white/30' : ''}`}
+                      onClick={() => scene.imageUrl && setLightboxUrl(scene.imageUrl)}
+                    >
                       {scene.isLoading ? (
-                        <div className="w-full h-full flex items-center justify-center animate-pulse bg-white/[0.03]">
-                          <span className="w-4 h-4 border-2 border-white/10 border-t-orange-400/60 rounded-full animate-spin" />
+                        <div className="w-full h-full flex items-center justify-center bg-white/[0.03]">
+                          <span className="w-4 h-4 border-2 border-white/15 border-t-orange-400/70 rounded-full animate-spin" />
                         </div>
                       ) : regeneratingIndex === i ? (
-                        <div className="w-full h-full flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                         </div>
                       ) : scene.slideData ? (
                         <div className={`w-full h-full flex flex-col items-center justify-center p-1.5 text-center ${
                           scene.pptTheme === 'simple-modern' ? 'bg-white' :
                           scene.pptTheme === 'colorful' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' :
-                          'bg-[#0d0d0d] border border-white/10'
+                          'bg-[#0d0d0d]'
                         }`}>
                           <span className={`text-[7px] font-bold leading-tight ${scene.pptTheme === 'simple-modern' ? 'text-gray-800' : 'text-white'}`}>
                             {scene.slideData.title?.slice(0, 12) || 'SLIDE'}
                           </span>
                         </div>
                       ) : scene.imageUrl ? (
-                        <img src={scene.imageUrl} alt={`장면 ${i + 1}`} className="w-full h-full object-cover" />
+                        <img
+                          src={scene.imageUrl}
+                          alt={`장면 ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-black border border-white/5 p-1.5">
-                          <span className="text-[9px] text-white/80 font-bold text-center leading-tight" style={{ wordBreak: 'keep-all' }}>
+                        <div className="w-full h-full flex items-center justify-center bg-black p-1.5">
+                          <span className="text-[9px] text-white/70 font-bold text-center leading-tight" style={{ wordBreak: 'keep-all' }}>
                             {scene.displayText?.slice(0, 16) || '키네틱'}
                           </span>
                         </div>
                       )}
                       {/* 비디오 뱃지 */}
                       {scene.videoUrl && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-1">
-                          <span className="text-[8px] font-mono text-[#17BEBB] tracking-widest">VIDEO</span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center pb-1">
+                          <span className="text-[8px] font-bold font-mono text-[#17BEBB] tracking-widest">VIDEO</span>
                         </div>
                       )}
                       {scene.isAnimating && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
                           <span className="w-5 h-5 border-2 border-orange-400/40 border-t-orange-400 rounded-full animate-spin" />
                         </div>
                       )}
                     </div>
 
-                    {/* 텍스트 & 액션 */}
-                    <div className="flex-1 min-w-0 py-3 pr-4">
+                    {/* 텍스트 */}
+                    <div className="flex-1 min-w-0">
                       {scene.isLoading ? (
-                        <div className="space-y-2 pt-1">
-                          <div className="h-2 bg-white/[0.05] rounded-full animate-pulse w-full" />
-                          <div className="h-2 bg-white/[0.05] rounded-full animate-pulse w-4/5" />
-                          <div className="h-2 bg-white/[0.05] rounded-full animate-pulse w-3/5" />
+                        <div className="space-y-2 pt-1.5">
+                          <div className="h-2.5 bg-white/[0.07] rounded-full animate-pulse w-full" />
+                          <div className="h-2.5 bg-white/[0.07] rounded-full animate-pulse w-4/5" />
+                          <div className="h-2.5 bg-white/[0.07] rounded-full animate-pulse w-3/5" />
                         </div>
                       ) : (
                         <textarea
@@ -953,128 +1137,8 @@ export default function DashboardPage() {
                           onChange={e => updateSceneText(i, e.target.value)}
                           disabled={status !== 'preview'}
                           rows={3}
-                          className="w-full bg-transparent text-white/75 text-[12.5px] leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-60 placeholder:text-white/20"
+                          className="w-full h-full bg-transparent text-white/85 text-[14px] leading-snug border-0 focus:outline-none resize-none disabled:opacity-70 placeholder:text-white/25"
                         />
-                      )}
-
-                      {!scene.isLoading && (
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          {/* 글자 수 */}
-                          <span className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded ${
-                            scene.text.length < 150 ? 'text-red-400/70 bg-red-400/5' :
-                            scene.text.length > 200 ? 'text-yellow-400/70 bg-yellow-400/5' :
-                            'bg-white/[0.04] text-white/30'
-                          }`}>
-                            {scene.text.length}자
-                          </span>
-
-                          <div className="w-px h-3 bg-white/10" />
-
-                          {/* 미리듣기 */}
-                          <button
-                            onClick={() => handlePlayScene(i, scene.text)}
-                            disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
-                            className="flex items-center gap-1 text-[11px] font-mono text-white/40 hover:text-yellow-400 transition-colors disabled:opacity-20 px-1.5 py-0.5 hover:bg-yellow-400/5 rounded"
-                          >
-                            {loadingAudioIndex === i ? (
-                              <><span className="w-2.5 h-2.5 border border-white/30 border-t-white/70 rounded-full animate-spin" />로딩</>
-                            ) : playingIndex === i ? (
-                              <><span className="text-[9px]">■</span>정지</>
-                            ) : (
-                              <><span className="text-[9px]">▶</span>미리듣기</>
-                            )}
-                          </button>
-
-                          {/* AI 애니메이션 */}
-                          <button
-                            onClick={() => handleAnimateScene(i)}
-                            disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
-                            className={`flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded transition-all duration-200 ${
-                              scene.videoUrl
-                                ? 'text-[#17BEBB] bg-[#17BEBB]/10 border border-[#17BEBB]/30 cursor-default'
-                                : scene.isAnimating
-                                ? 'text-orange-300 bg-orange-400/10 border border-orange-400/30 animate-pulse cursor-wait'
-                                : 'text-[#17BEBB]/70 border border-[#17BEBB]/20 hover:text-[#17BEBB] hover:border-[#17BEBB]/50 hover:bg-[#17BEBB]/5 disabled:opacity-20 disabled:cursor-not-allowed'
-                            }`}
-                          >
-                            {scene.isAnimating ? (
-                              <><span className="w-2 h-2 border border-orange-400/50 border-t-orange-300 rounded-full animate-spin" />변환 중</>
-                            ) : scene.videoUrl ? (
-                              <><span className="text-[9px]">✓</span>AI 비디오</>
-                            ) : (
-                              <><span className="text-[9px]">✦</span>AI 애니메이션</>
-                            )}
-                          </button>
-
-                          {status === 'preview' && (
-                            <>
-                              <div className="w-px h-3 bg-white/10" />
-                              {/* 텍스트 애니메이션 스타일 */}
-                              <select
-                                value={scene.textAnimationStyle ?? 'none'}
-                                onChange={e => updateSceneStyle(i, e.target.value as PreviewScene['textAnimationStyle'])}
-                                className="text-[11px] font-mono bg-transparent border border-white/15 text-white/50 hover:border-white/30 hover:text-white/70 rounded px-1.5 py-0.5 cursor-pointer focus:outline-none"
-                              >
-                                <option value="none" className="bg-[#111]">없음</option>
-                                <optgroup label="진입" className="bg-[#111]">
-                                  <option value="fly-in" className="bg-[#111]">fly-in</option>
-                                  <option value="typewriter" className="bg-[#111]">typewriter</option>
-                                  <option value="pop-in" className="bg-[#111]">pop-in</option>
-                                  <option value="fade-zoom" className="bg-[#111]">fade-zoom</option>
-                                </optgroup>
-                                <optgroup label="타이포" className="bg-[#111]">
-                                  <option value="stagger-words" className="bg-[#111]">stagger-words</option>
-                                  <option value="kinetic-bounce" className="bg-[#111]">kinetic-bounce</option>
-                                  <option value="focus-highlight" className="bg-[#111]">focus-highlight</option>
-                                </optgroup>
-                                <optgroup label="에너지" className="bg-[#111]">
-                                  <option value="pulse-ring" className="bg-[#111]">pulse-ring</option>
-                                  <option value="sparkle" className="bg-[#111]">sparkle</option>
-                                  <option value="thunder" className="bg-[#111]">thunder</option>
-                                  <option value="fire" className="bg-[#111]">fire</option>
-                                  <option value="confetti" className="bg-[#111]">confetti</option>
-                                  <option value="heart" className="bg-[#111]">heart</option>
-                                </optgroup>
-                                <optgroup label="감성" className="bg-[#111]">
-                                  <option value="rain" className="bg-[#111]">rain</option>
-                                  <option value="snow" className="bg-[#111]">snow</option>
-                                  <option value="stars" className="bg-[#111]">stars</option>
-                                </optgroup>
-                                <optgroup label="정보" className="bg-[#111]">
-                                  <option value="chart-up" className="bg-[#111]">chart-up</option>
-                                  <option value="clock-spin" className="bg-[#111]">clock-spin</option>
-                                  <option value="magnifier" className="bg-[#111]">magnifier</option>
-                                  <option value="lock-secure" className="bg-[#111]">lock-secure</option>
-                                  <option value="camera-flash" className="bg-[#111]">camera-flash</option>
-                                  <option value="film-roll" className="bg-[#111]">film-roll</option>
-                                </optgroup>
-                              </select>
-                              <div className="w-px h-3 bg-white/10" />
-                              {/* 재생성 */}
-                              <button
-                                onClick={() => handleRegenerateImage(i)}
-                                disabled={regeneratingIndex !== null}
-                                className="flex items-center gap-1 text-[11px] font-mono text-white/35 hover:text-orange-400 transition-colors disabled:opacity-20 px-1.5 py-0.5 hover:bg-orange-400/5 rounded"
-                              >
-                                <span className="text-[10px]">↺</span>재생성
-                              </button>
-                              {/* 교체 */}
-                              <button
-                                onClick={() => replaceInputRefs.current[i]?.click()}
-                                className="flex items-center gap-1 text-[11px] font-mono text-white/35 hover:text-[#17BEBB] transition-colors px-1.5 py-0.5 hover:bg-[#17BEBB]/5 rounded"
-                              >
-                                <span className="text-[10px]">↑</span>교체
-                              </button>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                ref={el => { replaceInputRefs.current[i] = el; }}
-                                onChange={e => { const f = e.target.files?.[0]; if (f) handleReplaceImage(i, f); e.target.value = ''; }}
-                              />
-                            </>
-                          )}
-                        </div>
                       )}
                     </div>
                   </div>
