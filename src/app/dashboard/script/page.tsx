@@ -144,6 +144,7 @@ export default function ScriptPage() {
   const [topicFocused, setTopicFocused] = useState(false);
   const [script, setScript] = useState('');
   const [error, setError] = useState('');
+  const [saveWarning, setSaveWarning] = useState('');
   const [copied, setCopied] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
 
@@ -152,6 +153,7 @@ export default function ScriptPage() {
     setStatus('loading');
     setScript('');
     setError('');
+    setSaveWarning('');
 
     try {
       const res = await fetch('/api/generate-script', {
@@ -169,7 +171,12 @@ export default function ScriptPage() {
       }
       setScript(data.script);
       setStatus('done');
-      console.log('[ScriptPage] 대본 생성 및 저장 완료:', data.scriptId);
+      if (data.saveError) {
+        setSaveWarning(`대본 저장 실패: ${data.saveError}`);
+        console.warn('[ScriptPage] 저장 실패:', data.saveError);
+      } else {
+        console.log('[ScriptPage] 대본 생성 및 저장 완료:', data.scriptId);
+      }
       // 사이드바 업데이트 알림
       window.dispatchEvent(new Event('clipflow_script_updated'));
     } catch (err: unknown) {
@@ -256,6 +263,11 @@ export default function ScriptPage() {
 
         {status === 'done' && (
           <>
+            {saveWarning && (
+              <div className="mb-4 px-3 py-2 border-l-2 border-yellow-400 bg-yellow-400/5">
+                <p className="text-yellow-400 text-xs font-mono">{saveWarning}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">완성된 대본</span>
               <button

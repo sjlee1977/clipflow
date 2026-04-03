@@ -112,9 +112,8 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // 1. 장면 분할 (175자 기준으로 장면 수 추정, 최대 50장면)
-        // LLM이 150~200자 범위 내에서 문맥에 맞게 최적 분량 결정
-        const targetCharsPerScene = 175;
+        // 1. 장면 분할 (키네틱: 85자/씬, 일반: 175자/씬 기준으로 장면 수 추정, 최대 50장면)
+        const targetCharsPerScene = isKineticMode ? 85 : 175;
         const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
         console.log(`[generate-scenes] script.length=${script.length}, sceneCount=${sceneCount}`);
         const hasCharacter = !!characterImageBase64;

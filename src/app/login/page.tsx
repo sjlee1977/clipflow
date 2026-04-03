@@ -19,10 +19,11 @@ export default function LoginPage() {
   async function handleGoogleLogin() {
     setLoading(true);
     setError('');
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${location.origin}/auth/callback` },
     });
+    if (error) setError(`Google 로그인 실패: ${error.message}`);
     setLoading(false);
   }
 

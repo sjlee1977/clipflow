@@ -563,7 +563,7 @@ export default function DashboardPage() {
               image_model: imageModelId,
               tts_provider: ttsProvider,
               file_name: fileName,
-              scenes: scenes.map(s => ({ text: s.text, imageUrl: s.imageUrl, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, shouldAnimate: s.shouldAnimate, videoUrl: s.videoUrl })),
+              scenes: scenes.map(s => ({ text: s.text, displayText: s.displayText, imageUrl: s.imageUrl, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, shouldAnimate: s.shouldAnimate, videoUrl: s.videoUrl, textAnimationStyle: s.textAnimationStyle, textPosition: s.textPosition })),
             });
             return;
           }
@@ -1008,6 +1008,47 @@ export default function DashboardPage() {
 
                           {status === 'preview' && (
                             <>
+                              <div className="w-px h-3 bg-white/10" />
+                              {/* 텍스트 애니메이션 스타일 */}
+                              <select
+                                value={scene.textAnimationStyle ?? 'none'}
+                                onChange={e => updateSceneStyle(i, e.target.value as PreviewScene['textAnimationStyle'])}
+                                className="text-[11px] font-mono bg-transparent border border-white/15 text-white/50 hover:border-white/30 hover:text-white/70 rounded px-1.5 py-0.5 cursor-pointer focus:outline-none"
+                              >
+                                <option value="none" className="bg-[#111]">없음</option>
+                                <optgroup label="진입" className="bg-[#111]">
+                                  <option value="fly-in" className="bg-[#111]">fly-in</option>
+                                  <option value="typewriter" className="bg-[#111]">typewriter</option>
+                                  <option value="pop-in" className="bg-[#111]">pop-in</option>
+                                  <option value="fade-zoom" className="bg-[#111]">fade-zoom</option>
+                                </optgroup>
+                                <optgroup label="타이포" className="bg-[#111]">
+                                  <option value="stagger-words" className="bg-[#111]">stagger-words</option>
+                                  <option value="kinetic-bounce" className="bg-[#111]">kinetic-bounce</option>
+                                  <option value="focus-highlight" className="bg-[#111]">focus-highlight</option>
+                                </optgroup>
+                                <optgroup label="에너지" className="bg-[#111]">
+                                  <option value="pulse-ring" className="bg-[#111]">pulse-ring</option>
+                                  <option value="sparkle" className="bg-[#111]">sparkle</option>
+                                  <option value="thunder" className="bg-[#111]">thunder</option>
+                                  <option value="fire" className="bg-[#111]">fire</option>
+                                  <option value="confetti" className="bg-[#111]">confetti</option>
+                                  <option value="heart" className="bg-[#111]">heart</option>
+                                </optgroup>
+                                <optgroup label="감성" className="bg-[#111]">
+                                  <option value="rain" className="bg-[#111]">rain</option>
+                                  <option value="snow" className="bg-[#111]">snow</option>
+                                  <option value="stars" className="bg-[#111]">stars</option>
+                                </optgroup>
+                                <optgroup label="정보" className="bg-[#111]">
+                                  <option value="chart-up" className="bg-[#111]">chart-up</option>
+                                  <option value="clock-spin" className="bg-[#111]">clock-spin</option>
+                                  <option value="magnifier" className="bg-[#111]">magnifier</option>
+                                  <option value="lock-secure" className="bg-[#111]">lock-secure</option>
+                                  <option value="camera-flash" className="bg-[#111]">camera-flash</option>
+                                  <option value="film-roll" className="bg-[#111]">film-roll</option>
+                                </optgroup>
+                              </select>
                               <div className="w-px h-3 bg-white/10" />
                               {/* 재생성 */}
                               <button

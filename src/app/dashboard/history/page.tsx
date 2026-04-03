@@ -2,9 +2,50 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+
+// 영상 첫 프레임을 canvas로 캡처해 썸네일로 표시
+function VideoThumbnail({ src, className }: { src: string; className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const handleSeeked = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setReady(true);
+    };
+
+    const handleMeta = () => {
+      video.currentTime = 0.5;
+    };
+
+    video.addEventListener('loadedmetadata', handleMeta);
+    video.addEventListener('seeked', handleSeeked);
+    return () => {
+      video.removeEventListener('loadedmetadata', handleMeta);
+      video.removeEventListener('seeked', handleSeeked);
+    };
+  }, [src]);
+
+  return (
+    <>
+      <video ref={videoRef} src={src} preload="metadata" muted style={{ display: 'none' }} crossOrigin="anonymous" />
+      <canvas ref={canvasRef} className={className} style={{ display: ready ? 'block' : 'none' }} />
+      {!ready && <div className="absolute inset-0 bg-black/80 flex items-center justify-center"><span className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" /></div>}
+    </>
+  );
+}
 
 type Video = {
   id: string;
@@ -196,25 +237,27 @@ export default function HistoryPage() {
               ) : (
                 <button
                   onClick={() => setPlaying(v.id)}
-                  className="w-full h-full flex items-center justify-center group"
+                  className="w-full h-full flex items-center justify-center group relative"
                 >
+                  {/* 썸네일: 이미지가 있으면 img, 없으면 영상 첫 프레임 캡처 */}
                   {v.scenes?.[0]?.imageUrl ? (
-                    <>
-                      <img
-                        src={v.scenes[0].imageUrl}
-                        alt={v.title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                      <span className="relative text-3xl text-white/60 group-hover:text-white/90 transition-colors drop-shadow-lg">▶</span>
-                      {v.title && (
-                        <span className="absolute bottom-2 left-2 right-2 text-white/80 text-[11px] font-mono line-clamp-2 leading-snug drop-shadow">
-                          {v.title}
-                        </span>
-                      )}
-                    </>
+                    <img
+                      src={v.scenes[0].imageUrl}
+                      alt={v.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
+                    />
                   ) : (
-                    <span className="text-2xl text-white/20 group-hover:text-white/60 transition-colors">▶</span>
+                    <VideoThumbnail
+                      src={v.video_url}
+                      className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                  <span className="relative text-3xl text-white/60 group-hover:text-white/90 transition-colors drop-shadow-lg z-10">▶</span>
+                  {v.title && (
+                    <span className="absolute bottom-2 left-2 right-2 text-white/80 text-[11px] font-mono line-clamp-2 leading-snug drop-shadow z-10">
+                      {v.title}
+                    </span>
                   )}
                 </button>
               )}

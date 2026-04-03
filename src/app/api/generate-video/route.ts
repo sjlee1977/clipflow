@@ -132,9 +132,12 @@ export async function POST(req: NextRequest) {
       let durationInFrames: number;
 
       if (ttsProvider === 'none') {
-        // 음성 없음: 텍스트 길이 기반으로 duration 계산 (한국어 분당 약 200자 읽기 속도)
-        const charsPerSec = 200 / 60 * speed;
-        const estimatedSec = Math.max(3, s.text.replace(/\s+/g, '').length / charsPerSec);
+        // 음성 없음 (키네틱 모드): displayText 기준으로 씬 길이 계산 (3~7초)
+        // 전체 나레이션 텍스트(~175자)를 기준으로 하면 씬당 50초+ 가 되어 렌더링이 사실상 종료되지 않음
+        const safeSpeed = Math.max(0.5, speed);
+        const charsPerSec = 300 / 60 * safeSpeed; // 한국어 자막 읽기 속도 ~300자/분
+        const textForDuration = s.displayText?.trim() || s.text.slice(0, 30);
+        const estimatedSec = Math.min(7, Math.max(3, textForDuration.replace(/\s+/g, '').length / charsPerSec));
         audioUrl = '';
         durationInFrames = Math.max(90, Math.round(estimatedSec * FPS) + PADDING_FRAMES);
       } else {

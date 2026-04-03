@@ -226,7 +226,8 @@ function useTextAnim(style: string, localFrame: number, fps: number, duration: n
   let translateY = 0;
   let scale = 1;
   let letterSpacing = -0.02; // Change to number
-  let displayText = text;
+  // ** 마크다운 기호 제거 (stagger/bounce/focus 제외한 모든 스타일)
+  let displayText = text.replace(/\*\*/g, '');
 
   const fadeIn  = interpolate(localFrame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
   const fadeOut = interpolate(localFrame, [duration - 10, duration], [1, 0], { extrapolateLeft: 'clamp' });
@@ -237,8 +238,9 @@ function useTextAnim(style: string, localFrame: number, fps: number, duration: n
     translateY = interpolate(spr, [0, 1], [140, 0]);
     opacity = Math.min(interpolate(localFrame, [0, 12], [0, 1], { extrapolateRight: 'clamp' }), fadeOut);
   } else if (style === 'typewriter') {
-    const chars = Math.floor(interpolate(localFrame, [0, Math.min(35, duration * 0.75)], [0, text.length], { extrapolateRight: 'clamp' }));
-    displayText = text.slice(0, chars);
+    const cleanText = text.replace(/\*\*/g, '');
+    const chars = Math.floor(interpolate(localFrame, [0, Math.min(45, duration * 0.8)], [0, cleanText.length], { extrapolateRight: 'clamp' }));
+    displayText = cleanText.slice(0, chars);
     opacity = fadeOut;
     translateY = 0;
   } else if (style === 'pop-in') {
@@ -285,8 +287,15 @@ function MainDisplay({
   const { opacity, translateY, scale, letterSpacing, displayText: animText } = useTextAnim(
     animStyle, sceneFrame, fps, sceneDuration, text
   );
-  const textLen = text.replace(/\*\*/g, '').length;
-  const fontSize = textLen <= 6 ? 200 : textLen <= 10 ? 170 : textLen <= 16 ? 140 : textLen <= 22 ? 115 : 90;
+  const textLen = text.replace(/\*\*/g, '').replace(/\s/g, '').length;
+  // 글자 수별 베이스 크기: 짧을수록 훨씬 크게 (확실한 시각적 차이)
+  const baseSize = textLen <= 4 ? 240 : textLen <= 7 ? 200 : textLen <= 11 ? 168 : textLen <= 15 ? 136 : textLen <= 20 ? 108 : 88;
+  // 에너지 레벨별 폰트 크기 배율
+  const HIGH_CLIMAX = ['thunder', 'fire', 'pulse-ring', 'kinetic-bounce', 'pop-in'];
+  const HIGH_ENERGY = ['sparkle', 'confetti', 'heart', 'stagger-words', 'fly-in', 'chart-up'];
+  const LOW_ENERGY  = ['rain', 'snow', 'stars', 'focus-highlight', 'typewriter', 'fade-zoom'];
+  const mult = HIGH_CLIMAX.includes(animStyle) ? 1.3 : HIGH_ENERGY.includes(animStyle) ? 1.1 : LOW_ENERGY.includes(animStyle) ? 0.88 : 1;
+  const fontSize = Math.round(baseSize * mult);
   const mainColor = p.text;
   const glowColor = p.dark ? `${p.accent}55` : 'transparent';
 
@@ -305,7 +314,8 @@ function MainDisplay({
         {animStyle === 'typewriter' ? (
           <span style={{ ...commonSpanStyle, fontSize, color: p.accent }}>
             {animText}
-            {Math.floor(sceneFrame / 8) % 2 === 0 && <span style={{ opacity: 0.8 }}>|</span>}
+            {/* 커서: 항상 공간 차지, opacity만 토글 → 레이아웃 시프트 없음 */}
+            <span style={{ opacity: Math.floor(sceneFrame / 9) % 2 === 0 ? 1 : 0, color: p.accent }}>▌</span>
           </span>
         ) : (
           <span style={{ ...commonSpanStyle, fontSize, color: mainColor, textShadow: `0 0 80px ${glowColor}` }}>
@@ -351,11 +361,13 @@ function MainDisplay({
             ) : animText}
           </span>
         )}
-        {/* accent 언더라인 */}
-        <div style={{
-          height: 3, background: p.accent, borderRadius: 2, marginTop: 24,
-          opacity: opacity * 0.8, transform: `scaleX(${scale})`, transformOrigin: 'center',
-        }} />
+        {/* accent 언더라인 — 단어 애니메이션/타이포그래피 스타일에만 표시, 배경효과 스타일은 제외 */}
+        {['stagger-words', 'kinetic-bounce', 'focus-highlight', 'typewriter', 'fly-in', 'pop-in', 'fade-zoom', 'none'].includes(animStyle) && (
+          <div style={{
+            height: 3, background: p.accent, borderRadius: 2, marginTop: 24,
+            opacity: opacity * 0.8, transform: `scaleX(${scale})`, transformOrigin: 'center',
+          }} />
+        )}
       </div>
     </AbsoluteFill>
   );

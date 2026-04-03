@@ -168,7 +168,7 @@ export async function splitScriptIntoScenes(
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${adjustedSceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지. 원문 그대로 잘라서 넣으세요.
 2. **엄격한 분량 준수 (절대 위반 금지)**:
    - 전체 대본 ${script.length}자 ÷ ${adjustedSceneCount}장면 = 장면당 평균 **${Math.round(script.length / adjustedSceneCount)}자**
-   - 각 장면은 **150자 이상 200자 이하**여야 합니다 (키네틱/일반 동일)
+   - 각 장면은 **${isKineticMode ? '70자 이상 100자 이하' : '150자 이상 200자 이하'}**여야 합니다
    - **출력 전 각 장면의 글자 수를 직접 세어 검증하고, 범위를 벗어나면 반드시 재조정하세요**
 3. **문장 단위 분할**: 문장 중간에서 자르지 말고 마침표(. ! ?)나 줄바꿈 기준으로 분할하세요.
 4. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
@@ -186,6 +186,7 @@ ${isKineticMode ? `(5-kinetic) displayText: **애플 광고 스타일 핵심 포
     - 예시: "당신의 시간을", "지금 시작하라", "2024년, 변화", "AI가 바꾼다"
     - 나레이션이 진행되는 동안 화면에 크게 표시되므로 강렬하고 기억에 남는 문구여야 함
     - 빌드업 과정: 도입부는 짧은 의문/문제 제기 → 중반은 핵심 사실/수치 → 결말은 임팩트 결론
+    - **절대 금지: 전체 장면에서 동일한 displayText 반복 사용. 모든 장면의 displayText는 서로 달라야 함**
 ` : ''}${advancedEffectsPrompt.trim()}${characterInstruction}
 
 반드시 아래 JSON 형태로만 응답하세요:
@@ -244,8 +245,8 @@ ${script}`,
 
   const rawScenes: ScriptScene[] = parsed.scenes ?? (Array.isArray(parsed) ? parsed : []);
 
-  const MIN_CHARS = 150;
-  const MAX_CHARS = 200;
+  const MIN_CHARS = isKineticMode ? 70 : 150;
+  const MAX_CHARS = isKineticMode ? 100 : 200;
 
   // 200자 초과 씬을 150~200자 사이 문장 경계에서 분할
   function splitLongScene(scene: ScriptScene): ScriptScene[] {
@@ -285,6 +286,22 @@ ${script}`,
   while (scenes.length > 1 && scenes[scenes.length - 1].text.length < MIN_CHARS) {
     const last = scenes.pop()!;
     scenes[scenes.length - 1].text = scenes[scenes.length - 1].text + ' ' + last.text;
+  }
+
+  // 키네틱 모드: displayText 중복 제거 — 중복 시 해당 씬 text 앞부분으로 대체
+  if (isKineticMode) {
+    const seen = new Set<string>();
+    for (const scene of scenes) {
+      const dt = scene.displayText?.trim();
+      if (dt) {
+        if (seen.has(dt)) {
+          const m = scene.text.match(/^[^.!?]{1,25}[.!?]?/);
+          scene.displayText = m ? m[0].trim() : scene.text.slice(0, 20).trim();
+        } else {
+          seen.add(dt);
+        }
+      }
+    }
   }
 
   const meta = (response as any).usageMetadata ?? {};

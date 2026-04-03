@@ -602,9 +602,14 @@ export async function POST(req: NextRequest) {
 
     // [DB 저장] - Admin Client 사용하여 RLS 우회 (확실한 저장 보장)
     let savedScriptId = null;
+    let saveErrorMsg: string | null = null;
     try {
       const adminSupabase = await createAdminClient();
-      const title = topic.length > 50 ? topic.slice(0, 50) + '...' : topic;
+
+      // 의미있는 제목 추출: [영상 주제 제목] 라인이 있으면 그 값 사용, 없으면 topic 앞부분
+      const subjectMatch = topic.match(/\[영상 주제 제목\]\s*(.+)/);
+      const rawTitle = subjectMatch ? subjectMatch[1].trim() : topic;
+      const title = rawTitle.length > 50 ? rawTitle.slice(0, 50) + '...' : rawTitle;
 
       // 1차: metadata 포함 시도
       let { data: savedData, error: insertError } = await adminSupabase
@@ -614,7 +619,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       // metadata 컬럼 없을 경우 2차: 기본 필드만으로 재시도
-      if (insertError) {
+      if (insertError && insertError.message.includes('metadata')) {
         console.warn('[generate-script] 1차 저장 실패, metadata 제외 재시도:', insertError.message);
         ({ data: savedData, error: insertError } = await adminSupabase
           .from('scripts')
@@ -624,18 +629,21 @@ export async function POST(req: NextRequest) {
       }
 
       if (insertError) {
+        saveErrorMsg = insertError.message;
         console.error('[generate-script] 저장 최종 실패:', insertError.message, '| user:', user.id);
       } else if (savedData) {
         savedScriptId = savedData.id;
         console.log('[generate-script] 저장 성공:', savedScriptId);
       }
     } catch (saveErr) {
+      saveErrorMsg = saveErr instanceof Error ? saveErr.message : '저장 중 알 수 없는 오류';
       console.error('[generate-script] 저장 예외:', saveErr);
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       script,
       scriptId: savedScriptId,
+      saveError: saveErrorMsg,
       status: 'success'
     });
   } catch (err: any) {
