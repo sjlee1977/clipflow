@@ -23,44 +23,36 @@ function isInsideBracket(str: string, pos: number): boolean {
   return depth > 0;
 }
 
-function findSplitAt(remaining: string, maxChars: number, minChars: number): number {
+function findSplitAt(remaining: string, maxChars: number = 27, minChars: number = 6): number {
   if (remaining.length <= maxChars) return remaining.length;
 
-  const mid = Math.floor(remaining.length / 2);
-  let bestSplit = -1;
-  let minDiff = Infinity;
+  // maxChars 이내에서 가장 늦은 자연 분리점 탐색 (우선순위 순)
+  const end = Math.min(remaining.length - 1, maxChars);
 
-  for (let i = 0; i < remaining.length; i++) {
+  for (let i = end; i >= minChars; i--) {
     if (isInsideBracket(remaining, i)) continue;
-    const char = remaining[i] ?? '';
-    const isPunctuation = /[.!?…,，。]/.test(char);
-    const isSpace = /\s/.test(char);
-
-    if (isPunctuation || isSpace) {
-      const diff = Math.abs(i - mid);
-      const weightedDiff = isPunctuation ? Math.max(0, diff - 5) : diff;
-      if (weightedDiff < minDiff) {
-        minDiff = weightedDiff;
-        bestSplit = i + 1;
-      }
-    }
+    if (/[.!?…。]/.test(remaining[i])) return i + 1;
+  }
+  for (let i = end; i >= minChars; i--) {
+    if (isInsideBracket(remaining, i)) continue;
+    if (/[,，、·]/.test(remaining[i])) return i + 1;
+  }
+  for (let i = end; i >= minChars; i--) {
+    if (remaining[i] === ' ') return i + 1;
   }
 
-  if (bestSplit === -1 || bestSplit < minChars || bestSplit > remaining.length - minChars) {
-    return Math.min(maxChars, remaining.length);
-  }
-  return bestSplit;
+  return maxChars;
 }
 
 function splitIntoSubtitles(text: string, totalFrames: number) {
-  const MAX_CHARS = 30;
-  const MIN_CHARS = 10;
+  const MAX_CHARS = 27;
+  const MIN_CHARS = 6;
 
   const chunks: string[] = [];
   let remaining = text.trim();
 
   while (remaining.length > MAX_CHARS) {
-    const splitAt = findSplitAt(remaining);
+    const splitAt = findSplitAt(remaining, MAX_CHARS, MIN_CHARS);
     chunks.push(remaining.slice(0, splitAt).trim());
     remaining = remaining.slice(splitAt).trim();
   }

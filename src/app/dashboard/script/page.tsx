@@ -11,6 +11,11 @@ const SCRIPT_LLM_MODELS = [
   { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
   { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
   { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
+  // ── Qwen (DashScope) 旗舰 & 经济 & Omni ──────────────────
+  { id: 'qwen3.6-plus',             name: 'Qwen 3.6 Plus',      provider: 'Alibaba',   price: '신규·고지능' },
+  { id: 'qwen3.5-plus',             name: 'Qwen 3.5 Plus',      provider: 'Alibaba',   price: '합리적·지능' },
+  { id: 'qwen3.5-flash',            name: 'Qwen 3.5 Flash',     provider: 'Alibaba',   price: '초저가·빠름' },
+  { id: 'qwen3.5-omni-plus',        name: 'Qwen 3.5 Omni Plus', provider: 'Alibaba',   price: '전모태·고성능' },
 ];
 
 type ToneId = 'urgent_direct' | 'dramatic_tension' | 'calm_analytical' | 'trust_clear' | 'storytelling' | 'friendly_casual';
@@ -389,7 +394,7 @@ export default function ScriptPage() {
             onToggle={() => setModelOpen(prev => !prev)}
           >
             <div className="space-y-2">
-              {(['Anthropic', 'Google'] as const).map(provider => (
+              {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
                 <div key={provider}>
                   <p className="text-[11px] font-mono text-white/30 tracking-widest uppercase px-2 mb-1">{provider}</p>
                   <div className="space-y-0.5">

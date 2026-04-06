@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const googleKey = meta.gemini_api_key || process.env.GEMINI_API_KEY;
     const minimaxKey = meta.minimax_api_key || process.env.MINIMAX_API_KEY;
     const elevenKey = meta.elevenlabs_api_key;
+    const qwenKey = meta.qwen_api_key;
 
     if (ttsProvider === 'google') {
       if (!googleKey) return NextResponse.json({ error: 'Google(Gemini) API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
@@ -29,6 +30,15 @@ export async function POST(req: NextRequest) {
       if (!elevenKey) return NextResponse.json({ error: 'ElevenLabs API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
       const { generateSpeechBuffer: elevenTTS } = await import('@/lib/elevenlabs');
       const result = await elevenTTS(text, voiceId, elevenKey);
+      buffer = result.buffer;
+      contentType = 'audio/mpeg';
+    } else if (ttsProvider === 'qwen') {
+      if (!qwenKey) return NextResponse.json({ error: 'Qwen(DashScope) API 키가 설정되지 않았습니다. 설정에서 키를 등록해주세요.' }, { status: 403 });
+      const { generateSpeech: qwenTTS } = await import('@/lib/qwen-tts');
+      const result = await qwenTTS(text, { 
+        voiceId, 
+        apiKey: qwenKey 
+      });
       buffer = result.buffer;
       contentType = 'audio/mpeg';
     } else {

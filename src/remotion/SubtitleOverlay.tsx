@@ -267,7 +267,11 @@ export const SubtitleOverlay: React.FC<Props> = ({
     if (text.length <= SUBTITLE_MAX) return currentSubtitleRaw;
 
     const chunks = smartSplitSubtitle(text);
-    if (chunks.length <= 1) return currentSubtitleRaw;
+    // chunks.length <= 1이라도 text가 SUBTITLE_MAX 초과면 강제 컷
+    if (chunks.length <= 1) {
+      const clipped = text.slice(0, SUBTITLE_MAX);
+      return { text: clipped, startFrame: currentSubtitleRaw.startFrame, endFrame: currentSubtitleRaw.endFrame };
+    }
 
     const duration = currentSubtitleRaw.endFrame - currentSubtitleRaw.startFrame;
     const totalChars = chunks.reduce((s, c) => s + c.length, 0);

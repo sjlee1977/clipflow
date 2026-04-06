@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
     const meta = user?.user_metadata ?? {};
     const geminiApiKey = meta.gemini_api_key as string | undefined;
     const falApiKey = meta.fal_api_key as string | undefined;
+    const qwenApiKey = meta.qwen_api_key as string | undefined;
+
+    const isWanXImage = imageModelId.includes('wan') || imageModelId.includes('qwen-image') || imageModelId.includes('z-image');
 
     // 캐릭터 이미지가 있으면 Gemini 강제 사용
     const hasCharacterImages = !!characterImageBase64 || (Array.isArray(subCharacters) && subCharacters.length > 0);
@@ -43,6 +46,11 @@ export async function POST(req: NextRequest) {
     if (imageModelId.startsWith('fal/')) {
       if (!falApiKey) return Response.json({ error: 'fal.ai API 키가 설정되지 않았습니다.' }, { status: 400 });
       imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
+    } else if (isWanXImage) {
+      if (!qwenApiKey) return Response.json({ error: 'Qwen(DashScope) API 키가 설정되지 않았습니다.' }, { status: 400 });
+      const { generateWanXImage } = await import('@/lib/qwen-image');
+      const size = format === 'landscape' ? '1280*720' : format === 'shorts' ? '720*1280' : '1024*1024';
+      imageUrl = await generateWanXImage(styledPrompt, { model: imageModelId, size, apiKey: qwenApiKey });
     } else {
       if (!geminiApiKey) return Response.json({ error: 'Gemini API 키가 설정되지 않았습니다.' }, { status: 400 });
       imageUrl = await generateImageViaGoogle(

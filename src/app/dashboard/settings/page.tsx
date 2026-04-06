@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal';
+type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen';
 
 const inputCls = 'flex-1 bg-black/40 text-white/80 border border-white/15 focus:border-white/40 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2 transition-colors';
 
@@ -20,7 +20,8 @@ function SingleKeySection({
     anthropic: 'anthropic', 
     google: 'gemini', 
     elevenlabs: 'elevenlabs',
-    'fal.ai': 'fal' 
+    'fal.ai': 'fal',
+    'dashscope': 'qwen' 
   };
   const provider: Provider = providerMap[name.toLowerCase()] ?? 'gemini';
   const [input, setInput] = useState('');
@@ -158,8 +159,8 @@ function DualKeySection({
 
 export default function SettingsPage() {
   const [keys, setKeys] = useState({ 
-    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, 
-    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '' 
+    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false,
+    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '' 
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -220,6 +221,7 @@ export default function SettingsPage() {
           { label: 'ElevenLabs (음성)', has: keys.hasElevenlabs, color: '#27ae60' },
           { label: 'Kling (영상)', has: keys.hasKling, color: '#a78bfa' },
           { label: 'fal.ai (영상)', has: keys.hasFal, color: '#f97316' },
+          { label: 'Qwen (대본/음성)', has: keys.hasQwen, color: '#6366f1' },
         ].map(({ label, has, color }) => (
           <div key={label} className={`flex items-center gap-2 px-4 py-3 border ${has ? 'border-green-400/20 bg-green-400/[0.04]' : 'border-white/8 bg-white/[0.02]'}`}>
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: has ? '#4ade80' : '#ffffff20' }} />
@@ -289,6 +291,14 @@ export default function SettingsPage() {
             hasKey={keys.hasFal} maskedKey={keys.fal}
             onSave={handleSave} onDelete={handleDelete}
           />
+          <SingleKeySection
+            name="DashScope" label="Qwen — 대본/음성/Omni" color="#6366f1"
+            models={['Qwen3.6-Plus', 'Qwen3.5-Omni', 'CosyVoice']}
+            placeholder="sk-..."
+            docsUrl="https://dashscope.console.aliyun.com/apiKey"
+            hasKey={keys.hasQwen} maskedKey={keys.qwen}
+            onSave={handleSave} onDelete={handleDelete}
+          />
         </div>
       )}
 
@@ -301,6 +311,7 @@ export default function SettingsPage() {
           { label: 'ElevenLabs (TTS) — 음성 생성', url: 'https://elevenlabs.io/app/settings/api-keys' },
           { label: 'Kling AI — 영상 생성', url: 'https://klingai.com' },
           { label: 'fal.ai — 영상 생성', url: 'https://fal.ai/dashboard/keys' },
+          { label: 'DashScope (Qwen) — 대본/음성이미지', url: 'https://dashscope.console.aliyun.com/apiKey' },
         ].map(({ label, url }) => (
           <div key={label} className="flex items-center justify-between gap-4">
             <p className="text-white/60 text-[12.5px] font-mono">{label}</p>

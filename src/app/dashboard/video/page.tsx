@@ -1046,7 +1046,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handlePlayScene(i, scene.text)}
                         disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
-                        className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border transition-colors disabled:opacity-30 shrink-0
+                        className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border transition-colors disabled:opacity-30 shrink-0
                           border-white/25 text-white/70 hover:text-yellow-300 hover:border-yellow-400/50 hover:bg-yellow-400/8"
                       >
                         {loadingAudioIndex === i ? (
@@ -1064,7 +1064,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handleAnimateScene(i)}
                         disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
-                        className={`flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border transition-all shrink-0 ${
+                        className={`flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border transition-all shrink-0 ${
                           scene.videoUrl
                             ? 'text-[#17BEBB] bg-[#17BEBB]/12 border-[#17BEBB]/50 cursor-default'
                             : scene.isAnimating
@@ -1089,7 +1089,7 @@ export default function DashboardPage() {
                         <select
                           value={scene.textAnimationStyle ?? 'none'}
                           onChange={e => updateSceneStyle(i, e.target.value as PreviewScene['textAnimationStyle'])}
-                          className="text-[13px] font-medium bg-[#1a1a1a] border border-white/25 text-white/75 hover:border-white/45 hover:text-white rounded px-2.5 py-1.5 cursor-pointer focus:outline-none shrink-0"
+                          className="text-[12px] font-medium bg-[#1a1a1a] border border-white/25 text-white/75 hover:border-white/45 hover:text-white rounded px-2.5 py-1.5 cursor-pointer focus:outline-none shrink-0"
                         >
                           <option value="none" className="bg-[#1a1a1a]">없음</option>
                           <optgroup label="진입" className="bg-[#1a1a1a]">
@@ -1129,14 +1129,14 @@ export default function DashboardPage() {
                         <button
                           onClick={() => handleRegenerateImage(i)}
                           disabled={regeneratingIndex !== null}
-                          className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-orange-300 hover:border-orange-400/45 hover:bg-orange-400/8 transition-colors disabled:opacity-30 shrink-0"
+                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-orange-300 hover:border-orange-400/45 hover:bg-orange-400/8 transition-colors disabled:opacity-30 shrink-0"
                         >
                           ↺ 재생성
                         </button>
                         {/* 교체 */}
                         <button
                           onClick={() => replaceInputRefs.current[i]?.click()}
-                          className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
+                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
                         >
                           ↑ 교체
                         </button>

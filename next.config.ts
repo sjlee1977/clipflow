@@ -1,7 +1,19 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['fluent-ffmpeg', '@ffmpeg-installer/ffmpeg'],
+  serverExternalPackages: [
+    'fluent-ffmpeg',
+    '@ffmpeg-installer/ffmpeg',
+    'remotion',
+    '@remotion/renderer',
+    '@remotion/lambda',
+    '@remotion/player',
+    '@remotion/media-utils',
+    '@remotion/gif',
+    '@remotion/noise',
+    '@remotion/shapes',
+    '@remotion/transitions',
+  ],
   images: {
     remotePatterns: [
       {

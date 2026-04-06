@@ -17,12 +17,14 @@ export async function GET() {
       klingAccess: meta.kling_access_key ? maskKey(meta.kling_access_key) : '',
       klingSecret: meta.kling_secret_key ? maskKey(meta.kling_secret_key) : '',
       fal: meta.fal_api_key ? maskKey(meta.fal_api_key) : '',
+      qwen: meta.qwen_api_key ? maskKey(meta.qwen_api_key) : '',
       hasAnthropic: !!meta.anthropic_api_key,
       hasGemini: !!meta.gemini_api_key,
       hasMinimax: !!meta.minimax_api_key && !!meta.minimax_group_id,
       hasElevenlabs: !!meta.elevenlabs_api_key,
       hasKling: !!meta.kling_access_key && !!meta.kling_secret_key,
       hasFal: !!meta.fal_api_key,
+      hasQwen: !!meta.qwen_api_key,
     });
   } catch {
     return NextResponse.json({ error: '키 조회 실패' }, { status: 500 });
@@ -53,6 +55,8 @@ export async function POST(req: NextRequest) {
       updateData = { kling_access_key: apiKey.trim(), kling_secret_key: apiKey2.trim() };
     } else if (provider === 'fal') {
       updateData = { fal_api_key: apiKey.trim() };
+    } else if (provider === 'qwen') {
+      updateData = { qwen_api_key: apiKey.trim() };
     } else {
       return NextResponse.json({ error: '알 수 없는 프로바이더' }, { status: 400 });
     }
@@ -80,6 +84,7 @@ export async function DELETE(req: NextRequest) {
       elevenlabs: { elevenlabs_api_key: null },
       kling: { kling_access_key: null, kling_secret_key: null },
       fal: { fal_api_key: null },
+      qwen: { qwen_api_key: null },
     };
     await supabase.auth.updateUser({ data: metaMap[provider] ?? {} });
     return NextResponse.json({ ok: true });

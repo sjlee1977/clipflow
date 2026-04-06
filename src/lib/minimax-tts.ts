@@ -122,6 +122,20 @@ export async function generateSpeech(
   const lines = rawText.split('\n');
   let fullAudioString = '';
   
+  // 에러 코드 의미 매핑
+  const getErrorMessage = (code: number, msg: string) => {
+    switch (code) {
+      case 1004: return '잘못된 MiniMax API Key입니다. 설정 페이지에서 키를 다시 확인해주세요.';
+      case 1013: return '잘못된 MiniMax Group ID입니다. 설정 페이지에서 ID를 다시 확인해주세요.';
+      case 1021: return 'MiniMax 계정 잔액이 부족합니다. 충전이 필요합니다.';
+      case 1022: return '해당 MiniMax 계정이 비활성화되었습니다.';
+      case 2013: return 'MiniMax 요청량이 너무 많아 일시적으로 제한되었습니다. 잠시 후 시도해주세요.';
+      case 1008:
+      case 1039: return '대본에 MiniMax에서 금지하는 민감한 단어가 포함되어 있습니다. 내용을 수정해주세요.';
+      default: return msg || `알 수 없는 API 에러 (코드: ${code})`;
+    }
+  };
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -134,12 +148,12 @@ export async function generateSpeech(
     try {
       const parsed = JSON.parse(jsonStr);
       
-      // 상태 코드 확인
+      // 상태 코드 확인 (base_resp 가 있으면 최우선, 없으면 루트 참조)
       const statusCode = parsed.base_resp?.status_code ?? parsed.status_code;
       const statusMsg = parsed.base_resp?.status_msg ?? parsed.status_msg ?? parsed.message;
       
       if (statusCode !== 0 && statusCode !== undefined) {
-        throw new Error(`MiniMax API 에러: ${statusMsg} (코드: ${statusCode})`);
+        throw new Error(`MiniMax API 에러: ${getErrorMessage(statusCode, statusMsg)} (코드: ${statusCode})`);
       }
 
       // 오디오 데이터 추출
@@ -152,7 +166,7 @@ export async function generateSpeech(
       }
     } catch (e: any) {
       if (e.message.includes('MiniMax API 에러')) throw e;
-      // JSON 파싱 에러 등은 무시 (SSE 공백 등)
+      // SSE 공백이나 잘못된 JSON 라인 무시
     }
   }
 

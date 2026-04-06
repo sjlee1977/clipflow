@@ -535,10 +535,18 @@ export async function POST(req: NextRequest) {
     const meta = user.user_metadata ?? {};
     const model = llmModelId ?? 'gemini-2.5-flash';
     const isClaude = model.startsWith('claude');
+    const isQwen = model.startsWith('qwen');
 
-    const apiKey = isClaude ? meta.anthropic_api_key : meta.gemini_api_key;
+    let apiKey = '';
+    if (isClaude) apiKey = meta.anthropic_api_key;
+    else if (isQwen) apiKey = meta.qwen_api_key;
+    else apiKey = meta.gemini_api_key;
+
     if (!apiKey) {
-      const provider = isClaude ? 'Anthropic (Claude)' : 'Google (Gemini)';
+      let provider = 'Google (Gemini)';
+      if (isClaude) provider = 'Anthropic (Claude)';
+      else if (isQwen) provider = 'DashScope (Qwen)';
+      
       return NextResponse.json(
         { error: `${provider} API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.`, needsKey: true },
         { status: 403 }
@@ -588,6 +596,34 @@ export async function POST(req: NextRequest) {
         messages: [{ role: 'user', content: userContent }],
       });
       script = (msg.content[0] as { type: string; text: string }).text ?? '';
+    } else if (isQwen) {
+      const res = await fetch('https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'X-DashScope-ApiKey': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          input: {
+            messages: [
+              { role: 'system', content: dynamicSystemPrompt },
+              { role: 'user', content: userContent }
+            ]
+          },
+          parameters: {
+            result_format: 'message',
+            temperature: 0.8
+          }
+        })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(`Qwen API 오류: ${errorData.error?.message || errorData.message || res.statusText}`);
+      }
+      const data = await res.json();
+      script = data.output?.choices?.[0]?.message?.content ?? '';
     } else {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({

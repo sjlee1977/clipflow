@@ -493,7 +493,7 @@ export type SlideSceneData = {
   text: string;
   title: string;
   bullets?: string[];
-  layout: 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress';
+  layout: 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit';
   stats?: { value: string; label: string }[];
   comparisonData?: {
     leftTitle: string;
@@ -501,6 +501,9 @@ export type SlideSceneData = {
     leftItems: string[];
     rightItems: string[];
   };
+  summary?: string;
+  headerBadge?: { icon?: string; text: string };
+  warningTag?: string;
 };
 export type SlideSplitResult = {
   slides: SlideSceneData[];
@@ -522,85 +525,105 @@ export async function splitScriptIntoSlides(
         role: 'user',
         parts: [
           {
-            text: `당신은 시각적으로 다채로운 PPT 슬라이드 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 슬라이드로 나누어주세요.
+            text: `당신은 영상 연출 전문가입니다. 대본을 깊이 분석하고 각 장면의 내용·감정·구조에 가장 어울리는 레이아웃을 선택해 ${sceneCount}개 슬라이드로 만드세요.
 
-**[절대 규칙]**
-1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지.
-2. **엄격한 분량 준수 (150자 절대 상한)**:
-   - 각 슬라이드는 **100자 이상 150자 이하**여야 합니다.
-   - **절대 규칙**: 어떤 슬라이드도 **150자를 초과해서는 안 됩니다.**
-   - **강조 금지**: 대본 원문에 없는 마크다운 강조 표시(예: **단어**)를 절대로 임의로 추가하지 마세요.
-   - **문맥 위주 분할**: 단순히 글자 수로 자르지 말고, 마침표(.), 쉼표(,), 혹은 의미가 끊기는 지점에서 자연스럽게 나누세요.
-3. **레이아웃 다양성 필수 (가장 중요한 규칙)**:
-   - **"bullets"는 전체 슬라이드 중 최대 30%만 사용하세요.** 예: 10슬라이드면 bullets 최대 3개.
-   - **같은 layout을 연속 2개 이상 사용 금지.** (bullets→bullets 금지, boxlist→boxlist 금지)
-   - 아래 6가지 layout을 골고루 분산해서 사용하세요.
-4. **JSON만 출력**: 반드시 {"slides": [...]} 형태의 유효한 JSON만 출력하세요.
+═══ STEP 1: 대본 전체 분석 (레이아웃 결정 전 필수) ═══
+각 문단을 읽으며 아래 신호를 찾아라:
 
-**[레이아웃 종류 - 10가지 중 골고루 사용 필수]**
-- "title": 챕터 오프닝 (타이프라이터 효과로 제목만 크게)
-- "bigword": 핵심 단어/숫자 하나를 초대형으로 (예: "3배 성장", "AI 혁명") + bullets에 보조문 1줄
-- "statcard": 수치/통계를 카드로 — 숫자가 카운팅되며 올라가는 효과 (예: "300%", "1M+")
-- "timeline": 연도별/단계별 순서 나열 — "2020 · 서비스 시작" 형태
-- "icongrid": 이모지 아이콘 + 텍스트 그리드 카드 (예: "🚀 빠른 처리", "🔒 보안")
-- "progress": 단계별 프로세스 흐름 — 화살표로 연결된 단계 카드
-- "boxlist": 각 항목을 둥근 박스에 담아서 표시 (좌측 컬러 테두리)
-- "comparison": 좌우 비교 (장단점, A vs B, 전후) — 컬러 헤더 박스
-- "quote": 실제 인용문/명언/격언이 있을 때만 (전체 슬라이드 중 최대 1~2개, 남발 금지)
-- "bullets": 점/번호 목록 (최대 30% 제한, 다른 layout 충분히 사용 후)
+【수치 신호】→ "statcard"
+  감지 패턴: %, 배, 억, 조, 만 명, 위, 개국, 달러, 원, +, ↑↓, 순위
+  예) "매출이 300% 증가", "전 세계 1억 명", "3위 달성" → statcard
+  stats 필드: 텍스트에서 수치 추출해 value/label 작성
 
-**[필드 설명]**
-- text: 대본 원문 (나레이션될 텍스트, 100~150자)
-- title: 슬라이드 제목 (15자 이내)
-- layout: 위 10가지 중 하나
-- bullets: layout이 "bullets", "boxlist", "timeline", "icongrid", "progress", "bigword"인 경우 필수
-  - bullets/boxlist: 2~4개 핵심 포인트 (각 25자 이내)
-  - timeline: ["2020 · 서비스 출시", "2021 · 100만 달성"] 형태 (각 항목: "연도 · 내용")
-  - icongrid: ["🚀 빠른 처리", "🔒 완벽 보안"] 형태 (이모지로 시작)
-  - progress: ["1단계 이름", "2단계 이름", "3단계 이름"] 형태 (2~5개)
-  - bigword: ["보조 설명 1줄"] 형태 (1개만)
-- stats: layout이 "statcard"인 경우 필수 (2~4개)
-  - value: 표시할 숫자/수치 (예: "300%", "1M+", "50개")
-  - label: 수치 설명 (10자 이내)
-- comparisonData: layout이 "comparison"인 경우만 필수
-  - leftTitle: 좌측 헤더 (예: "✓ 장점", "Before")
-  - rightTitle: 우측 헤더 (예: "✗ 단점", "After")
-  - leftItems/rightItems: 각 2~3개, 20자 이내
+【비교·대립 신호】→ "comparison"
+  감지 패턴: vs, ~보다, 반면, 하지만 ~은 ~이고, 장점/단점, 전/후, Before/After, A와 B의 차이
+  예) "기존 방식은 느리지만, AI는 빠르다" → comparison
+  comparisonData: 좌우 2개 항목씩 추출
 
-**[레이아웃 선택 가이드]**
-- 챕터 시작 → "title"
-- 숫자/통계 데이터 → "statcard" (카운팅 애니메이션!)
-- 역사/로드맵/단계 나열 → "timeline"
-- 기능/특징 소개 → "icongrid" (이모지로 시각화!)
-- 순서가 있는 프로세스 → "progress"
-- 여러 항목을 깔끔하게 → "boxlist"
-- 장단점/비교/전후 → "comparison"
-- 실제 인용/명언 (따옴표로 감싼 문장) → "quote" (그 외엔 사용 금지)
-- 핵심 키워드 강조 → "bigword"
-- 세부 정보 (최후 수단) → "bullets"
+【순서·단계 신호】→ "progress" 또는 "timeline"
+  progress 감지: 첫째/둘째/셋째, 1단계/2단계, Step, 과정, 절차, 방법, →(흐름)
+  timeline 감지: 연도(20xx년), 월, 분기, 역사적 흐름, 로드맵
+  예) "2020년→2022년→2024년" → timeline / "입력→분석→출력" → progress
+  progress bullets: "이모지 단계명 · 서브텍스트" 형태 필수 (예: ["📝 대본 작성 · 내가 씀", "🤖 Claude Code · AI가 코드 짬"])
+  summary 필드: 전체 흐름을 요약하는 한 줄 (예: "대본만 쓰면 영상이 나오는 구조")
 
-반드시 아래 JSON 형태로만 응답하세요:
-{"slides": [
-  {
-    "text": "...", "title": "...", "layout": "statcard",
-    "stats": [{"value": "300%", "label": "매출 성장"}, {"value": "1M+", "label": "사용자"}]
-  },
-  {
-    "text": "...", "title": "...", "layout": "timeline",
-    "bullets": ["2020 · 서비스 출시", "2021 · 100만 달성", "2023 · 글로벌 확장"]
-  },
-  {
-    "text": "...", "title": "...", "layout": "icongrid",
-    "bullets": ["🚀 초고속 처리", "🔒 완벽 보안", "💡 AI 혁신", "📊 실시간 분석"]
-  },
-  {
-    "text": "...", "title": "...", "layout": "progress",
-    "bullets": ["대본 입력", "AI 자동 생성", "영상 완성"]
-  },
-  {
-    "text": "...", "title": "...", "layout": "comparison",
-    "comparisonData": {"leftTitle": "✓ 장점", "rightTitle": "✗ 단점", "leftItems": ["..."], "rightItems": ["..."]}
-  }
+【AI 대화·설명 신호】→ "dialogsplit"
+  감지 패턴: AI/Claude/GPT가 말하는 내용, AI의 관점/시각, 대화 형태, "저는 ~합니다"
+  예) "Claude는 이렇게 생각한다", "AI의 입장에서 보면" → dialogsplit
+  bullets[0]: 화자 이름 (예: "Claude"), bullets[1]: 오른쪽 패널 제목 (예: "AI가 읽는 방식")
+  summary: 오른쪽 패널 완료 메시지 (예: "코드 생성 시작...")
+
+【AI·기술·자동화 프로세스 신호】→ "chatwindow"
+  감지 패턴: AI가 ~한다(명령/지시), 프롬프트, 명령어, 자동화, ChatGPT, Claude, 코딩, 스크립트
+  예) "AI에게 명령만 하면" → chatwindow (title에 실제 명령 문장)
+
+【기능·특징 나열 신호】→ "icongrid"
+  감지 패턴: ~기능, ~특징, ~장점 3가지 이상 나열, 이모지로 표현 가능한 항목들
+  예) "빠르고, 안전하고, 저렴하다" → icongrid
+
+【인용·명언 신호】→ "quote"
+  감지 패턴: 큰따옴표(""), 누군가의 말, ~라고 했다, 유명 격언
+  예) '"우리는 도구를 만든다" — 스티브 잡스' → quote (최대 2개)
+
+【챕터 오프닝 신호】→ "title"
+  감지 패턴: 대본의 맨 첫 문단, 완전히 새로운 섹션 도입
+  ⚠️ 전체에서 딱 1개만! 선언적 문장이라도 다른 레이아웃 우선 사용
+
+【핵심 키워드 강조 신호】→ "bigword"
+  감지 패턴: 단 하나의 단어/숫자가 전체 메시지, "바로 ~이다", 강력한 선언
+  예) "결론은 단 하나다. 속도." → bigword
+  ⚠️ 전체에서 최대 1개만! 짧은 선언문이라도 boxlist/bullets 우선 사용
+
+【규칙·주의·제약 신호】→ "boxlist" (headerBadge + warningTag 포함)
+  감지 패턴: 규칙, 지켜야 할 것, 주의사항, 제약, 조건, "반드시", "절대"
+  예) "반드시 지켜야 할 규칙" → boxlist
+  headerBadge: {"icon": "🔒", "text": "꼭 지킬 규칙"} 형태
+  warningTag: "어기면 ~" 형태의 경고 한 줄
+  bullets: "항목 제목 | 서브텍스트" 형태 (예: "채널 스타일 | 색상·폰트 고정")
+
+【일반 박스 목록 신호】→ "boxlist"
+  감지 패턴: 여러 항목을 나열하되 다른 레이아웃에 해당 안 될 때
+  bullets: "항목 제목 | 서브텍스트" 형태 사용 가능
+
+【기타 목록】→ "bullets" (최대 30% 제한, 마지막 수단)
+
+═══ STEP 2: 슬라이드 생성 규칙 ═══
+1. 대본 전체를 한 글자도 빠짐없이 ${sceneCount}개 text에 분배 (요약/재작성 금지)
+2. 각 슬라이드 100~150자 (절대 150자 초과 금지)
+3. 같은 layout 연속 2개 금지
+4. bullets 최대 30% 제한
+5. title: 전체에서 딱 1개 (첫 슬라이드만) / bigword: 최대 1개 — 절대 초과 금지
+6. 짧고 선언적인 문장도 boxlist, bullets, quote 등 내용 레이아웃으로 처리
+7. JSON만 출력: {"slides": [...]}
+6. 대본 원문에 없는 **강조** 마크다운 추가 금지
+
+═══ STEP 3: 필드 작성 규칙 ═══
+- text: 대본 원문 그대로 (100~150자)
+- title: 슬라이드 제목 15자 이내
+- layout: STEP 1 분석 결과
+- bullets 필수 layout (bullets/boxlist/icongrid/progress/bigword):
+    boxlist/bullets: 핵심 포인트 2~4개 (각 25자 이내)
+    icongrid: ["🚀 항목명"] 형태 (이모지 필수)
+    progress: ["1단계", "2단계", "3단계"] (2~5개)
+    timeline: ["2020 · 내용"] 형태
+    bigword: ["보조 설명 1줄"]
+- stats (statcard 필수): [{"value":"300%","label":"매출 성장"}] 2~4개
+- comparisonData (comparison 필수):
+    {"leftTitle":"✓ 장점","rightTitle":"✗ 단점","leftItems":["..."],"rightItems":["..."]}
+- summary (progress/dialogsplit 권장): 전체 요약 한 줄 문장
+- headerBadge (boxlist 규칙/주의 시): {"icon":"🔒","text":"꼭 지킬 규칙"}
+- warningTag (boxlist 규칙 시): "어기면 영상이 깨지거나 통일감 사라짐"
+
+═══ 출력 예시 ═══
+{"slides":[
+  {"text":"...","title":"AI 에이전트 시대","layout":"title"},
+  {"text":"...","title":"폭발적 성장","layout":"statcard","stats":[{"value":"300%","label":"시장 성장"},{"value":"1억 명","label":"사용자"}]},
+  {"text":"...","title":"기존 vs AI","layout":"comparison","comparisonData":{"leftTitle":"기존 방식","rightTitle":"AI 방식","leftItems":["느린 처리","높은 비용"],"rightItems":["즉각 처리","비용 절감"]}},
+  {"text":"...","title":"작동 원리","layout":"progress","bullets":["📝 대본 작성 · 내가 씀","🤖 AI 분석 · 자동화","🎬 영상 완성 · 20분 후"],"summary":"대본만 쓰면 영상이 나오는 구조"},
+  {"text":"...","title":"핵심 기능","layout":"icongrid","bullets":["🚀 초고속","🔒 보안","💡 혁신","📊 분석"]},
+  {"text":"...","title":"AI에게 맡겨라","layout":"chatwindow","bullets":["Claude Opus 4.6 · Agent"]},
+  {"text":"...","title":"저는 글로 읽어요","layout":"dialogsplit","bullets":["Claude","AI가 읽는 방식"],"summary":"코드 생성 시작..."},
+  {"text":"...","title":"꼭 지킬 규칙","layout":"boxlist","headerBadge":{"icon":"🔒","text":"꼭 지킬 규칙"},"bullets":["채널 스타일 | 색상·폰트 고정","Remotion 공식 | API 문법 준수"],"warningTag":"어기면 영상이 깨지거나 통일감 사라짐"}
 ]}
 
 대본:
@@ -612,7 +635,7 @@ ${script}`,
     config: {
       responseMimeType: 'application/json',
       maxOutputTokens: 65536,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingBudget: 8000 },
     },
   });
 
@@ -689,22 +712,108 @@ ${script}`,
   // ── 레이아웃 다양성 후처리 ──────────────────────────────────────────────────
   // quote: 전체의 15% 이하, 최대 2개
   // title+bigword 합산: 전체의 30% 이하
-  // 같은 layout 연속 2개 방지
-  const quoteMax = Math.max(1, Math.min(2, Math.floor(finalSlides.length * 0.15)));
-  const titleLikeMax = Math.max(2, Math.floor(finalSlides.length * 0.30));
-  let quoteCount = 0;
-  let titleLikeCount = 0;
+  // ── 텍스트에서 bullets 자동 생성 ────────────────────────────────────────────
+  function autoGenerateBullets(slide: SlideSceneData): string[] {
+    if ((slide.bullets?.length ?? 0) > 0) return slide.bullets!;
+    const sentences = slide.text.split(/[.!?。,，]\s+/).map(s => s.trim()).filter(s => s.length > 4);
+    const bullets = sentences.slice(0, 3).map(s => s.slice(0, 25));
+    return bullets.length > 0 ? bullets : [slide.title || slide.text.slice(0, 24)];
+  }
 
-  // bullets가 있는 슬라이드를 위한 데이터 기반 fallback 선택
+  // ── 텍스트 신호 기반 레이아웃 감지 (프로그래밍 방식) ──────────────────────
+  function detectLayoutFromText(slide: SlideSceneData, exclude: SlideSceneData['layout'][]): SlideSceneData['layout'] | null {
+    const t = slide.text + ' ' + (slide.title ?? '');
+
+    // 수치/통계 신호 → statcard
+    if (!exclude.includes('statcard') && /[\d]+\s*(%|배|억|조|위|개국|만\s*명|달러|원|\+|↑|↓)/.test(t)) {
+      return 'statcard';
+    }
+    // 비교/대립 신호 → comparison
+    if (!exclude.includes('comparison') && !slide.comparisonData &&
+      /(vs\.?|VS|보다|반면|하지만|장점.{0,15}단점|단점.{0,15}장점|전.{0,10}후|before.{0,10}after|차이|비교)/i.test(t)) {
+      slide.comparisonData = {
+        leftTitle: '기존', rightTitle: '변화',
+        leftItems: autoGenerateBullets(slide).slice(0, 2),
+        rightItems: autoGenerateBullets(slide).slice(0, 2),
+      };
+      return 'comparison';
+    }
+    // 단계/과정 신호 → progress
+    if (!exclude.includes('progress') &&
+      /(단계|첫째|둘째|셋째|step\s*\d|1단계|2단계|과정|절차|방법|순서)/i.test(t)) {
+      slide.bullets = autoGenerateBullets(slide);
+      return 'progress';
+    }
+    // 연도/히스토리 신호 → timeline
+    if (!exclude.includes('timeline') &&
+      /(20[0-9]{2}년|19[0-9]{2}년|[0-9]{4}년.{0,20}[0-9]{4}년|역사|출시|런칭|시작.{0,10}성장)/.test(t)) {
+      slide.bullets = autoGenerateBullets(slide);
+      return 'timeline';
+    }
+    // AI 대화/설명 신호 → dialogsplit
+    if (!exclude.includes('dialogsplit') &&
+      /(저는|제가|저를|우리는|우리가).{0,40}(AI|인공지능|Claude|GPT|모델)|(AI|Claude|GPT|모델).{0,30}(말|생각|관점|입장|방식|읽|처리|이해)/i.test(t)) {
+      slide.bullets = slide.bullets?.length ? slide.bullets : ['Claude', 'AI가 읽는 방식'];
+      return 'dialogsplit';
+    }
+    // AI/프롬프트/자동화 신호 → chatwindow
+    if (!exclude.includes('chatwindow') &&
+      /(AI가|AI는|프롬프트|명령어|자동화|ChatGPT|claude|gemini|코딩|스크립트|에이전트)/i.test(t)) {
+      return 'chatwindow';
+    }
+    // 기능/특징 나열 신호 → icongrid
+    if (!exclude.includes('icongrid') &&
+      /(기능|특징|장점|지원|제공).{0,30}(기능|특징|장점|지원|제공)/.test(t)) {
+      slide.bullets = autoGenerateBullets(slide);
+      return 'icongrid';
+    }
+    // 목록 나열 → boxlist
+    if (!exclude.includes('boxlist') && slide.text.length > 60) {
+      slide.bullets = autoGenerateBullets(slide);
+      return 'boxlist';
+    }
+    return null;
+  }
+
+  // fallback 레이아웃 선택 (다양성 보장) — bigword/title은 fallback에서 제거
+  const DIVERSE_POOL: SlideSceneData['layout'][] = ['boxlist', 'icongrid', 'progress', 'timeline', 'bullets', 'quote'];
   function pickFallback(slide: SlideSceneData, exclude: SlideSceneData['layout'][]): SlideSceneData['layout'] {
-    const hasBullets = (slide.bullets?.length ?? 0) > 0;
-    const hasStats = (slide.stats?.length ?? 0) > 0;
-    if (hasStats && !exclude.includes('statcard')) return 'statcard';
-    if (hasBullets && !exclude.includes('boxlist')) return 'boxlist';
-    if (hasBullets && !exclude.includes('icongrid')) return 'icongrid';
-    if (hasBullets && !exclude.includes('progress')) return 'progress';
-    if (!exclude.includes('bullets') && hasBullets) return 'bullets';
+    // 1. 텍스트 신호 감지 우선
+    const detected = detectLayoutFromText(slide, exclude);
+    if (detected) return detected;
+    // 2. 다양성 풀에서 exclude 안 걸리는 첫 번째 선택
+    for (const l of DIVERSE_POOL) {
+      if (!exclude.includes(l)) {
+        slide.bullets = autoGenerateBullets(slide);
+        return l;
+      }
+    }
     return 'bigword';
+  }
+
+  // ── 다양성 강제 후처리 ────────────────────────────────────────────────────
+  const quoteMax = Math.max(1, Math.min(2, Math.floor(finalSlides.length * 0.15)));
+  // title: 최대 1개 (전체 첫 슬라이드만), bigword: 전체의 10% 이하 최대 1개
+  const titleMax = 1;
+  const bigwordMax = Math.max(0, Math.min(1, Math.floor(finalSlides.length * 0.10)));
+  let quoteCount = 0;
+  let titleCount = 0;
+  let bigwordCount = 0;
+
+  // 1차: title/bigword 레이아웃에 텍스트 신호 기반 재배정 (강제 대체)
+  for (let i = 0; i < finalSlides.length; i++) {
+    const slide = finalSlides[i];
+    const prev = i > 0 ? finalSlides[i - 1].layout : null;
+    // 첫 슬라이드가 아닌 title은 다른 레이아웃으로 강제 변환 시도
+    if (i > 0 && slide.layout === 'title') {
+      const detected = detectLayoutFromText(slide, ['title', 'bigword', prev ?? 'title']);
+      if (detected) slide.layout = detected;
+    }
+    // bigword는 항상 대체 시도
+    if (slide.layout === 'bigword') {
+      const detected = detectLayoutFromText(slide, ['title', 'bigword', prev ?? 'bigword']);
+      if (detected) slide.layout = detected;
+    }
   }
 
   for (let i = 0; i < finalSlides.length; i++) {
@@ -715,21 +824,29 @@ ${script}`,
     if (slide.layout === 'quote') {
       quoteCount++;
       if (quoteCount > quoteMax) {
-        slide.layout = pickFallback(slide, ['quote', prev ?? 'quote']);
+        slide.layout = pickFallback(slide, ['quote', 'title', 'bigword', prev ?? 'quote']);
       }
     }
 
-    // title/bigword 합산 제한
-    if (slide.layout === 'title' || slide.layout === 'bigword') {
-      titleLikeCount++;
-      if (titleLikeCount > titleLikeMax) {
+    // title: 최대 1개 (첫 슬라이드만)
+    if (slide.layout === 'title') {
+      titleCount++;
+      if (titleCount > titleMax) {
         slide.layout = pickFallback(slide, ['title', 'bigword', prev ?? 'title']);
+      }
+    }
+
+    // bigword: 최대 1개
+    if (slide.layout === 'bigword') {
+      bigwordCount++;
+      if (bigwordCount > bigwordMax) {
+        slide.layout = pickFallback(slide, ['title', 'bigword', prev ?? 'bigword']);
       }
     }
 
     // 연속 같은 layout 방지
     if (prev && slide.layout === prev) {
-      slide.layout = pickFallback(slide, [slide.layout]);
+      slide.layout = pickFallback(slide, [slide.layout, 'title', 'bigword']);
     }
   }
 

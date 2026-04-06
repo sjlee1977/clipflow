@@ -154,21 +154,42 @@ export async function POST(req: NextRequest) {
             const BULLET_LAYOUTS = ['bullets', 'boxlist', 'icongrid', 'timeline', 'progress'];
             let safeBullets = s.bullets ?? [];
             if (BULLET_LAYOUTS.includes(s.layout) && safeBullets.length === 0) {
-              // 문장 부호 기준으로 2~3개 핵심 포인트 추출
               const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
               safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
               if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
             }
+
+            // statcard: stats 없으면 boxlist로 대체
+            let safeLayout = s.layout;
+            if (safeLayout === 'statcard' && (!s.stats || s.stats.length === 0)) {
+              safeLayout = 'boxlist';
+              if (safeBullets.length === 0) {
+                const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
+                safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
+                if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
+              }
+            }
+
+            // comparison: comparisonData 없으면 boxlist로 대체
+            if (safeLayout === 'comparison' && !s.comparisonData) {
+              safeLayout = 'boxlist';
+              if (safeBullets.length === 0) {
+                const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
+                safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
+                if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
+              }
+            }
+
             send({
               type: 'scene',
               index,
               text: s.text,
-              slideData: { layout: s.layout, title: s.title, bullets: safeBullets, stats: s.stats, comparisonData: s.comparisonData },
+              slideData: { layout: safeLayout, title: s.title, bullets: safeBullets, stats: s.stats, comparisonData: s.comparisonData, summary: s.summary, headerBadge: s.headerBadge, warningTag: s.warningTag },
               pptTheme,
               imageUrl: '',
               durationInFrames: 0,
               audioUrl: '',
-              subtitles: s.text ? splitTextToSubtitles(s.text, 30) : [],
+              subtitles: s.text ? splitTextToSubtitles(s.text, 27) : [],
               textAnimationStyle: 'none',
               textPosition: 'bottom',
             });

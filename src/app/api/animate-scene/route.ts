@@ -71,6 +71,18 @@ export async function POST(req: NextRequest) {
       }
       taskId = await createFalVideoTask(imageUrl, prompt, clipDuration, meta.fal_api_key);
       actualProvider = 'fal';
+    } else if (effectiveModelId.startsWith('wan')) {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const qwenApiKey = user?.user_metadata?.qwen_api_key as string | undefined;
+      
+      if (!qwenApiKey) {
+        return NextResponse.json({ error: 'Qwen(DashScope) API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true }, { status: 403 });
+      }
+
+      const { createWanXVideoTask } = await import('@/lib/qwen-video');
+      taskId = await createWanXVideoTask(imageUrl, prompt, effectiveModelId, clipDuration, qwenApiKey);
+      actualProvider = 'qwen';
     } else {
       taskId = await createVideoTask(imageUrl, prompt, effectiveModelId);
       actualProvider = 'minimax';
@@ -104,6 +116,13 @@ export async function GET(req: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
       const falApiKey = user?.user_metadata?.fal_api_key as string | undefined;
       status = await queryFalVideoTask(taskId, falApiKey);
+    } else if (provider === 'qwen') {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const qwenApiKey = user?.user_metadata?.qwen_api_key as string | undefined;
+      if (!qwenApiKey) throw new Error('Qwen API Key missing');
+      const { queryWanXVideoTask } = await import('@/lib/qwen-video');
+      status = await queryWanXVideoTask(taskId, qwenApiKey);
     } else {
       status = await queryVideoTask(taskId);
     }

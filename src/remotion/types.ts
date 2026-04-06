@@ -4,7 +4,7 @@ export type SubtitleWord = {
   endFrame: number;
 };
 
-export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress';
+export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit';
 export type BulletStyle = 'dot' | 'typewriter' | 'multicolor' | 'cascade';
 export type PptTheme = 'simple-modern' | 'dark' | 'colorful';
 export type SlideData = {
@@ -19,6 +19,9 @@ export type SlideData = {
     leftItems: string[];
     rightItems: string[];
   };
+  summary?: string;            // 하단 요약 배지 텍스트 (progress 등)
+  headerBadge?: { icon?: string; text: string }; // 상단 헤더 배지 (boxlist 등)
+  warningTag?: string;         // 하단 경고/알림 태그
 };
 
 export type Scene = {
