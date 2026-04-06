@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+// TEMPLATES 임포트 제거 (사이드바로 이동 예정)
 
 // ── Types & Constants ────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ export default function PromptPage() {
   const router = useRouter();
 
   const [activeCategory, setActiveCategory] = useState<CategoryId>('economy');
+  
   const [allData, setAllData] = useState<Record<CategoryId, Record<string, string>>>({
     general: { ...DEFAULT_CAT_DATA },
     economy: { ...DEFAULT_CAT_DATA },
@@ -603,6 +605,8 @@ export default function PromptPage() {
                     전체 초기화
                   </button>
                 </div>
+
+                {/* ── 비주얼 스타일 갤러리 섹션 제거됨 (우측 사이드바로 이동) ── */}
 
                 {/* 영상 주제 */}
                 <div>

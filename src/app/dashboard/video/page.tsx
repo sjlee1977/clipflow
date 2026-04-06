@@ -51,6 +51,7 @@ export const ELEVENLABS_VOICES: { id: string; name: string; desc: string; gender
 ];
 import { supabase } from '@/lib/supabase';
 import { KOREAN_FONTS, DEFAULT_FONT_ID } from '@/lib/fonts';
+import { TEMPLATES, DEFAULT_TEMPLATE_ID, TemplateId } from '@/lib/templates';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
 type Format = 'shorts' | 'landscape' | 'square';
@@ -65,7 +66,6 @@ const IMAGE_STYLES = [
   { id: 'cartoon', label: '카툰' },
   { id: 'noir', label: '누아르' },
   { id: 'lineart', label: '라인아트' },
-  { id: 'kinetic', label: '키네틱' },
   { id: 'none', label: '선택 없음' },
 ] as const;
 
@@ -109,7 +109,76 @@ type PreviewScene = {
   textPosition?: 'bottom' | 'center' | 'top';
   slideData?: { layout: string; title?: string; bullets?: string[] };
   pptTheme?: string;
+  subtitles?: { text: string; startFrame: number; endFrame: number }[];
 };
+
+/**
+ * [공통 유틸리티] 텍스트를 의미 단위로 균형 있게 분할하여 자막 배열 생성
+ * - 괄호 () [] 보호
+ * - 30자 기준 Balanced Split (중심 탐색)
+ */
+function isInsideBracket(str: string, pos: number): boolean {
+  let depth = 0;
+  for (let i = 0; i < pos; i++) {
+    if (str[i] === '(' || str[i] === '[') depth++;
+    if (str[i] === ')' || str[i] === ']') depth = Math.max(0, depth - 1);
+  }
+  return depth > 0;
+}
+
+function splitTextToSubtitles(text: string, maxChars = 30): { text: string; startFrame: number; endFrame: number }[] {
+  const txt = text.trim();
+  if (!txt) return [];
+  const minChars = 10;
+  const totalFrames = 300;
+
+  function findSplitAt(remaining: string): number {
+    if (remaining.length <= maxChars) return remaining.length;
+    const mid = Math.floor(remaining.length / 2);
+    let bestSplit = -1;
+    let minDiff = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      if (isInsideBracket(remaining, i)) continue;
+      const char = remaining[i] || '';
+      const isPunc = /[.!?…,，。]/.test(char);
+      const isSpace = /\s/.test(char);
+
+      if (isPunc || isSpace) {
+        const diff = Math.abs(i - mid);
+        const weightedDiff = isPunc ? Math.max(0, diff - 5) : diff;
+        if (weightedDiff < minDiff) {
+          minDiff = weightedDiff;
+          bestSplit = i + 1;
+        }
+      }
+    }
+    if (bestSplit === -1 || bestSplit < minChars || bestSplit > remaining.length - minChars) {
+      return Math.min(maxChars, remaining.length);
+    }
+    return bestSplit;
+  }
+
+  const chunks: string[] = [];
+  let rem = txt;
+  while (rem.length > maxChars) {
+    const splitAt = findSplitAt(rem);
+    chunks.push(rem.slice(0, splitAt).trim());
+    rem = rem.slice(splitAt).trim();
+  }
+  if (rem) chunks.push(rem);
+
+  const totalChars = chunks.reduce((sum, c) => sum + c.length, 0);
+  let currentF = 0;
+  return chunks.map((chunk, j) => {
+    const frames = j === chunks.length - 1 
+      ? totalFrames - currentF 
+      : Math.max(30, Math.round((chunk.length / totalChars) * totalFrames));
+    const entry = { text: chunk, startFrame: currentF, endFrame: currentF + frames };
+    currentF += frames;
+    return entry;
+  });
+}
 
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
@@ -204,8 +273,9 @@ export default function DashboardPage() {
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
   const [subCharacters, setSubCharacters] = useState<{ preview: string; base64: string; name: string }[]>([]);
   const [imageStyle, setImageStyle] = useState<ImageStyle>('cinematic');
+  const [templateId, setTemplateId] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
+  const [codeSnippet, setCodeSnippet] = useState('');
   const [fontFamily, setFontFamily] = useState(DEFAULT_FONT_ID);
-  const [useTextAnims, setUseTextAnims] = useState(true);
   const [selectedTextAnims] = useState<TextAnimationId[]>([
     'typewriter', 'fly-in', 'pop-in', 'fade-zoom', 'clock-spin', 'pulse-ring', 'sparkle',
     'confetti', 'rain', 'snow', 'fire', 'heart', 'stars', 'thunder',
@@ -259,6 +329,10 @@ export default function DashboardPage() {
           if (data.voiceId) setVoiceId(data.voiceId);
           if (data.ttsProvider) setTtsProvider(data.ttsProvider);
           if (data.videoModelId) setVideoModelId(data.videoModelId);
+          if (data.templateId) {
+            setTemplateId(data.templateId);
+            setPptMode(data.templateId === 'slides');
+          }
           // savedEdit(히스토리)에서 온 경우 항상 preview로 — 자막/이미지 편집 + 재렌더링 가능
           if (savedEdit) {
             setStatus('preview');
@@ -322,7 +396,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (scenes.length > 0) {
       const stateToSave = {
-        scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, videoModelId,
+        scenes, format, imageModelId, imageStyle, voiceId, ttsProvider, videoModelId, templateId,
         videoUrl: status === 'done' ? videoUrl : ''
       };
       sessionStorage.setItem('clipflow_active_scenes', JSON.stringify(stateToSave));
@@ -393,7 +467,7 @@ export default function DashboardPage() {
           characterImageBase64,
           imageStyle,
           subCharacters: subCharacters.map(c => ({ base64: c.base64, name: c.name })),
-          allowedAnimations: useTextAnims ? selectedTextAnims : ['none'],
+          allowedAnimations: selectedTextAnims,
           pptMode,
           pptTheme,
         }),
@@ -436,6 +510,7 @@ export default function DashboardPage() {
               textPosition: event.textPosition,
               slideData: event.slideData,
               pptTheme: event.pptTheme,
+                  subtitles: event.text ? splitTextToSubtitles(event.text, 30) : [],
             };
             newScenes[event.index] = sceneData;
             setScenes(prev => {
@@ -548,7 +623,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes, voiceId, speed: playbackRate, format, ttsProvider, fontFamily }),
+        body: JSON.stringify({ scenes, voiceId, speed: playbackRate, format, ttsProvider, fontFamily, templateId, codeSnippet }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '영상 생성 시작 실패');
@@ -774,7 +849,9 @@ export default function DashboardPage() {
               } bg-white/[0.02]`}>
               {/* 상단 라벨 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/5">
-                <span className="text-[10.5px] tracking-widest uppercase font-mono" style={{color:'#8B9A3A'}}>SCRIPT INPUT</span>
+                <span className="text-[10.5px] tracking-widest uppercase font-mono" style={{color:'#8B9A3A'}}>
+                  {pptMode ? 'SLIDE DATA (TITLE & BULLETS)' : 'SCRIPT INPUT'}
+                </span>
                 <span className="text-[11px] font-mono tabular-nums" style={{ color: '#8B9A3A' }}>
                   {script.length.toLocaleString()}자
                 </span>
@@ -784,7 +861,9 @@ export default function DashboardPage() {
               <textarea
                 value={script}
                 onChange={e => setScript(e.target.value)}
-                placeholder="대본 또는 주제를 입력하세요.&#10;&#10;예) '커피의 역사에 대해 60초 영상을 만들어줘'"
+                placeholder={pptMode 
+                  ? "슬라이드 내용을 입력하세요. (제목: ..., 내용: ... 형식)\n\n예) '제목: 인공지능의 미래, 내용: - AI 기술 현황 - 향후 전망'" 
+                  : "대본 또는 주제를 입력하세요.\n\n예) '커피의 역사에 대해 60초 영상을 만들어줘'"}
                 className="w-full h-[280px] overflow-y-auto bg-transparent text-white/90 border-0 focus:outline-none resize-none text-[13px] leading-relaxed font-mono placeholder:text-white/20 px-4 py-3"
                 disabled={isProcessing}
               />
@@ -940,10 +1019,10 @@ export default function DashboardPage() {
                     'border-white/10 bg-white/[0.04]'
                   }`}>
                     {/* 씬 번호 */}
-                    <span className={`text-[14px] font-bold tabular-nums shrink-0 ${
-                      scene.videoUrl ? 'text-[#17BEBB]' : scene.isAnimating ? 'text-orange-400' : 'text-white/80'
+                    <span className={`text-[11px] font-medium tracking-widest uppercase shrink-0 ${
+                      scene.videoUrl ? 'text-[#17BEBB]' : scene.isAnimating ? 'text-orange-400' : 'text-white/50'
                     }`}>
-                      씬 {i + 1}
+                      Scene {i + 1}
                     </span>
 
                     <div className="w-px h-4 bg-white/20 shrink-0" />
@@ -1137,7 +1216,8 @@ export default function DashboardPage() {
                           onChange={e => updateSceneText(i, e.target.value)}
                           disabled={status !== 'preview'}
                           rows={3}
-                          className="w-full h-full bg-transparent text-white/85 text-[14px] leading-snug border-0 focus:outline-none resize-none disabled:opacity-70 placeholder:text-white/25"
+                          className="w-full h-full bg-transparent text-white/70 text-[12px] leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-70 placeholder:text-white/25"
+                          style={{ fontFamily: "'Inter', 'Pretendard', sans-serif", letterSpacing: '0.01em' }}
                         />
                       )}
                     </div>
@@ -1298,14 +1378,14 @@ export default function DashboardPage() {
           {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
             <>
               <PanelSection label="스타일">
-                <div className="flex flex-wrap gap-1 mb-4">
+                <div className={`flex flex-wrap gap-1 mb-4 ${pptMode ? 'opacity-40' : ''}`}>
                   {IMAGE_STYLES.filter(s => s.id !== 'none').map(s => (
                     <button
                       key={s.id}
-                      onClick={() => { setImageStyle(s.id); setPptMode(false); }}
+                      onClick={() => { setImageStyle(s.id); }}
                       disabled={isProcessing}
                       className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
-                        !pptMode && imageStyle === s.id
+                        imageStyle === s.id
                           ? 'border-yellow-400 text-yellow-400'
                           : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
                       }`}
@@ -1314,21 +1394,10 @@ export default function DashboardPage() {
                     </button>
                   ))}
                   <button
-                    onClick={() => setPptMode(!pptMode)}
+                    onClick={() => { setImageStyle('none'); }}
                     disabled={isProcessing}
                     className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
-                      pptMode
-                        ? 'border-orange-400 text-orange-400'
-                        : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
-                    }`}
-                  >
-                    PPT
-                  </button>
-                  <button
-                    onClick={() => { setImageStyle('none'); setPptMode(false); }}
-                    disabled={isProcessing}
-                    className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
-                      !pptMode && imageStyle === 'none'
+                      imageStyle === 'none'
                         ? 'border-yellow-400 text-yellow-400'
                         : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
                     }`}
@@ -1337,24 +1406,68 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {pptMode && (
-                  <div className="flex gap-1.5 mb-4">
-                    {([
-                      { id: 'simple-modern', label: '심플 모던', desc: '흰 배경 · 깔끔' },
-                      { id: 'dark', label: '다크', desc: '어두운 · 세련' },
-                      { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
-                    ] as const).map(t => (
-                      <button key={t.id} onClick={() => setPptTheme(t.id)}
-                        className={`flex flex-col items-start px-2 py-2 border text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
-                        <span className={`text-[11px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/60'}`}>{t.label}</span>
-                        <span className="text-[9px] font-mono text-white/30 mt-0.5">{t.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
 
+                <div className="mt-4">
+                  <PanelAccordion
+                    label="영상 스타일"
+                    value={TEMPLATES.find(t => t.id === templateId)?.label || templateId}
+                    closeOnSelect
+                  >
+                    <div className="space-y-0.5">
+                      {TEMPLATES.map(t => (
+                        <OptionItem
+                          key={t.id}
+                          active={templateId === t.id}
+                          onClick={() => {
+                            setTemplateId(t.id);
+                            const isPpt = t.id === 'slides';
+                            setPptMode(isPpt);
+                            if (isPpt) setImageStyle('none');
+                            if (t.id === 'kinetic') setImageStyle('none');
+                          }}
+                        >
+                          <div className="flex flex-col items-start gap-0.5 text-left">
+                            <span>{t.label}</span>
+                            <p className="text-[10px] text-white/30 font-mono leading-tight">
+                              {t.description}
+                            </p>
+                          </div>
+                        </OptionItem>
+                      ))}
+                    </div>
 
-                <div className="mt-6">
+                    {templateId === 'codehike' && (
+                      <div className="mt-4 px-2 pb-2">
+                        <p className="text-[#17BEBB] text-[10px] font-mono tracking-widest uppercase mb-2">Code Snippet</p>
+                        <textarea
+                          value={codeSnippet}
+                          onChange={(e) => setCodeSnippet(e.target.value)}
+                          rows={6}
+                          placeholder="분석할 코드를 입력하세요..."
+                          className="w-full bg-black/40 text-sky-200/90 border border-white/5 focus:border-[#17BEBB]/40 focus:outline-none text-[11px] font-mono p-3 rounded-sm resize-none"
+                        />
+                      </div>
+                    )}
+                  </PanelAccordion>
+
+                  {pptMode && (
+                    <div className="flex gap-1.5 mt-3 mb-2">
+                      {([
+                        { id: 'simple-modern', label: '심플 모던', desc: '흰 배경 · 깔끔' },
+                        { id: 'dark', label: '다크', desc: '어두운 · 세련' },
+                        { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
+                      ] as const).map(t => (
+                        <button key={t.id} onClick={() => setPptTheme(t.id)}
+                          className={`flex flex-col items-start px-2 py-2 border text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
+                          <span className={`text-[11px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/60'}`}>{t.label}</span>
+                          <span className="text-[9px] font-mono text-white/30 mt-0.5">{t.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-2 text-white/50">
                 <PanelAccordion label="자막 폰트" value={KOREAN_FONTS.find(f => f.id === fontFamily)?.label ?? ''} closeOnSelect>
                   <div className="space-y-0.5">
                     {KOREAN_FONTS.map((font) => (
@@ -1366,29 +1479,6 @@ export default function DashboardPage() {
                 </PanelAccordion>
                 </div>
 
-                <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2 mt-6">텍스트 애니메이션</p>
-                <button
-                  onClick={() => setUseTextAnims(!useTextAnims)}
-                  className={`w-full px-3 py-4 rounded-md border transition-all text-left group ${
-                    useTextAnims
-                    ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-100'
-                    : 'border-white/10 bg-white/5 text-white/30 hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[13px] font-bold ${useTextAnims ? 'text-yellow-400' : 'text-white/40'}`}>
-                      AI 자동 연출 효과
-                    </span>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors ${useTextAnims ? 'bg-yellow-400' : 'bg-white/10'}`}>
-                      <div className={`absolute top-1 w-2 h-2 rounded-full bg-white transition-all ${useTextAnims ? 'right-1' : 'left-1'}`} />
-                    </div>
-                  </div>
-                  <p className="text-[11px] opacity-60 leading-relaxed">
-                    {useTextAnims
-                      ? "21종의 시네마틱 효과(꽃가루, 시계, 하트 등)를 AI가 대본에 맞춰 자동 연출합니다."
-                      : "특수효과 없이 깔끔한 자막 스타일로 영상을 제작합니다."}
-                  </p>
-                </button>
 
               </PanelSection>
 
@@ -1406,7 +1496,6 @@ export default function DashboardPage() {
               </PanelSection>
 
               <PanelSection label="캐릭터">
-                {/* 메인 캐릭터 */}
                 <p className="text-white/30 text-[11px] font-mono mb-1.5">메인 캐릭터</p>
                 <div
                   onClick={() => !isProcessing && characterInputRef.current?.click()}
@@ -1472,27 +1561,50 @@ export default function DashboardPage() {
                 </div>
               </PanelAccordion>
 
-              {!pptMode && (
-              <PanelAccordion label="이미지 AI" value={IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? ''} closeOnSelect>
-                <div className="space-y-0.5">
-                  {IMAGE_MODELS.map(m => (
-                    <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => setImageModelId(m.id)} sub={m.price}>
-                      {m.name}
-                    </OptionItem>
-                  ))}
-                </div>
-              </PanelAccordion>
-              )}
 
-              <PanelAccordion label="영상 AI" value={VIDEO_MODELS.find(m => m.id === videoModelId)?.name ?? ''} closeOnSelect>
-                <div className="space-y-0.5">
-                  {VIDEO_MODELS.map(m => (
-                    <OptionItem key={m.id} active={videoModelId === m.id} onClick={() => setVideoModelId(m.id)} sub={m.price}>
-                      {m.name}
-                    </OptionItem>
-                  ))}
+
+
+              <div className="relative">
+                <div className={pptMode ? 'opacity-30 pointer-events-none select-none' : ''}>
+                  <PanelAccordion label="이미지 AI" value={pptMode ? '' : (IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? '')} closeOnSelect>
+                    <div className="space-y-0.5">
+                      {IMAGE_MODELS.map(m => (
+                        <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => setImageModelId(m.id)} sub={m.price}>
+                          {m.name}
+                        </OptionItem>
+                      ))}
+                    </div>
+                  </PanelAccordion>
                 </div>
-              </PanelAccordion>
+                {pptMode && (
+                  <div className="absolute inset-0 flex items-center justify-end pr-8 pointer-events-none">
+                    <span className="text-[10px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded border border-white/10 uppercase tracking-tighter">
+                      PPT 모드 비활성화
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className={pptMode ? 'opacity-30 pointer-events-none select-none' : ''}>
+                  <PanelAccordion label="영상 AI" value={pptMode ? '' : (VIDEO_MODELS.find(m => m.id === videoModelId)?.name ?? '')} closeOnSelect>
+                    <div className="space-y-0.5">
+                      {VIDEO_MODELS.map(m => (
+                        <OptionItem key={m.id} active={videoModelId === m.id} onClick={() => setVideoModelId(m.id)} sub={m.price}>
+                          {m.name}
+                        </OptionItem>
+                      ))}
+                    </div>
+                  </PanelAccordion>
+                </div>
+                {pptMode && (
+                  <div className="absolute inset-0 flex items-center justify-end pr-8 pointer-events-none">
+                    <span className="text-[10px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded border border-white/10 uppercase tracking-tighter">
+                      PPT 모드 비활성화
+                    </span>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -1612,7 +1724,11 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-1.5">
                 <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-2">설정 요약</p>
                 <div className="flex justify-between text-[13px] font-mono">
-                  <span className="text-white/20">스타일</span>
+                  <span className="text-white/20">갤러리 레이아웃</span>
+                  <span className="text-[#17BEBB]/80 truncate max-w-[120px]">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
+                </div>
+                <div className="flex justify-between text-[13px] font-mono">
+                  <span className="text-white/20">이미지 테마</span>
                   <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
@@ -1640,7 +1756,11 @@ export default function DashboardPage() {
                 <span className="text-white/40">{scenes.length}개</span>
               </div>
               <div className="flex justify-between text-[13px] font-mono">
-                <span className="text-white/20">스타일</span>
+                <span className="text-white/20">레이아웃</span>
+                <span className="text-[#17BEBB]/80">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
+              </div>
+              <div className="flex justify-between text-[13px] font-mono">
+                <span className="text-white/20">이미지 테마</span>
                 <span className="text-white/40">{IMAGE_STYLES.find(s => s.id === imageStyle)?.label}</span>
               </div>
               <div className="flex justify-between text-[13px] font-mono">

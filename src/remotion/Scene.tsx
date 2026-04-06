@@ -33,7 +33,7 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
   const baseScale = interpolate(
     frame,
     [0, duration],
-    animType === 1 ? [1.2, 1.05] : [1.05, 1.2],
+    animType === 1 ? [1.1, 1.02] : [1.02, 1.1],
     { easing: Easing.out(Easing.ease), extrapolateRight: 'clamp' }
   );
 

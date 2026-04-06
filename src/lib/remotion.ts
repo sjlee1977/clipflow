@@ -8,6 +8,13 @@ const REGION = (process.env.AWS_REGION ?? 'ap-northeast-2') as Parameters<typeof
 const SERVE_URL = process.env.REMOTION_SERVE_URL ?? 'https://remotionlambda-apnortheast2-17lxfxukvf.s3.ap-northeast-2.amazonaws.com/sites/clipflow/index.html';
 const FUNCTION_NAME = process.env.REMOTION_FUNCTION_NAME || speculateFunctionName({ memorySizeInMb: 3008, diskSizeInMb: 2048, timeoutInSeconds: 900 });
 
+const ASSETS_BUCKET = process.env.S3_BUCKET || 'remotionlambda-apnortheast2-17lxfxukvf';
+
+const credentials = {
+  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+};
+
 export type RenderInput = {
   compositionId: string;
   inputProps: Record<string, unknown>;
@@ -27,6 +34,7 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     outName: `${compositionId}-${Date.now()}.mp4`,
     concurrencyPerLambda: 2,  // CPU 코어 수(2)에 맞게 설정
     framesPerLambda: 150,    // 15분(27,000프레임) 기준 최적값 — Lambda 180개로 200개 한도 이내 안전
+    ...credentials,
   });
 
   return { renderId, bucketName };
@@ -42,6 +50,7 @@ export async function waitForRender(renderId: string, bucketName: string): Promi
       bucketName,
       functionName: FUNCTION_NAME,
       region: REGION,
+      ...credentials,
     });
 
     if (progress.done) {
@@ -66,6 +75,7 @@ export async function getRenderStatus(renderId: string, bucketName: string) {
     bucketName,
     functionName: FUNCTION_NAME,
     region: REGION,
+    ...credentials,
   });
 
   return {

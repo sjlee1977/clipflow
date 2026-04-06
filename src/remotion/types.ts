@@ -4,12 +4,15 @@ export type SubtitleWord = {
   endFrame: number;
 };
 
-export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison';
+export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress';
+export type BulletStyle = 'dot' | 'typewriter' | 'multicolor' | 'cascade';
 export type PptTheme = 'simple-modern' | 'dark' | 'colorful';
 export type SlideData = {
   layout: SlideLayout;
+  bulletStyle?: BulletStyle;
   title?: string;
   bullets?: string[];
+  stats?: { value: string; label: string }[];
   comparisonData?: {
     leftTitle: string;
     rightTitle: string;
@@ -36,4 +39,6 @@ export type VideoProps = {
   scenes: Scene[];
   fps: number;
   fontFamily?: string;
+  templateId?: string;
+  codeSnippet?: string;
 };

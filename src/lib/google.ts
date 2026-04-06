@@ -159,15 +159,16 @@ export async function splitScriptIntoScenes(
 
 **[절대 규칙 — 위반 시 전체 작업 실패]**
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${adjustedSceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지. 원문 그대로 잘라서 넣으세요.
-2. **엄격한 분량 준수 (절대 위반 금지)**:
-   - 전체 대본 ${script.length}자 ÷ ${adjustedSceneCount}장면 = 장면당 평균 **${Math.round(script.length / adjustedSceneCount)}자**
-   - 각 장면은 **${isKineticMode ? '70자 이상 100자 이하' : '150자 이상 200자 이하'}**여야 합니다
-   - **출력 전 각 장면의 글자 수를 직접 세어 검증하고, 범위를 벗어나면 반드시 재조정하세요**
-3. **문장 단위 분할**: 문장 중간에서 자르지 말고 마침표(. ! ?)나 줄바꿈 기준으로 분할하세요.
+2. **엄격한 분량 준수 (150자 절대 상한)**:
+   - 각 장면은 **100자 이상 150자 이하**여야 합니다. (문맥상 어쩔 수 없는 경우만 최소 90자 허용)
+   - **절대 규칙**: 어떤 장면도 **150자를 초과해서는 안 됩니다.**
+   - **문맥 위주 분할**: 단순히 글자 수로 자르지 말고, 마침표(.), 쉼표(,), 혹은 의미가 끊기는 지점에서 자연스럽게 나누세요.
+   - **자가 검증**: 출력 전 각 장면의 글자 수를 직접 세어보고, 150자가 넘으면 반드시 더 잘게 나누세요.
+3. **문장 단위 분할**: 문장 중간(단어 사이)에서 자르지 말고 의미 단위로 분할하세요.
 4. **JSON 구조 엄수**: 반드시 {"scenes": [...]} 형태의 유효한 JSON만 출력하세요.
 5. **imagePrompt/motionPrompt**: 각각 영어로 250자 내외로 작성하세요.
 6. **언어 규칙**: text 필드는 반드시 한국어 원문 그대로. 영어 키워드(AI, GDP 등)는 원문에 있는 경우만 유지.
-7. **핵심 단어 마크업**: 대본 중 가장 강조해야 할 키워드(제품명, 핵심 동사 등) 단어 한두 개를 **별표 두 개**로 감싸주세요 (예: "**AI 기술**이 세상을 바꿉니다"). 장면당 최대 2개까지 적용.
+7. **원문 엄격 준수**: 대본 원문에 없는 마크다운 강조 표시(예: **단어**)를 절대로 임의로 추가하지 마세요. 대본 원문 그대로의 텍스트만 사용해야 합니다.
 
 필드:
 (1) text: 대본 원문 (한국어 기본, 영어 키워드는 포인트로만)
@@ -247,26 +248,41 @@ ${script}`,
 
   const rawScenes: ScriptScene[] = parsed.scenes ?? (Array.isArray(parsed) ? parsed : []);
 
-  const MIN_CHARS = isKineticMode ? 70 : 150;
-  const MAX_CHARS = isKineticMode ? 100 : 200;
+  const MIN_CHARS = 100;
+  const MAX_CHARS = 150;
 
-  // 200자 초과 씬을 150~200자 사이 문장 경계에서 분할
+  // 150자 초과 씬을 문맥에 맞춰 재귀적으로 분할
   function splitLongScene(scene: ScriptScene): ScriptScene[] {
     if (scene.text.length <= MAX_CHARS) return [scene];
     const text = scene.text;
-    const splitChars = /[.!?…]/;
+    const sentenceTerminators = /[.!?…\n]/;
+    const clauseTerminators = /[,;:(—]/;
+    
     let splitAt = -1;
-    // 150~200자 사이에서 첫 번째 문장 끝 탐색
-    for (let i = MIN_CHARS; i <= Math.min(MAX_CHARS, text.length - 1); i++) {
-      if (splitChars.test(text[i])) { splitAt = i + 1; break; }
+    
+    // 1) 150자 이내에서 가장 마지막 문장 종결자 찾기 (범위 제한 완화: 50~150)
+    for (let i = MAX_CHARS - 1; i >= 50; i--) {
+      if (sentenceTerminators.test(text[i])) { splitAt = i + 1; break; }
     }
-    // 문장 끝 없으면 같은 구간에서 공백 기준
+    
+    // 2) 없으면 150자 이내에서 마지막 쉼표/구분자 찾기
     if (splitAt === -1) {
-      for (let i = MIN_CHARS; i <= Math.min(MAX_CHARS, text.length - 1); i++) {
-        if (text[i] === ' ') { splitAt = i + 1; break; }
+      for (let i = MAX_CHARS - 1; i >= 50; i--) {
+        if (clauseTerminators.test(text[i])) { splitAt = i + 1; break; }
       }
     }
-    if (splitAt === -1 || splitAt >= text.length) return [scene];
+    
+    // 3) 없으면 150자 이내에서 마지막 공백 찾기
+    if (splitAt === -1) {
+      splitAt = text.lastIndexOf(' ', MAX_CHARS);
+    }
+
+    // 4) 최후의 수단: 150자 지점에서 무조건 절단
+    if (splitAt <= 0) {
+      splitAt = MAX_CHARS;
+    }
+
+    if (splitAt >= text.length) return [scene];
 
     const first: ScriptScene = { ...scene, text: text.slice(0, splitAt).trim() };
     const rest: ScriptScene = { ...scene, text: text.slice(splitAt).trim() };
@@ -278,14 +294,16 @@ ${script}`,
   const scenes: ScriptScene[] = [];
   for (const scene of expanded) {
     const last = scenes[scenes.length - 1];
-    if (last && scene.text.length < MIN_CHARS) {
+    if (last && (last.text.length + scene.text.length) <= MAX_CHARS && scene.text.length < MIN_CHARS) {
       last.text = last.text + ' ' + scene.text;
     } else {
       scenes.push({ ...scene });
     }
   }
-  // 병합 후에도 마지막 씬이 너무 짧으면 그 앞 씬에 합침
-  while (scenes.length > 1 && scenes[scenes.length - 1].text.length < MIN_CHARS) {
+  // 병합 후에도 마지막 씬이 너무 짧으면, 앞 씬과 합쳤을 때 150자가 안 넘는 경우만 합침
+  while (scenes.length > 1 && 
+         scenes[scenes.length - 1].text.length < MIN_CHARS && 
+         (scenes[scenes.length - 1].text.length + scenes[scenes.length - 2].text.length) <= MAX_CHARS) {
     const last = scenes.pop()!;
     scenes[scenes.length - 1].text = scenes[scenes.length - 1].text + ' ' + last.text;
   }
@@ -475,7 +493,14 @@ export type SlideSceneData = {
   text: string;
   title: string;
   bullets?: string[];
-  layout: 'title' | 'bullets' | 'quote';
+  layout: 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress';
+  stats?: { value: string; label: string }[];
+  comparisonData?: {
+    leftTitle: string;
+    rightTitle: string;
+    leftItems: string[];
+    rightItems: string[];
+  };
 };
 export type SlideSplitResult = {
   slides: SlideSceneData[];
@@ -497,45 +522,84 @@ export async function splitScriptIntoSlides(
         role: 'user',
         parts: [
           {
-            text: `당신은 PPT 슬라이드 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 슬라이드로 나누어주세요.
+            text: `당신은 시각적으로 다채로운 PPT 슬라이드 전문가입니다. 입력된 대본을 정확히 ${sceneCount}개의 슬라이드로 나누어주세요.
 
 **[절대 규칙]**
 1. **대본 전체 사용 의무**: 입력된 대본의 첫 글자부터 마지막 글자까지 한 글자도 빠짐없이 ${sceneCount}개의 text 필드에 분배해야 합니다. 요약, 생략, 재작성 절대 금지.
-2. **엄격한 분량 준수 (절대 위반 금지)**:
-   - 전체 대본 ${script.length}자 ÷ ${sceneCount}슬라이드 = 슬라이드당 평균 **${Math.round(script.length / sceneCount)}자**
-   - 각 슬라이드는 **150자 이상 200자 이하**여야 합니다
-   - 짧은 문장·전환 문구 등 150자 미만이 되는 내용은 절대 별도 슬라이드로 만들지 말고, 앞 또는 뒤 슬라이드에 합치세요
-   - **출력 전 각 슬라이드의 글자 수를 직접 세어 검증하고, 150자 미만이면 반드시 재조정하세요**
-3. **JSON만 출력**: 반드시 {"slides": [...]} 형태의 유효한 JSON만 출력하세요.
+2. **엄격한 분량 준수 (150자 절대 상한)**:
+   - 각 슬라이드는 **100자 이상 150자 이하**여야 합니다.
+   - **절대 규칙**: 어떤 슬라이드도 **150자를 초과해서는 안 됩니다.**
+   - **강조 금지**: 대본 원문에 없는 마크다운 강조 표시(예: **단어**)를 절대로 임의로 추가하지 마세요.
+   - **문맥 위주 분할**: 단순히 글자 수로 자르지 말고, 마침표(.), 쉼표(,), 혹은 의미가 끊기는 지점에서 자연스럽게 나누세요.
+3. **레이아웃 다양성 필수 (가장 중요한 규칙)**:
+   - **"bullets"는 전체 슬라이드 중 최대 30%만 사용하세요.** 예: 10슬라이드면 bullets 최대 3개.
+   - **같은 layout을 연속 2개 이상 사용 금지.** (bullets→bullets 금지, boxlist→boxlist 금지)
+   - 아래 6가지 layout을 골고루 분산해서 사용하세요.
+4. **JSON만 출력**: 반드시 {"slides": [...]} 형태의 유효한 JSON만 출력하세요.
 
-필드:
-- text: 대본 원문 (이 슬라이드에서 나레이션될 텍스트, 원문 그대로)
-- title: 슬라이드 제목 (15자 이내, 핵심 키워드)
-- layout: 슬라이드 레이아웃
-  - "title": 챕터 제목/강조 키워드 슬라이드 (제목만 크게)
-  - "bullets": 본문/정보 슬라이드 (제목 + 불릿 포인트)
-  - "quote": 인용/핵심 문장 슬라이드 (큰 인용부호와 함께)
-  - "comparison": 제품/기능/장단점 비교 슬라이드 (좌우 대구 방식)
-- bullets: layout이 "bullets"인 경우만, 2~4개의 핵심 포인트 (각 30자 이내)
-- comparisonData: layout이 "comparison"인 경우만 필수.
-  - leftTitle: 좌측 박스 제목 (예: "장점", "A 제품")
-  - rightTitle: 우측 박스 제목 (예: "단점", "B 제품")
-  - leftItems: 좌측 항목 리스트 (문자열 배열, 각 25자 이내)
-  - rightItems: 우측 항목 리스트 (문자열 배열, 각 25자 이내)
+**[레이아웃 종류 - 10가지 중 골고루 사용 필수]**
+- "title": 챕터 오프닝 (타이프라이터 효과로 제목만 크게)
+- "bigword": 핵심 단어/숫자 하나를 초대형으로 (예: "3배 성장", "AI 혁명") + bullets에 보조문 1줄
+- "statcard": 수치/통계를 카드로 — 숫자가 카운팅되며 올라가는 효과 (예: "300%", "1M+")
+- "timeline": 연도별/단계별 순서 나열 — "2020 · 서비스 시작" 형태
+- "icongrid": 이모지 아이콘 + 텍스트 그리드 카드 (예: "🚀 빠른 처리", "🔒 보안")
+- "progress": 단계별 프로세스 흐름 — 화살표로 연결된 단계 카드
+- "boxlist": 각 항목을 둥근 박스에 담아서 표시 (좌측 컬러 테두리)
+- "comparison": 좌우 비교 (장단점, A vs B, 전후) — 컬러 헤더 박스
+- "quote": 실제 인용문/명언/격언이 있을 때만 (전체 슬라이드 중 최대 1~2개, 남발 금지)
+- "bullets": 점/번호 목록 (최대 30% 제한, 다른 layout 충분히 사용 후)
+
+**[필드 설명]**
+- text: 대본 원문 (나레이션될 텍스트, 100~150자)
+- title: 슬라이드 제목 (15자 이내)
+- layout: 위 10가지 중 하나
+- bullets: layout이 "bullets", "boxlist", "timeline", "icongrid", "progress", "bigword"인 경우 필수
+  - bullets/boxlist: 2~4개 핵심 포인트 (각 25자 이내)
+  - timeline: ["2020 · 서비스 출시", "2021 · 100만 달성"] 형태 (각 항목: "연도 · 내용")
+  - icongrid: ["🚀 빠른 처리", "🔒 완벽 보안"] 형태 (이모지로 시작)
+  - progress: ["1단계 이름", "2단계 이름", "3단계 이름"] 형태 (2~5개)
+  - bigword: ["보조 설명 1줄"] 형태 (1개만)
+- stats: layout이 "statcard"인 경우 필수 (2~4개)
+  - value: 표시할 숫자/수치 (예: "300%", "1M+", "50개")
+  - label: 수치 설명 (10자 이내)
+- comparisonData: layout이 "comparison"인 경우만 필수
+  - leftTitle: 좌측 헤더 (예: "✓ 장점", "Before")
+  - rightTitle: 우측 헤더 (예: "✗ 단점", "After")
+  - leftItems/rightItems: 각 2~3개, 20자 이내
+
+**[레이아웃 선택 가이드]**
+- 챕터 시작 → "title"
+- 숫자/통계 데이터 → "statcard" (카운팅 애니메이션!)
+- 역사/로드맵/단계 나열 → "timeline"
+- 기능/특징 소개 → "icongrid" (이모지로 시각화!)
+- 순서가 있는 프로세스 → "progress"
+- 여러 항목을 깔끔하게 → "boxlist"
+- 장단점/비교/전후 → "comparison"
+- 실제 인용/명언 (따옴표로 감싼 문장) → "quote" (그 외엔 사용 금지)
+- 핵심 키워드 강조 → "bigword"
+- 세부 정보 (최후 수단) → "bullets"
 
 반드시 아래 JSON 형태로만 응답하세요:
 {"slides": [
   {
-    "text": "...",
-    "title": "...",
-    "layout": "...",
-    "bullets": ["...", "..."],
-    "comparisonData": {
-      "leftTitle": "...",
-      "rightTitle": "...",
-      "leftItems": ["...", "..."],
-      "rightItems": ["...", "..."]
-    }
+    "text": "...", "title": "...", "layout": "statcard",
+    "stats": [{"value": "300%", "label": "매출 성장"}, {"value": "1M+", "label": "사용자"}]
+  },
+  {
+    "text": "...", "title": "...", "layout": "timeline",
+    "bullets": ["2020 · 서비스 출시", "2021 · 100만 달성", "2023 · 글로벌 확장"]
+  },
+  {
+    "text": "...", "title": "...", "layout": "icongrid",
+    "bullets": ["🚀 초고속 처리", "🔒 완벽 보안", "💡 AI 혁신", "📊 실시간 분석"]
+  },
+  {
+    "text": "...", "title": "...", "layout": "progress",
+    "bullets": ["대본 입력", "AI 자동 생성", "영상 완성"]
+  },
+  {
+    "text": "...", "title": "...", "layout": "comparison",
+    "comparisonData": {"leftTitle": "✓ 장점", "rightTitle": "✗ 단점", "leftItems": ["..."], "rightItems": ["..."]}
   }
 ]}
 
@@ -569,9 +633,109 @@ ${script}`,
   }
 
   const slides: SlideSceneData[] = parsed.slides ?? (Array.isArray(parsed) ? parsed : []);
+  
+  const MIN_CHARS = 100;
+  const MAX_CHARS = 150;
+
+  // 150자 초과 슬라이드를 문맥에 맞춰 재귀적으로 분할
+  function splitLongSlide(slide: SlideSceneData): SlideSceneData[] {
+    if (slide.text.length <= MAX_CHARS) return [slide];
+    const text = slide.text;
+    const sentenceTerminators = /[.!?…\n]/;
+    const clauseTerminators = /[,;:(—]/;
+    let splitAt = -1;
+    
+    // 150자 이내의 가장 늦은 종결자 찾기 (50~150자 범위)
+    for (let i = MAX_CHARS - 1; i >= 50; i--) {
+      if (sentenceTerminators.test(text[i])) { splitAt = i + 1; break; }
+    }
+    if (splitAt === -1) {
+      for (let i = MAX_CHARS - 1; i >= 50; i--) {
+        if (clauseTerminators.test(text[i])) { splitAt = i + 1; break; }
+      }
+    }
+    if (splitAt === -1) {
+      splitAt = text.lastIndexOf(' ', MAX_CHARS);
+    }
+    if (splitAt <= 0) {
+      splitAt = MAX_CHARS;
+    }
+    if (splitAt >= text.length) return [slide];
+
+    const first: SlideSceneData = { ...slide, text: text.slice(0, splitAt).trim() };
+    const rest: SlideSceneData = { ...slide, text: text.slice(splitAt).trim() };
+    return [first, ...splitLongSlide(rest)];
+  }
+
+  // 너무 짧은 슬라이드 병합
+  const expanded = slides.flatMap(splitLongSlide);
+  const finalSlides: SlideSceneData[] = [];
+  for (const slide of expanded) {
+    const last = finalSlides[finalSlides.length - 1];
+    if (last && (last.text.length + slide.text.length) <= MAX_CHARS && slide.text.length < MIN_CHARS) {
+      last.text = last.text + ' ' + slide.text;
+    } else {
+      finalSlides.push({ ...slide });
+    }
+  }
+  // 마지막 슬라이드가 짧으면, 앞 슬라이드와 합쳤을 때 150자가 안 넘는 경우만 합침
+  while (finalSlides.length > 1 && 
+         finalSlides[finalSlides.length - 1].text.length < MIN_CHARS && 
+         (finalSlides[finalSlides.length - 1].text.length + finalSlides[finalSlides.length - 2].text.length) <= MAX_CHARS) {
+    const last = finalSlides.pop()!;
+    finalSlides[finalSlides.length - 1].text = finalSlides[finalSlides.length - 1].text + ' ' + last.text;
+  }
+
+  // ── 레이아웃 다양성 후처리 ──────────────────────────────────────────────────
+  // quote: 전체의 15% 이하, 최대 2개
+  // title+bigword 합산: 전체의 30% 이하
+  // 같은 layout 연속 2개 방지
+  const quoteMax = Math.max(1, Math.min(2, Math.floor(finalSlides.length * 0.15)));
+  const titleLikeMax = Math.max(2, Math.floor(finalSlides.length * 0.30));
+  let quoteCount = 0;
+  let titleLikeCount = 0;
+
+  // bullets가 있는 슬라이드를 위한 데이터 기반 fallback 선택
+  function pickFallback(slide: SlideSceneData, exclude: SlideSceneData['layout'][]): SlideSceneData['layout'] {
+    const hasBullets = (slide.bullets?.length ?? 0) > 0;
+    const hasStats = (slide.stats?.length ?? 0) > 0;
+    if (hasStats && !exclude.includes('statcard')) return 'statcard';
+    if (hasBullets && !exclude.includes('boxlist')) return 'boxlist';
+    if (hasBullets && !exclude.includes('icongrid')) return 'icongrid';
+    if (hasBullets && !exclude.includes('progress')) return 'progress';
+    if (!exclude.includes('bullets') && hasBullets) return 'bullets';
+    return 'bigword';
+  }
+
+  for (let i = 0; i < finalSlides.length; i++) {
+    const slide = finalSlides[i];
+    const prev = i > 0 ? finalSlides[i - 1].layout : null;
+
+    // quote 초과 제한
+    if (slide.layout === 'quote') {
+      quoteCount++;
+      if (quoteCount > quoteMax) {
+        slide.layout = pickFallback(slide, ['quote', prev ?? 'quote']);
+      }
+    }
+
+    // title/bigword 합산 제한
+    if (slide.layout === 'title' || slide.layout === 'bigword') {
+      titleLikeCount++;
+      if (titleLikeCount > titleLikeMax) {
+        slide.layout = pickFallback(slide, ['title', 'bigword', prev ?? 'title']);
+      }
+    }
+
+    // 연속 같은 layout 방지
+    if (prev && slide.layout === prev) {
+      slide.layout = pickFallback(slide, [slide.layout]);
+    }
+  }
+
   const metaUsage = (response as any).usageMetadata ?? {};
   return {
-    slides,
+    slides: finalSlides,
     usage: {
       promptTokens: metaUsage.promptTokenCount ?? 0,
       completionTokens: metaUsage.candidatesTokenCount ?? 0,

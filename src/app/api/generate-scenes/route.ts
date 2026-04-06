@@ -3,6 +3,82 @@ import { splitScriptIntoScenes as splitViaGemini, generateImage as generateImage
 import { generateFalImage } from '@/lib/fal-image';
 import { createClient } from '@/lib/supabase-server';
 
+/**
+ * [공통 유틸리티] 텍스트를 1줄 기준(25~28자)으로 문장 구조에 맞게 분할
+ * 우선순위: 문장 종결부호 > 쉼표/나열부호 > 공백 > 강제 컷
+ */
+function splitTextToSubtitles(text: string, maxChars = 27): { text: string; startFrame: number; endFrame: number }[] {
+  const txt = text.trim();
+  if (!txt) return [];
+  const totalFrames = 300;
+  const HARD_MAX = maxChars;        // 이 이상은 절대 허용 안 함
+  const MIN_CHUNK = 8;              // 너무 짧은 조각 방지
+
+  function findBestSplit(s: string): number {
+    if (s.length <= HARD_MAX) return s.length;
+
+    // 1순위: HARD_MAX 이내의 가장 늦은 문장 종결 부호 (. ! ? … 。)
+    for (let i = Math.min(s.length - 1, HARD_MAX); i >= MIN_CHUNK; i--) {
+      if (/[.!?…。]/.test(s[i])) return i + 1;
+    }
+
+    // 2순위: HARD_MAX 이내의 가장 늦은 쉼표/가운뎃점/열거 부호
+    for (let i = Math.min(s.length - 1, HARD_MAX); i >= MIN_CHUNK; i--) {
+      if (/[,，、·]/.test(s[i])) return i + 1;
+    }
+
+    // 3순위: HARD_MAX 이내의 가장 늦은 공백
+    for (let i = Math.min(s.length - 1, HARD_MAX); i >= MIN_CHUNK; i--) {
+      if (s[i] === ' ') return i + 1;
+    }
+
+    // 4순위: 조사/어미 뒤 자연스러운 끊기 (Korean: 은/는/이/가/을/를/에/의/로/으로/하고/해서/지만/니까)
+    const josaPattern = /(은|는|이|가|을|를|에|의|로|으로|하고|해서|지만|니까|아서|어서|면서|는데|지만)\s*/g;
+    let lastJosa = -1;
+    let m;
+    while ((m = josaPattern.exec(s)) !== null) {
+      const pos = m.index + m[0].length;
+      if (pos >= MIN_CHUNK && pos <= HARD_MAX) lastJosa = pos;
+    }
+    if (lastJosa > 0) return lastJosa;
+
+    // 5순위: 강제 컷 (HARD_MAX)
+    return HARD_MAX;
+  }
+
+  const chunks: string[] = [];
+  let rem = txt;
+
+  while (rem.length > 0) {
+    const splitAt = findBestSplit(rem);
+    const chunk = rem.slice(0, splitAt).trim();
+    if (chunk.length > 0) chunks.push(chunk);
+    rem = rem.slice(splitAt).trim();
+  }
+
+  // 너무 짧은 마지막 조각은 앞에 합치기 (단, HARD_MAX 초과하지 않는 경우만)
+  const merged: string[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const prev = merged[merged.length - 1];
+    if (prev && chunks[i].length < MIN_CHUNK && (prev + chunks[i]).length <= HARD_MAX) {
+      merged[merged.length - 1] = prev + chunks[i];
+    } else {
+      merged.push(chunks[i]);
+    }
+  }
+
+  const totalChars = merged.reduce((sum, c) => sum + c.length, 0);
+  let currentF = 0;
+  return merged.map((chunk, j) => {
+    const frames = j === merged.length - 1
+      ? totalFrames - currentF
+      : Math.max(25, Math.round((chunk.length / totalChars) * totalFrames));
+    const entry = { text: chunk, startFrame: currentF, endFrame: currentF + frames };
+    currentF += frames;
+    return entry;
+  });
+}
+
 export async function POST(req: NextRequest) {
   let {
     script,
@@ -69,18 +145,32 @@ export async function POST(req: NextRequest) {
             controller.close();
             return;
           }
-          const targetCharsPerScene = 175;
+          const targetCharsPerScene = 125;
           const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
           const { slides, usage: llmUsage } = await splitScriptIntoSlides(script, llmModelId, sceneCount, geminiApiKey);
           send({ type: 'total', count: slides.length });
           slides.forEach((s, index) => {
+            // bullets가 필요한 레이아웃인데 없으면 텍스트에서 자동 생성
+            const BULLET_LAYOUTS = ['bullets', 'boxlist', 'icongrid', 'timeline', 'progress'];
+            let safeBullets = s.bullets ?? [];
+            if (BULLET_LAYOUTS.includes(s.layout) && safeBullets.length === 0) {
+              // 문장 부호 기준으로 2~3개 핵심 포인트 추출
+              const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
+              safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
+              if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
+            }
             send({
               type: 'scene',
               index,
               text: s.text,
-              slideData: { layout: s.layout, title: s.title, bullets: s.bullets },
+              slideData: { layout: s.layout, title: s.title, bullets: safeBullets, stats: s.stats, comparisonData: s.comparisonData },
               pptTheme,
               imageUrl: '',
+              durationInFrames: 0,
+              audioUrl: '',
+              subtitles: s.text ? splitTextToSubtitles(s.text, 30) : [],
+              textAnimationStyle: 'none',
+              textPosition: 'bottom',
             });
           });
           send({
@@ -113,7 +203,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. 장면 분할 (키네틱: 85자/씬, 일반: 175자/씬 기준으로 장면 수 추정, 최대 50장면)
-        const targetCharsPerScene = isKineticMode ? 85 : 175;
+        const targetCharsPerScene = isKineticMode ? 85 : 125;
         const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
         console.log(`[generate-scenes] script.length=${script.length}, sceneCount=${sceneCount}`);
         const hasCharacter = !!characterImageBase64;

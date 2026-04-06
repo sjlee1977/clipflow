@@ -13,62 +13,48 @@ const PADDING_FRAMES = 15; // 오디오 끝 후 0.5초 여유
  * - 괄호() [] 안의 내용은 절대 분할하지 않음 (한 덩어리로 처리)
  * - 우선순위: ① 문장 끝(. ! ? …) → ② 절 구분(, — ·) → ③ 공백 → ④ 최대 글자 수
  */
+
+function isInsideBracket(str: string, pos: number): boolean {
+  let depth = 0;
+  for (let i = 0; i < pos; i++) {
+    if (str[i] === '(' || str[i] === '[') depth++;
+    if (str[i] === ')' || str[i] === ']') depth = Math.max(0, depth - 1);
+  }
+  return depth > 0;
+}
+
+function findSplitAt(remaining: string, maxChars: number, minChars: number): number {
+  if (remaining.length <= maxChars) return remaining.length;
+
+  const mid = Math.floor(remaining.length / 2);
+  let bestSplit = -1;
+  let minDiff = Infinity;
+
+  for (let i = 0; i < remaining.length; i++) {
+    if (isInsideBracket(remaining, i)) continue;
+    const char = remaining[i] ?? '';
+    const isPunctuation = /[.!?…,，。]/.test(char);
+    const isSpace = /\s/.test(char);
+
+    if (isPunctuation || isSpace) {
+      const diff = Math.abs(i - mid);
+      const weightedDiff = isPunctuation ? Math.max(0, diff - 5) : diff;
+      if (weightedDiff < minDiff) {
+        minDiff = weightedDiff;
+        bestSplit = i + 1;
+      }
+    }
+  }
+
+  if (bestSplit === -1 || bestSplit < minChars || bestSplit > remaining.length - minChars) {
+    return Math.min(maxChars, remaining.length);
+  }
+  return bestSplit;
+}
+
 function splitIntoSubtitles(text: string, totalFrames: number) {
-  const MAX_CHARS = 28;
-  const MIN_CHARS = 6;
-
-  // 괄호 쌍이 열린 인덱스 집합 반환: 분할 불가 구간
-  function isInsideBracket(str: string, pos: number): boolean {
-    let depth = 0;
-    for (let i = 0; i < pos; i++) {
-      if (str[i] === '(' || str[i] === '[') depth++;
-      if (str[i] === ')' || str[i] === ']') depth = Math.max(0, depth - 1);
-    }
-    return depth > 0;
-  }
-
-  // 괄호를 포함한 다음 안전한 분할 위치 탐색
-  function findSplitAt(remaining: string): number {
-    const limit = Math.min(MAX_CHARS, remaining.length - 1);
-
-    // 먼저 MAX_CHARS 안에 열린 괄호가 있으면 닫는 괄호 이후까지 확장
-    let safeLimit = limit;
-    let depth = 0;
-    for (let i = 0; i <= limit; i++) {
-      if (remaining[i] === '(' || remaining[i] === '[') depth++;
-      if (remaining[i] === ')' || remaining[i] === ']') depth = Math.max(0, depth - 1);
-    }
-    // 괄호가 열린 채로 끝났으면 닫힐 때까지 확장 (최대 50자 더)
-    if (depth > 0) {
-      for (let i = limit + 1; i < Math.min(remaining.length, MAX_CHARS + 50); i++) {
-        if (remaining[i] === ')' || remaining[i] === ']') {
-          depth--;
-          if (depth === 0) { safeLimit = i; break; }
-        }
-      }
-    }
-
-    // ① 문장 끝
-    for (let i = safeLimit; i >= MIN_CHARS; i--) {
-      if (/[.!?…。！？]/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
-        return i + 1;
-      }
-    }
-    // ② 절 구분
-    for (let i = safeLimit; i >= MIN_CHARS; i--) {
-      if (/[,—·、，]/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
-        return i + 1;
-      }
-    }
-    // ③ 공백
-    for (let i = safeLimit; i >= MIN_CHARS; i--) {
-      if (/\s/.test(remaining[i] ?? '') && !isInsideBracket(remaining, i)) {
-        return i + 1;
-      }
-    }
-    // ④ 강제 분할 (괄호 구간 이후)
-    return safeLimit + 1;
-  }
+  const MAX_CHARS = 30;
+  const MIN_CHARS = 10;
 
   const chunks: string[] = [];
   let remaining = text.trim();
@@ -86,7 +72,7 @@ function splitIntoSubtitles(text: string, totalFrames: number) {
     const isLast = i === chunks.length - 1;
     const frames = isLast
       ? totalFrames - currentFrame
-      : Math.max(15, Math.round((chunk.length / totalChars) * totalFrames));
+      : Math.max(30, Math.round((chunk.length / totalChars) * totalFrames));
     const entry = { text: chunk, startFrame: currentFrame, endFrame: currentFrame + frames };
     currentFrame += frames;
     return entry;
@@ -102,6 +88,8 @@ export async function POST(req: NextRequest) {
       format = 'shorts',
       ttsProvider = 'minimax',
       fontFamily = 'Noto Sans KR',
+      templateId = 'classic',
+      codeSnippet = '',
     } = await req.json();
 
     if (!Array.isArray(inputScenes) || inputScenes.length === 0) {
@@ -171,6 +159,8 @@ export async function POST(req: NextRequest) {
         textPosition: s.textPosition,
         slideData: s.slideData,
         pptTheme: s.pptTheme,
+        templateId,
+        codeSnippet,
       };
     }
 
@@ -194,10 +184,29 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Remotion Lambda 렌더링 시작
-    const compositionId = format === 'landscape' ? 'ClipFlowLandscape' : format === 'square' ? 'ClipFlowSquare' : 'ClipFlowShorts';
+    // 템플릿별로 미리 정의된 Composition ID로 매핑
+    const templateMap: Record<string, string> = {
+      classic: 'ClipFlowClassic',
+      audiogram: 'ClipFlowAudiogram',
+      captions: 'ClipFlowCaptions',
+      cinematic: 'ClipFlowCinematic',
+      codehike: 'ClipFlowCodeHike',
+      split: 'ClipFlowSplit',
+      slides: 'ClipFlowSlides',
+      map: 'ClipFlowMap',
+      kinetic: 'ClipFlowKinetic',
+      '3d': 'ClipFlow3D',
+    };
+
+    let compositionId = templateMap[templateId] || (format === 'landscape' ? 'ClipFlowLandscape' : format === 'square' ? 'ClipFlowSquare' : 'ClipFlowShorts');
+    // 가로 모드(Landscape) 선택 시 템플릿 ID 뒤에 Landscape 접미사 추가
+    if (templateMap[templateId] && format === 'landscape') {
+      compositionId += 'Landscape';
+    }
+    
     const { renderId, bucketName } = await startRender({
       compositionId,
-      inputProps: { scenes, fps: FPS, fontFamily },
+      inputProps: { scenes, fps: FPS, fontFamily, templateId, codeSnippet },
     });
 
     return NextResponse.json({ renderId, bucketName });

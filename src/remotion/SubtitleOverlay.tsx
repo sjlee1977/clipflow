@@ -228,13 +228,67 @@ export const SubtitleOverlay: React.FC<Props> = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const currentSubtitle = subtitles.find(
+  const currentSubtitleRaw = subtitles.find(
     (s) => frame >= s.startFrame && frame < s.endFrame
   );
 
+  // [Normalizer] 1줄 보장: 27자 초과 시 문장 구조 기준으로 쪼개서 순차 출력
+  const SUBTITLE_MAX = 27;
+
+  function smartSplitSubtitle(text: string): string[] {
+    const chunks: string[] = [];
+    let rem = text.trim();
+    while (rem.length > 0) {
+      if (rem.length <= SUBTITLE_MAX) { chunks.push(rem); break; }
+      let cut = -1;
+      // 1순위: 문장 종결 부호
+      for (let i = Math.min(rem.length - 1, SUBTITLE_MAX); i >= 6; i--) {
+        if (/[.!?…。]/.test(rem[i])) { cut = i + 1; break; }
+      }
+      // 2순위: 쉼표/가운뎃점
+      if (cut < 0) for (let i = Math.min(rem.length - 1, SUBTITLE_MAX); i >= 6; i--) {
+        if (/[,，、·]/.test(rem[i])) { cut = i + 1; break; }
+      }
+      // 3순위: 공백
+      if (cut < 0) for (let i = Math.min(rem.length - 1, SUBTITLE_MAX); i >= 6; i--) {
+        if (rem[i] === ' ') { cut = i + 1; break; }
+      }
+      // 4순위: 강제 컷
+      if (cut < 0) cut = SUBTITLE_MAX;
+      chunks.push(rem.slice(0, cut).trim());
+      rem = rem.slice(cut).trim();
+    }
+    return chunks.filter(c => c.length > 0);
+  }
+
+  const normalizedSubtitle = (() => {
+    if (!currentSubtitleRaw) return null;
+    const text = currentSubtitleRaw.text.trim();
+    if (text.length <= SUBTITLE_MAX) return currentSubtitleRaw;
+
+    const chunks = smartSplitSubtitle(text);
+    if (chunks.length <= 1) return currentSubtitleRaw;
+
+    const duration = currentSubtitleRaw.endFrame - currentSubtitleRaw.startFrame;
+    const totalChars = chunks.reduce((s, c) => s + c.length, 0);
+
+    // 현재 프레임이 어느 청크에 속하는지 계산
+    let elapsed = 0;
+    for (const chunk of chunks) {
+      const chunkFrames = Math.round((chunk.length / totalChars) * duration);
+      const chunkStart = currentSubtitleRaw.startFrame + elapsed;
+      const chunkEnd = chunkStart + chunkFrames;
+      if (frame < chunkEnd || chunk === chunks[chunks.length - 1]) {
+        return { text: chunk, startFrame: chunkStart, endFrame: chunkEnd };
+      }
+      elapsed += chunkFrames;
+    }
+    return currentSubtitleRaw;
+  })();
+
   // 위치 스타일
   const positionStyles: Record<string, React.CSSProperties> = {
-    bottom: { justifyContent: 'flex-end', paddingBottom: 80 },
+    bottom: { justifyContent: 'flex-end', paddingBottom: 120 }, // PPT와 겹치지 않게 여유 공간 확보
     center: { justifyContent: 'center' },
     top: { justifyContent: 'flex-start', paddingTop: 80 },
   };
@@ -243,7 +297,7 @@ export const SubtitleOverlay: React.FC<Props> = ({
   const isBgEffect = BG_EFFECTS.includes(style);
 
   // 자막 없을 때: 배경 효과만 렌더링 (텍스트 없음)
-  if (!currentSubtitle) {
+  if (!normalizedSubtitle) {
     if (!isBgEffect) return null;
     return (
       <AbsoluteFill style={{ alignItems: 'center', ...positionStyles[position] }}>
@@ -266,8 +320,8 @@ export const SubtitleOverlay: React.FC<Props> = ({
     );
   }
 
-  const currentFrameInSubtitle = frame - currentSubtitle.startFrame;
-  const subtitleDuration = currentSubtitle.endFrame - currentSubtitle.startFrame;
+  const currentFrameInSubtitle = frame - normalizedSubtitle.startFrame;
+  const subtitleDuration = normalizedSubtitle.endFrame - normalizedSubtitle.startFrame;
 
   // 기본 애니메이션 (None / Fade)
   const fadeIn = interpolate(currentFrameInSubtitle, [0, 5], [0, 1], { extrapolateRight: 'clamp' });
@@ -275,7 +329,7 @@ export const SubtitleOverlay: React.FC<Props> = ({
   let opacity = Math.min(fadeIn, fadeOut);
   let translateY = interpolate(fadeIn, [0, 1], [10, 0]);
   let scale = 1;
-  let text = currentSubtitle.text;
+  let text = normalizedSubtitle.text;
 
   // 1. 타이핑 효과 (Typewriter)
   if (style === 'typewriter') {
@@ -301,6 +355,8 @@ export const SubtitleOverlay: React.FC<Props> = ({
       style={{
         alignItems: 'center',
         ...positionStyles[position],
+        zIndex: 9999, // 최상단 노출 보장
+        pointerEvents: 'none' // 클릭 이벤트 방해 금지
       }}
     >
       {/* 배경 효과: 씬 전체 frame 기준으로 지속 실행 */}
@@ -324,29 +380,30 @@ export const SubtitleOverlay: React.FC<Props> = ({
         style={{
           opacity,
           transform: `translateY(${translateY}px) scale(${scale})`,
-          maxWidth: '85%',
+          maxWidth: '90%',
           textAlign: 'center',
           zIndex: 10,
         }}
       >
         <span
           style={{
-            fontSize: position === 'center' ? 64 : 48,
+            fontSize: position === 'center' ? 58 : 44,
             fontWeight: 800,
             color: '#FFFFFF',
             textShadow: '0 2px 12px rgba(0,0,0,0.9), 0 0 25px rgba(0,0,0,0.6)',
             lineHeight: 1.3,
+            letterSpacing: '0.01em',
             display: 'inline-block',
-            padding: '12px 28px',
+            whiteSpace: 'nowrap',        // ← 1행 강제
+            padding: '10px 24px',
             background: position === 'center' ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.4)',
-            borderRadius: 16,
+            borderRadius: 14,
             fontFamily: `"${fontFamily}", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`,
-            wordBreak: 'keep-all',
           }}
         >
           {text.split(' ').map((rawWord, i) => {
-            const isMarkup = rawWord.startsWith('**') && rawWord.endsWith('**');
-            const word = isMarkup ? rawWord.slice(2, -2) : rawWord;
+            const isMarkup = rawWord.includes('**');
+            const word = rawWord.replace(/\*\*/g, '');
             return (
               <span key={i} style={{ 
                 color: isMarkup ? '#facc15' : 'inherit',
