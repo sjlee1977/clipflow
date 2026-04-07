@@ -25,12 +25,28 @@ export const SlideDataSchema = z.object({
   layout: z.string(),
   title: z.string().optional(),
   bullets: z.array(z.string()).optional(),
+  stats: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
   comparisonData: z.object({
     leftTitle: z.string(),
     rightTitle: z.string(),
     leftItems: z.array(z.string()),
     rightItems: z.array(z.string()),
   }).optional(),
+  analogyData: z.object({
+    pairs: z.array(z.object({
+      leftIcon: z.string(),
+      leftLabel: z.string(),
+      rightLabel: z.string(),
+      rightSub: z.string().optional(),
+      connector: z.string().optional(),
+    })),
+  }).optional(),
+  summary: z.string().optional(),
+  headerBadge: z.object({ icon: z.string().optional(), text: z.string() }).optional(),
+  warningTag: z.string().optional(),
+  decorIcons: z.array(z.string()).optional(),
+  processSteps: z.array(z.object({ title: z.string(), subtitle: z.string().optional(), icon: z.string().optional() })).optional(),
+  calendarData: z.object({ totalDays: z.number(), markedDays: z.array(z.number()) }).optional(),
 });
 
 export const SceneSchema = z.object({

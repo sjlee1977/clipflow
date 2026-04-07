@@ -39,7 +39,7 @@ export default function HomePage() {
       </header>
 
       {/* 히어로 */}
-      <section className="relative min-h-screen flex items-start justify-center px-6 pt-52 pb-40">
+      <section className="relative min-h-screen flex items-center justify-center px-6 pt-28 pb-20">
         {/* 배경 그리드 */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
 
@@ -68,7 +68,7 @@ export default function HomePage() {
             지금 바로 무료로 시작
           </div>
 
-          <h1 className="text-6xl md:text-[89px] font-black leading-[1.05] tracking-tight mb-8" style={{ wordSpacing: '-0.1em' }}>
+          <h1 className="text-5xl md:text-[78px] font-black leading-[1.05] tracking-tight mb-8" style={{ wordSpacing: '-0.1em' }}>
             <span className="block text-white">영상 한 편에</span>
             <span className="block text-white">몇 시간을</span>
             <span className="block text-yellow-400">쓰고 계신가요?</span>

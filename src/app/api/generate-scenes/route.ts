@@ -121,9 +121,11 @@ export async function POST(req: NextRequest) {
     lineart: 'minimalist line art, black and white only, simple outline illustration, doodle style, flat design, clean strokes, icon style, white background, no color, no shading',
     none: 'minimalist background, solid dark color, simple texture, non-distracting, professional, clean',
     kinetic: '',  // 키네틱 모드: 배경 이미지 생성 없음 (순수 텍스트 애니메이션)
+    lottie: '',   // Lottie 모드: 이미지 생성 없음 (사용자가 Lottie JSON 직접 업로드)
   };
   const isKineticMode = imageStyle === 'kinetic';
-  const stylePrompt = imageStyle && imageStyle !== 'none' && !isKineticMode ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
+  const isLottieMode = imageStyle === 'lottie';
+  const stylePrompt = imageStyle && imageStyle !== 'none' && !isKineticMode && !isLottieMode ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -150,41 +152,32 @@ export async function POST(req: NextRequest) {
           const { slides, usage: llmUsage } = await splitScriptIntoSlides(script, llmModelId, sceneCount, geminiApiKey);
           send({ type: 'total', count: slides.length });
           slides.forEach((s, index) => {
-            // bullets가 필요한 레이아웃인데 없으면 텍스트에서 자동 생성
-            const BULLET_LAYOUTS = ['bullets', 'boxlist', 'icongrid', 'timeline', 'progress'];
+            // 레이아웃 데이터 안정성 확보 (최소 bullets 보장)
             let safeBullets = s.bullets ?? [];
-            if (BULLET_LAYOUTS.includes(s.layout) && safeBullets.length === 0) {
+            if (['bullets', 'boxlist', 'icongrid', 'timeline', 'progress', 'graphic_box', 'usercloud', 'motion_logic'].includes(s.layout) && safeBullets.length === 0) {
               const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
               safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
               if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
-            }
-
-            // statcard: stats 없으면 boxlist로 대체
-            let safeLayout = s.layout;
-            if (safeLayout === 'statcard' && (!s.stats || s.stats.length === 0)) {
-              safeLayout = 'boxlist';
-              if (safeBullets.length === 0) {
-                const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
-                safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
-                if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
-              }
-            }
-
-            // comparison: comparisonData 없으면 boxlist로 대체
-            if (safeLayout === 'comparison' && !s.comparisonData) {
-              safeLayout = 'boxlist';
-              if (safeBullets.length === 0) {
-                const sentences = s.text.split(/[.!?。]\s+/).filter(t => t.trim().length > 4);
-                safeBullets = sentences.slice(0, 3).map(t => t.trim().slice(0, 25));
-                if (safeBullets.length === 0) safeBullets = [s.title || s.text.slice(0, 20)];
-              }
             }
 
             send({
               type: 'scene',
               index,
               text: s.text,
-              slideData: { layout: safeLayout, title: s.title, bullets: safeBullets, stats: s.stats, comparisonData: s.comparisonData, summary: s.summary, headerBadge: s.headerBadge, warningTag: s.warningTag },
+              slideData: { 
+                layout: s.layout, 
+                title: s.title, 
+                bullets: safeBullets, 
+                stats: s.stats, 
+                comparisonData: s.comparisonData, 
+                analogyData: s.analogyData, 
+                summary: s.summary, 
+                headerBadge: s.headerBadge, 
+                warningTag: s.warningTag, 
+                decorIcons: s.decorIcons,
+                processSteps: s.processSteps,
+                calendarData: s.calendarData
+              },
               pptTheme,
               imageUrl: '',
               durationInFrames: 0,
@@ -236,8 +229,8 @@ export async function POST(req: NextRequest) {
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
 
-        // 키네틱 모드: 이미지 생성 없이 바로 씬 전송 (Scene.tsx가 #0d0d0d 배경으로 렌더링)
-        if (isKineticMode) {
+        // 키네틱/Lottie 모드: 이미지 생성 없이 바로 씬 전송
+        if (isKineticMode || isLottieMode) {
           scriptScenes.forEach((s, index) => {
             const scene = {
               index,

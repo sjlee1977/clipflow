@@ -101,9 +101,21 @@ export async function POST(req: NextRequest) {
       displayText?: string;
       imageUrl: string;
       videoUrl?: string;
+      lottieData?: Record<string, unknown>;
       textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
       textPosition?: 'bottom' | 'center' | 'top';
-      slideData?: { layout: string; title?: string; bullets?: string[] };
+      slideData?: {
+        layout: string;
+        title?: string;
+        bullets?: string[];
+        stats?: { value: string; label: string }[];
+        comparisonData?: { leftTitle: string; rightTitle: string; leftItems: string[]; rightItems: string[] };
+        analogyData?: { pairs: Array<{ leftIcon: string; leftLabel: string; rightLabel: string; rightSub?: string; connector?: string }> };
+        summary?: string;
+        headerBadge?: { icon?: string; text: string };
+        warningTag?: string;
+        decorIcons?: string[];
+      };
       pptTheme?: string;
     };
 
@@ -122,13 +134,22 @@ export async function POST(req: NextRequest) {
         durationInFrames = Math.max(90, Math.round(estimatedSec * FPS) + PADDING_FRAMES);
       } else {
         let durationMs: number;
-        if (ttsProvider === 'google') {
-          ({ url: audioUrl, durationMs } = await googleTTSToS3(s.text, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
+        // 텍스트가 비어있으면 TTS 건너뜀 (빈 오디오 생성 방지)
+        const ttsText = s.text?.trim();
+        if (!ttsText) {
+          audioUrl = '';
+          durationMs = 3000; // 기본 3초
+        } else if (ttsProvider === 'google') {
+          ({ url: audioUrl, durationMs } = await googleTTSToS3(ttsText, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
         } else if (ttsProvider === 'elevenlabs') {
           const { generateSpeechToS3: elevenTTSToS3 } = await import('@/lib/elevenlabs');
-          ({ url: audioUrl, durationMs } = await elevenTTSToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
+          ({ url: audioUrl, durationMs } = await elevenTTSToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
         } else {
-          ({ url: audioUrl, durationMs } = await generateSpeechToS3(s.text, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
+          ({ url: audioUrl, durationMs } = await generateSpeechToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
+        }
+        // durationMs가 0이면 텍스트 길이 기반으로 추정 (한국어 ~300자/분)
+        if (!durationMs || durationMs < 100) {
+          durationMs = Math.max(2000, Math.round((ttsText.length / 300) * 60 * 1000));
         }
         durationInFrames = Math.max(60, Math.round((durationMs / 1000) * FPS) + PADDING_FRAMES);
       }
@@ -144,6 +165,7 @@ export async function POST(req: NextRequest) {
         imageUrl: s.imageUrl,
         displayText: s.displayText,
         videoUrl: s.videoUrl,
+        lottieData: s.lottieData,
         audioUrl,
         durationInFrames,
         subtitles,

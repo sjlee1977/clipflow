@@ -66,6 +66,7 @@ const IMAGE_STYLES = [
   { id: 'cartoon', label: '카툰' },
   { id: 'noir', label: '누아르' },
   { id: 'lineart', label: '라인아트' },
+  { id: 'lottie', label: 'Lottie' },
   { id: 'none', label: '선택 없음' },
 ] as const;
 
@@ -103,11 +104,23 @@ type PreviewScene = {
   motionPrompt?: string;
   shouldAnimate?: boolean;
   videoUrl?: string;
+  lottieData?: Record<string, unknown>; // Lottie JSON 애니메이션 데이터
   isAnimating?: boolean;
   isLoading?: boolean;
   textAnimationStyle?: 'none' | 'typewriter' | 'fly-in' | 'pop-in' | 'fade-zoom' | 'clock-spin' | 'pulse-ring' | 'sparkle' | 'confetti' | 'rain' | 'snow' | 'fire' | 'heart' | 'stars' | 'thunder' | 'chart-up' | 'film-roll' | 'magnifier' | 'lock-secure' | 'camera-flash';
   textPosition?: 'bottom' | 'center' | 'top';
-  slideData?: { layout: string; title?: string; bullets?: string[] };
+  slideData?: {
+    layout: string;
+    title?: string;
+    bullets?: string[];
+    stats?: { value: string; label: string }[];
+    comparisonData?: { leftTitle: string; rightTitle: string; leftItems: string[]; rightItems: string[] };
+    analogyData?: { pairs: Array<{ leftIcon: string; leftLabel: string; rightLabel: string; rightSub?: string; connector?: string }> };
+    summary?: string;
+    headerBadge?: { icon?: string; text: string };
+    warningTag?: string;
+    decorIcons?: string[];
+  };
   pptTheme?: string;
   subtitles?: { text: string; startFrame: number; endFrame: number }[];
 };
@@ -272,6 +285,9 @@ export default function DashboardPage() {
   const [characterImageBase64, setCharacterImageBase64] = useState<string | null>(null);
   const [characterPreview, setCharacterPreview] = useState<string | null>(null);
   const [subCharacters, setSubCharacters] = useState<{ preview: string; base64: string; name: string }[]>([]);
+  // Lottie 모드 전용: 씬별 Lottie 파일 목록 (씬 생성 전에 미리 업로드)
+  const [lottieFiles, setLottieFiles] = useState<{ name: string; data: Record<string, unknown> }[]>([]);
+  const lottieInputRef = useRef<HTMLInputElement>(null);
   const [imageStyle, setImageStyle] = useState<ImageStyle>('cinematic');
   const [templateId, setTemplateId] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const [codeSnippet, setCodeSnippet] = useState('');
@@ -499,6 +515,10 @@ export default function DashboardPage() {
           }
           if (event.type === 'scene') {
             setGenCompleted(prev => prev + 1);
+            // Lottie 모드: 업로드된 Lottie 파일을 씬 인덱스 순서대로 배정
+            const lottieDatum = imageStyle === 'lottie' && lottieFiles.length > 0
+              ? lottieFiles[event.index % lottieFiles.length]?.data
+              : undefined;
             const sceneData = {
               text: event.text,
               displayText: event.displayText,
@@ -510,7 +530,8 @@ export default function DashboardPage() {
               textPosition: event.textPosition,
               slideData: event.slideData,
               pptTheme: event.pptTheme,
-                  subtitles: event.text ? splitTextToSubtitles(event.text, 30) : [],
+              lottieData: lottieDatum,
+              subtitles: event.text ? splitTextToSubtitles(event.text, 30) : [],
             };
             newScenes[event.index] = sceneData;
             setScenes(prev => {
@@ -728,6 +749,21 @@ export default function DashboardPage() {
   }
 
   async function handleReplaceImage(index: number, file: File) {
+    // Lottie JSON 파일 처리
+    if (file.name.endsWith('.json') || file.type === 'application/json') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const lottieData = JSON.parse(reader.result as string);
+          setScenes(prev => prev.map((s, i) => i === index ? { ...s, lottieData, imageUrl: '' } : s));
+        } catch {
+          setError('Lottie JSON 파일이 올바르지 않습니다.');
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+    // 이미지 파일 처리
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
@@ -739,7 +775,7 @@ export default function DashboardPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '업로드 실패');
-        setScenes(prev => prev.map((s, i) => i === index ? { ...s, imageUrl: data.imageUrl } : s));
+        setScenes(prev => prev.map((s, i) => i === index ? { ...s, imageUrl: data.imageUrl, lottieData: undefined } : s));
       } catch (err: any) {
         setError(err.message);
       }
@@ -1082,6 +1118,30 @@ export default function DashboardPage() {
                       </button>
                     )}
 
+                    {!scene.isLoading && (
+                      <>
+                        {/* PPT 모드 교체 버튼 (항상 표시) */}
+                        {pptMode && (
+                          <>
+                            <div className="w-px h-4 bg-white/20 shrink-0" />
+                            <button
+                              onClick={() => replaceInputRefs.current[i]?.click()}
+                              className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
+                            >
+                              ↑ {scene.lottieData ? 'Lottie ✓' : '이미지/Lottie'}
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*,.json"
+                              className="hidden"
+                              ref={el => { replaceInputRefs.current[i] = el; }}
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handleReplaceImage(i, f); e.target.value = ''; }}
+                            />
+                          </>
+                        )}
+                      </>
+                    )}
+
                     {status === 'preview' && !scene.isLoading && (
                       <>
                         <div className="w-px h-4 bg-white/20 shrink-0" />
@@ -1138,11 +1198,11 @@ export default function DashboardPage() {
                           onClick={() => replaceInputRefs.current[i]?.click()}
                           className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
                         >
-                          ↑ 교체
+                          ↑ {scene.lottieData ? 'Lottie ✓' : '교체'}
                         </button>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,.json"
                           className="hidden"
                           ref={el => { replaceInputRefs.current[i] = el; }}
                           onChange={e => { const f = e.target.files?.[0]; if (f) handleReplaceImage(i, f); e.target.value = ''; }}
@@ -1153,7 +1213,36 @@ export default function DashboardPage() {
 
                   {/* ── 바디: 썸네일 + 텍스트 ── */}
                   <div className="flex gap-3 p-3">
-                    {/* 썸네일 */}
+                    {/* 썸네일 — Lottie 모드면 업로드 영역으로 교체 */}
+                    {imageStyle === 'lottie' ? (
+                      <div
+                        className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md border cursor-pointer transition-colors ${
+                          scene.lottieData
+                            ? 'bg-[#17BEBB]/10 border-[#17BEBB]/50 hover:border-[#17BEBB]'
+                            : 'bg-black/40 border-dashed border-white/25 hover:border-[#17BEBB]/60 hover:bg-[#17BEBB]/5'
+                        }`}
+                        onClick={() => replaceInputRefs.current[i]?.click()}
+                      >
+                        {scene.lottieData ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                            <span className="text-[20px]">🎞️</span>
+                            <span className="text-[8px] font-bold text-[#17BEBB] tracking-widest">LOTTIE ✓</span>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                            <span className="text-[18px] text-white/30">+</span>
+                            <span className="text-[8px] text-white/40 text-center leading-tight">Lottie<br/>업로드</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept=".json"
+                          className="hidden"
+                          ref={el => { replaceInputRefs.current[i] = el; }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleReplaceImage(i, f); e.target.value = ''; }}
+                        />
+                      </div>
+                    ) : (
                     <div
                       className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md bg-black/40 border border-white/10 ${scene.imageUrl ? 'cursor-zoom-in hover:border-white/30' : ''}`}
                       onClick={() => scene.imageUrl && setLightboxUrl(scene.imageUrl)}
@@ -1175,6 +1264,11 @@ export default function DashboardPage() {
                           <span className={`text-[7px] font-bold leading-tight ${scene.pptTheme === 'simple-modern' ? 'text-gray-800' : 'text-white'}`}>
                             {scene.slideData.title?.slice(0, 12) || 'SLIDE'}
                           </span>
+                        </div>
+                      ) : scene.lottieData ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 gap-1">
+                          <span className="text-[16px]">🎞️</span>
+                          <span className="text-[8px] font-bold text-[#17BEBB] tracking-widest">LOTTIE</span>
                         </div>
                       ) : scene.imageUrl ? (
                         <img
@@ -1201,6 +1295,7 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </div>
+                    )} {/* end imageStyle === 'lottie' ternary */}
 
                     {/* 텍스트 */}
                     <div className="flex-1 min-w-0">
@@ -1216,7 +1311,7 @@ export default function DashboardPage() {
                           onChange={e => updateSceneText(i, e.target.value)}
                           disabled={status !== 'preview'}
                           rows={3}
-                          className="w-full h-full bg-transparent text-white/70 text-[12px] leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-70 placeholder:text-white/25"
+                          className="w-full h-full bg-transparent text-white/70 text-[13px] leading-relaxed border-0 focus:outline-none resize-none disabled:opacity-70 placeholder:text-white/25"
                           style={{ fontFamily: "'Inter', 'Pretendard', sans-serif", letterSpacing: '0.01em' }}
                         />
                       )}
@@ -1495,61 +1590,107 @@ export default function DashboardPage() {
                 </div>
               </PanelSection>
 
-              <PanelSection label="캐릭터">
-                <p className="text-white/30 text-[11px] font-mono mb-1.5">메인 캐릭터</p>
-                <div
-                  onClick={() => !isProcessing && characterInputRef.current?.click()}
-                  className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-white/10 text-white/30 transition-colors ${
-                    !isProcessing ? 'hover:border-white/30 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
-                  }`}
-                >
-                  {characterPreview
-                    ? <img src={characterPreview} alt="메인캐릭터" className="w-5 h-5 object-cover rounded-sm" />
-                    : <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
-                  }
-                  <span>{characterPreview ? '변경' : '이미지 선택'}</span>
-                  {characterPreview && (
-                    <button
-                      onClick={e => { e.stopPropagation(); setCharacterPreview(null); setCharacterImageBase64(null); }}
-                      className="ml-auto text-white/20 hover:text-red-400 transition-colors"
-                    >✕</button>
-                  )}
-                </div>
-                <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
-
-                {/* 추가 캐릭터 */}
-                <p className="text-white/30 text-[11px] font-mono mt-3 mb-1.5">서브 캐릭터 <span className="text-white/20">({subCharacters.length}/5)</span></p>
-                <div className="space-y-1.5">
-                  {subCharacters.map((char, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <img src={char.preview} alt={char.name} className="w-5 h-5 object-cover rounded-sm shrink-0" />
-                      <input
-                        type="text"
-                        value={char.name}
-                        onChange={e => updateSubCharacterName(i, e.target.value)}
-                        className="flex-1 bg-transparent border border-white/10 px-2 py-1 text-[11px] font-mono text-white/60 focus:outline-none focus:border-white/30 min-w-0"
-                        placeholder="캐릭터 이름"
-                      />
+              {imageStyle === 'lottie' ? (
+                <PanelSection label="Lottie 파일">
+                  <p className="text-white/30 text-[11px] font-mono mb-2">씬에 사용할 Lottie JSON을 미리 업로드하세요.<br/>장면 생성 후 각 씬에 순서대로 배정됩니다.</p>
+                  <div className="space-y-1.5 mb-2">
+                    {lottieFiles.map((lf, i) => (
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 border border-[#17BEBB]/30 bg-[#17BEBB]/5 rounded">
+                        <span className="text-[14px]">🎞️</span>
+                        <span className="flex-1 text-[11px] font-mono text-[#17BEBB] truncate">{lf.name}</span>
+                        <button
+                          onClick={() => setLottieFiles(prev => prev.filter((_, j) => j !== i))}
+                          className="text-white/20 hover:text-red-400 transition-colors text-xs shrink-0"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div
+                    onClick={() => lottieInputRef.current?.click()}
+                    className="w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-[#17BEBB]/30 text-[#17BEBB]/50 hover:border-[#17BEBB]/60 hover:text-[#17BEBB] hover:bg-[#17BEBB]/5 cursor-pointer transition-colors"
+                  >
+                    <span className="w-5 h-5 border border-[#17BEBB]/30 flex items-center justify-center text-[11px]">+</span>
+                    <span>Lottie JSON 추가</span>
+                  </div>
+                  <input
+                    ref={lottieInputRef}
+                    type="file"
+                    accept=".json"
+                    multiple
+                    className="hidden"
+                    onChange={e => {
+                      const files = Array.from(e.target.files ?? []);
+                      files.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          try {
+                            const data = JSON.parse(reader.result as string);
+                            setLottieFiles(prev => [...prev, { name: file.name, data }]);
+                          } catch { /* ignore invalid */ }
+                        };
+                        reader.readAsText(file);
+                      });
+                      e.target.value = '';
+                    }}
+                  />
+                </PanelSection>
+              ) : (
+                <PanelSection label="캐릭터">
+                  <p className="text-white/30 text-[11px] font-mono mb-1.5">메인 캐릭터</p>
+                  <div
+                    onClick={() => !isProcessing && characterInputRef.current?.click()}
+                    className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-white/10 text-white/30 transition-colors ${
+                      !isProcessing ? 'hover:border-white/30 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                    }`}
+                  >
+                    {characterPreview
+                      ? <img src={characterPreview} alt="메인캐릭터" className="w-5 h-5 object-cover rounded-sm" />
+                      : <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
+                    }
+                    <span>{characterPreview ? '변경' : '이미지 선택'}</span>
+                    {characterPreview && (
                       <button
-                        onClick={() => removeSubCharacter(i)}
-                        className="text-white/20 hover:text-red-400 transition-colors text-xs shrink-0"
+                        onClick={e => { e.stopPropagation(); setCharacterPreview(null); setCharacterImageBase64(null); }}
+                        className="ml-auto text-white/20 hover:text-red-400 transition-colors"
                       >✕</button>
-                    </div>
-                  ))}
-                  {subCharacters.length < 5 && (
-                    <div
-                      onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
-                      className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-white/10 text-white/20 transition-colors ${
-                        !isProcessing ? 'hover:border-white/30 hover:text-white/40 cursor-pointer' : 'opacity-30 cursor-not-allowed'
-                      }`}
-                    >
-                      <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
-                      <span>서브 캐릭터 추가</span>
-                    </div>
-                  )}
-                </div>
-                <input ref={subCharacterInputRef} type="file" accept="image/*" className="hidden" onChange={handleSubCharacterUpload} />
-              </PanelSection>
+                    )}
+                  </div>
+                  <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
+
+                  {/* 추가 캐릭터 */}
+                  <p className="text-white/30 text-[11px] font-mono mt-3 mb-1.5">서브 캐릭터 <span className="text-white/20">({subCharacters.length}/5)</span></p>
+                  <div className="space-y-1.5">
+                    {subCharacters.map((char, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <img src={char.preview} alt={char.name} className="w-5 h-5 object-cover rounded-sm shrink-0" />
+                        <input
+                          type="text"
+                          value={char.name}
+                          onChange={e => updateSubCharacterName(i, e.target.value)}
+                          className="flex-1 bg-transparent border border-white/10 px-2 py-1 text-[11px] font-mono text-white/60 focus:outline-none focus:border-white/30 min-w-0"
+                          placeholder="캐릭터 이름"
+                        />
+                        <button
+                          onClick={() => removeSubCharacter(i)}
+                          className="text-white/20 hover:text-red-400 transition-colors text-xs shrink-0"
+                        >✕</button>
+                      </div>
+                    ))}
+                    {subCharacters.length < 5 && (
+                      <div
+                        onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
+                        className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-white/10 text-white/20 transition-colors ${
+                          !isProcessing ? 'hover:border-white/30 hover:text-white/40 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                        }`}
+                      >
+                        <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
+                        <span>서브 캐릭터 추가</span>
+                      </div>
+                    )}
+                  </div>
+                  <input ref={subCharacterInputRef} type="file" accept="image/*" className="hidden" onChange={handleSubCharacterUpload} />
+                </PanelSection>
+              )}
 
               <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">

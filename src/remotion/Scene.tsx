@@ -11,6 +11,7 @@ import {
 } from 'remotion';
 import { noise2D } from '@remotion/noise';
 import { Gif } from '@remotion/gif';
+import { Lottie } from '@remotion/lottie';
 import { Scene as SceneType } from './types';
 import { SubtitleOverlay } from './SubtitleOverlay';
 
@@ -78,6 +79,14 @@ export const SceneComponent: React.FC<SceneProps> = ({ scene, globalOffset, font
               objectFit: 'cover',
             }}
           />
+        ) : scene.lottieData ? (
+          <AbsoluteFill style={{ backgroundColor: '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Lottie
+              animationData={scene.lottieData as any}
+              style={{ width: '100%', height: '100%' }}
+              playbackRate={1}
+            />
+          </AbsoluteFill>
         ) : scene.imageUrl ? (
           <Img
             src={scene.imageUrl}
