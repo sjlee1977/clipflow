@@ -2,6 +2,34 @@ import { ElevenLabsClient } from 'elevenlabs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 
+export const ELEVENLABS_VOICES: { id: string; name: string; desc: string; gender: 'male' | 'female' }[] = [
+  // ── 여성 ──────────────────────────────────────────────
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah',   desc: '부드럽고 따뜻한',    gender: 'female' },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura',   desc: '밝고 활기찬',        gender: 'female' },
+  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', desc: '세련되고 차분한',  gender: 'female' },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice',   desc: '신뢰감 있는',        gender: 'female' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', desc: '표현력 있는',        gender: 'female' },
+  { id: 'jBpfuIE2acCo8z3wKNLl', name: 'Matilda', desc: '따뜻하고 친근한',   gender: 'female' },
+  { id: 'oWAxZDx7w5VEj9dCyTzz', name: 'Grace',   desc: '우아하고 감성적인',  gender: 'female' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily',    desc: '명랑하고 산뜻한',   gender: 'female' },
+  { id: 'ThT5KcBeq8keWAlS799P', name: 'Rachel',  desc: '안정적이고 명확한',  gender: 'female' },
+  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill',    desc: '성숙하고 진지한',    gender: 'female' },
+  // ── 남성 ──────────────────────────────────────────────
+  { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger',   desc: '자신감 있는',        gender: 'male' },
+  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', desc: '편안하고 자연스러운', gender: 'male' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George',  desc: '중후하고 권위있는',  gender: 'male' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum',  desc: '강렬하고 드라마틱한', gender: 'male' },
+  { id: 'ODq5zmih8GrVes37Dizd', name: 'Patrick', desc: '명확하고 신뢰감 있는', gender: 'male' },
+  { id: 'SOYHLrjzK2X1ezoPC6cr', name: 'Harry',   desc: '젊고 활기찬',        gender: 'male' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam',    desc: '청명하고 또렷한',    gender: 'male' },
+  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will',    desc: '친근하고 캐주얼한',  gender: 'male' },
+  { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris',   desc: '편안한 나레이션',    gender: 'male' },
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian',   desc: '깊고 안정적인',      gender: 'male' },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel',  desc: '뉴스 앵커 스타일',   gender: 'male' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',    desc: '클리어하고 전문적인', gender: 'male' },
+  { id: 't0jbNlBVZ17f02VDIeMI', name: 'Jessie',  desc: '역동적인 나레이션',  gender: 'male' },
+];
+
 const s3 = new S3Client({
   region: process.env.AWS_REGION ?? 'ap-northeast-2',
   credentials: {
