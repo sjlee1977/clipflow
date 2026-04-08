@@ -68,6 +68,7 @@ const IMAGE_STYLE_LABELS: Record<string, string> = {
 };
 
 const ALL_VOICES: { id: string; name: string }[] = [
+  // Google TTS
   { id: 'ko-KR-Standard-A', name: 'Standard A' },
   { id: 'ko-KR-Standard-B', name: 'Standard B' },
   { id: 'ko-KR-Standard-C', name: 'Standard C' },
@@ -83,6 +84,7 @@ const ALL_VOICES: { id: string; name: string }[] = [
   { id: 'female2', name: '여성 2' },
   { id: 'male1', name: '남성 1' },
   { id: 'male2', name: '남성 2' },
+  // ElevenLabs
   { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
   { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella' },
@@ -108,6 +110,27 @@ const ALL_VOICES: { id: string; name: string }[] = [
   { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris' },
   { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian' },
   { id: 't0jbNlBVZ17f02VDIeMI', name: 'Jessie' },
+  // MiniMax TTS
+  { id: 'Korean_SoothingLady',       name: 'Soothing' },
+  { id: 'Korean_SweetGirl',          name: 'Sweet' },
+  { id: 'Korean_ReliableSister',     name: 'Reliable' },
+  { id: 'Korean_MatureLady',         name: 'Mature' },
+  { id: 'Korean_ThoughtfulWoman',    name: 'Thoughtful' },
+  { id: 'Korean_SassyGirl',          name: 'Sassy' },
+  { id: 'Korean_QuirkyGirl',         name: 'Quirky' },
+  { id: 'Korean_MysteriousGirl',     name: 'Mysterious' },
+  { id: 'Korean_ShyGirl',            name: 'Shy' },
+  { id: 'Korean_AirheadedGirl',      name: 'Airheaded' },
+  { id: 'Korean_ReliableYouth',      name: 'Youth' },
+  { id: 'Korean_OptimisticYouth',    name: 'Optimistic' },
+  { id: 'Korean_IntellectualMan',    name: 'Intellectual' },
+  { id: 'Korean_IntellectualSenior', name: 'Senior' },
+  { id: 'Korean_LonelyWarrior',      name: 'Warrior' },
+  { id: 'Korean_PlayboyCharmer',     name: 'Charmer' },
+  { id: 'Korean_PossessiveMan',      name: 'Possessive' },
+  { id: 'Korean_StrictBoss',         name: 'Boss' },
+  { id: 'Korean_WiseTeacher',        name: 'Teacher' },
+  { id: 'Korean_WiseElf',            name: 'Elf' },
 ];
 
 const PAGE_SIZE = 6;
@@ -284,7 +307,7 @@ export default function HistoryPage() {
                 <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                   {v.format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}
                 </span>
-                {v.image_style && (
+                {v.image_style && v.image_style !== 'none' && (
                   <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
                     {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
                   </span>

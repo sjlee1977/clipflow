@@ -35,13 +35,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
       if (user) {
         setUserEmail(user.email ?? null);
         setUserName(user.user_metadata?.full_name ?? user.user_metadata?.name ?? null);
+        const { data } = await supabase
+          .from('user_credits')
+          .select('credits_remaining')
+          .eq('user_id', user.id)
+          .single();
+        if (data) setCredits(data.credits_remaining);
       }
     });
   }, []);
@@ -53,40 +60,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen bg-black text-white font-mono overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden">
       {/* 사이드바 */}
-      <aside className="w-[330px] shrink-0 flex flex-col border-r border-white/10 bg-black">
+      <aside className="w-[330px] shrink-0 flex flex-col border-r border-white/8 bg-[#0d0d0d]">
         {/* 로고 */}
-        <div className="flex items-center gap-2 px-5 py-5 border-b border-white/10">
-          <div className="w-3 h-3 bg-yellow-400" />
-          <Link href="/" className="text-white font-black text-base tracking-widest uppercase hover:text-yellow-400 transition-colors">
+        <div className="flex items-center gap-2 px-[26px] h-[52px] border-b border-white/8">
+          <div className="w-3 h-3 bg-[#F97316] shrink-0" />
+          <Link href="/" className="text-white font-medium text-[15px] tracking-normal uppercase hover:opacity-80 transition-opacity" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             ClipFlow
           </Link>
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {NAV_ITEMS.map((group) => (
             <div key={group.group}>
-              <p className="text-[#17BEBB]/60 text-[13px] tracking-widest px-2 mb-2">{group.group}</p>
+              <p className="text-white/25 text-[11px] font-semibold tracking-widest uppercase px-2 mb-1.5">{group.group}</p>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const active = pathname === item.href;
                   return (
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
-                        <div className="flex items-center gap-2.5 px-3 py-2.5 text-white/50 cursor-not-allowed select-none">
-                          <span className="text-[13px] w-4">{item.icon}</span>
-                          <span className="text-[13px] tracking-wide">{item.label}</span>
-                          <span className="ml-auto text-[12px] border border-white/20 px-1.5 py-0.5 text-white/50">SOON</span>
+                        <div className="flex items-center gap-2.5 px-3 py-2 text-white/30 cursor-not-allowed select-none rounded-lg">
+                          <span className="text-sm w-4">{item.icon}</span>
+                          <span className="text-sm">{item.label}</span>
+                          <span className="ml-auto text-[11px] border border-white/15 px-1.5 py-0.5 rounded text-white/30">SOON</span>
                         </div>
                       ) : (
-                        <Link href={item.href}
-                          className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors text-[13px] tracking-wide ${active
-                            ? 'bg-yellow-400 text-black font-bold'
-                            : 'text-white/75 hover:text-white hover:bg-white/5'
-                            }`}>
-                          <span className="w-4">{item.icon}</span>
+                        <Link
+                          href={item.href}
+                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors text-sm ${
+                            active
+                              ? 'border border-[#F97316]/60 bg-[#F97316]/10 text-white font-medium'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 text-xs ${
+                            active ? 'bg-[#F97316]/80 text-white' : ''
+                          }`}>{item.icon}</span>
                           <span>{item.label}</span>
                         </Link>
                       )}
@@ -94,9 +106,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   );
                 })}
 
-                {/* LIBRARY 그룹에 사이드바 대서 목록 추가 */}
                 {group.group === 'LIBRARY' && (
-                  <div className="mt-4 border-t border-white/5 pt-2">
+                  <div className="mt-3 border-t border-white/5 pt-2">
                     <SidebarScripts />
                   </div>
                 )}
@@ -106,21 +117,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* 하단 */}
-        <div className="px-5 py-4 border-t border-white/10 space-y-2">
+        <div className="px-4 py-4 border-t border-white/8 space-y-2">
+          {/* 크레딧 */}
+          {credits !== null && (
+            <div className="flex items-center gap-2 px-1 mb-2">
+              <span className="text-[#F97316] text-xs">⊙</span>
+              <span className="text-white/50 text-xs">크레딧</span>
+              <span className="ml-auto text-[#F97316] text-sm font-semibold">{credits.toLocaleString()}</span>
+            </div>
+          )}
           {userName && (
             <div className="flex items-center gap-2">
-              <p className="text-white/80 text-[13.5px] font-mono truncate">{userName}</p>
-              <span className="text-[10.5px] font-mono px-1.5 py-0.5 border border-yellow-400/40 text-yellow-400/70 shrink-0">ADMIN</span>
+              <p className="text-white/70 text-sm truncate">{userName}</p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-500/30 text-orange-500/60 shrink-0">ADMIN</span>
             </div>
           )}
           {userEmail && (
-            <p className="text-[#17BEBB]/60 text-[12.5px] font-mono truncate">{userEmail}</p>
+            <p className="text-white/30 text-xs truncate">{userEmail}</p>
           )}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-white/30 text-[12.5px] tracking-widest">v1.0.0</span>
+            <span className="text-white/20 text-xs">v1.0.0</span>
             <button
               onClick={handleLogout}
-              className="text-[#E4572E]/60 hover:text-[#E4572E] text-[12.5px] font-mono transition-colors"
+              className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
             >
               로그아웃
             </button>
@@ -131,10 +150,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* 콘텐츠 영역 */}
       <main className="flex-1 overflow-y-auto bg-[#0a0a0a]">
         {/* 상단 바 */}
-        <div className="sticky top-0 z-10 flex items-center justify-end px-6 py-3 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 flex items-center justify-end px-6 h-[52px] border-b border-white/8 bg-[#0a0a0a]/90 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 bg-[#76B041] rounded-full animate-pulse" />
-            <span className="text-[#76B041] text-xs tracking-widest">LIVE</span>
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-green-400/70 text-xs tracking-widest">LIVE</span>
           </div>
         </div>
 

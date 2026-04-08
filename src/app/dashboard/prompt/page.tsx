@@ -59,16 +59,16 @@ function FieldLabel({
     <div className="mb-2">
       <div className="flex items-center gap-1.5 flex-wrap">
         {required && <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block shrink-0" />}
-        <span className="text-white/85 text-[13px] font-bold font-mono">{children}</span>
-        {optional && <span className="text-white/50 text-[12px] font-mono">(선택)</span>}
+        <span className="text-white/85 text-[13px] font-semibold">{children}</span>
+        {optional && <span className="text-white/50 text-[12px]">(선택)</span>}
       </div>
-      {sub && <p className="text-white/60 text-[12px] font-mono mt-1 leading-relaxed">{sub}</p>}
+      {sub && <p className="text-white/60 text-[12px] mt-1 leading-relaxed">{sub}</p>}
     </div>
   );
 }
 
-const iCls = 'w-full bg-white/[0.04] text-white/90 border border-white/20 focus:border-white/45 focus:outline-none text-[13px] font-mono placeholder:text-white/35 px-3 py-2.5 resize-none transition-colors';
-const sCls = `w-full bg-white/[0.04] text-white/90 border border-white/20 focus:border-white/45 focus:outline-none text-[13px] font-mono px-3 py-2.5 transition-colors cursor-pointer [&>option]:bg-[#111] [&>option]:text-white/90`;
+const iCls = 'w-full bg-[#1a1a1a] text-white/90 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] rounded-lg placeholder:text-white/30 px-3 py-2.5 resize-none transition-colors';
+const sCls = `w-full bg-[#1a1a1a] text-white/90 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] rounded-lg px-3 py-2.5 transition-colors cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white/90`;
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
@@ -453,16 +453,16 @@ export default function PromptPage() {
     <div className="flex gap-0 -m-6 min-h-full">
 
       {/* ── 왼쪽 폼 영역 ── */}
-      <div className="flex-1 min-w-0 p-6 border-r border-white/5 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 border-r border-white/8 overflow-y-auto">
 
         {/* 헤더 탭 */}
-        <div className="relative mt-10 mb-6">
-          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-[#17BEBB]/30 bg-[#0a0a0a]">
-            <span className="w-1 h-1 bg-[#17BEBB] rounded-full" />
-            <span className="text-[#17BEBB] text-[13px] font-mono tracking-widest uppercase">대본 요청 스크립트 생성기</span>
+        <div className="relative mt-4 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+            <span className="text-orange-500 text-sm font-semibold">대본 요청 스크립트 생성기</span>
           </div>
 
-          <div className="border border-white/10 bg-white/[0.015]">
+          <div className="border border-white/8 rounded-xl bg-[#161616]">
 
             {/* 카테고리 탭 */}
             <div className="flex border-b border-white/10">
@@ -470,13 +470,12 @@ export default function PromptPage() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategory(cat.id); setPageStatus('idle'); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-[13.5px] font-mono font-bold tracking-wide border-b-2 transition-colors ${
+                  className={`flex-1 flex items-center justify-center px-2 py-3 text-[13px] font-medium border-b-2 transition-colors ${
                     activeCategory === cat.id
-                      ? cat.activeCls
-                      : 'border-transparent text-white/35 hover:text-white/60'
+                      ? `border-current ${cat.textCls}`
+                      : 'border-transparent text-white/35 hover:text-white/55'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${activeCategory === cat.id ? cat.dotCls : 'bg-white/20'}`} />
                   {cat.label}
                 </button>
               ))}
@@ -488,18 +487,18 @@ export default function PromptPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${catInfo.dotCls}`} />
-                  <span className={`text-[13px] font-bold font-mono ${catInfo.textCls}`}>{catInfo.label} 대본 요청 스크립트</span>
+                  <span className={`text-[13px] font-semibold ${catInfo.textCls}`}>{catInfo.label} 대본 요청 스크립트</span>
                 </div>
               </div>
 
               {/* ── YouTube 자동 분석 ── */}
-              <div className="border border-[#17BEBB]/20 bg-[#17BEBB]/[0.04] p-4">
+              <div className="border border-white/8 bg-white/[0.03] rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-red-500 shrink-0">
                     <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
                   </svg>
-                  <span className="text-[#17BEBB] text-[12.5px] font-bold font-mono tracking-widest">YouTube URL로 {catInfo.label} 전용 필드 자동 분석</span>
-                  <span className="text-[11px] font-mono px-1.5 py-0.5 border border-[#17BEBB]/30 text-[#17BEBB]/60">AI</span>
+                  <span className="text-white/90 text-[13px] font-medium">YouTube URL로 {catInfo.label} 전용 필드 자동 분석</span>
+                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-white/20 text-white/50">AI</span>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -508,43 +507,43 @@ export default function PromptPage() {
                     onKeyDown={e => e.key === 'Enter' && handleYoutubeAnalyze()}
                     placeholder="https://www.youtube.com/watch?v=..."
                     disabled={ytStatus === 'loading'}
-                    className="flex-1 bg-black/40 text-white/80 border border-white/15 focus:border-[#17BEBB]/50 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2 transition-colors"
+                    className="flex-1 bg-black/40 text-white/80 border border-white/15 focus:border-[white]/50 focus:outline-none text-[13px] placeholder:text-white/20 px-3 py-2 transition-colors"
                   />
                   <button
                     onClick={handleYoutubeAnalyze}
                     disabled={!ytUrl.trim() || ytStatus === 'loading'}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#17BEBB] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] font-mono whitespace-nowrap"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[white] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] whitespace-nowrap"
                   >
                     {ytStatus === 'loading' ? <><span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />분석 중...</> : 'AI 분석 →'}
                   </button>
                 </div>
-                {ytStatus === 'error' && <p className="mt-2 text-red-400 text-[12px] font-mono">{ytError}</p>}
+                {ytStatus === 'error' && <p className="mt-2 text-red-400 text-[12px]">{ytError}</p>}
                 {ytStatus === 'done' && (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      <span className="text-green-400 text-[12px] font-mono">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
+                      <span className="text-green-400 text-[12px]">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
                     </div>
-                    {ytTitle && <p className="text-white/35 text-[11.5px] font-mono truncate">원본: {ytTitle}</p>}
-                    {ytTranscriptSource === 'description' && <p className="text-yellow-400/60 text-[11.5px] font-mono">자막 없음 — 영상 설명란으로 분석</p>}
+                    {ytTitle && <p className="text-white/35 text-[11.5px] truncate">원본: {ytTitle}</p>}
+                    {ytTranscriptSource === 'description' && <p className="text-orange-500/60 text-[11.5px]">자막 없음 — 영상 설명란으로 분석</p>}
                     {ytTranscript && (
                       <div className="border border-white/10 bg-black/30">
                         <button
                           onClick={() => setShowTranscript(v => !v)}
                           className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors"
                         >
-                          <span className="text-[11.5px] font-mono" style={{ color: '#8B9A3A' }}>{ytTranscriptSource === 'description' ? '영상 설명' : '원본 스크립트'} ({ytTranscript.length.toLocaleString()}자)</span>
+                          <span className="text-[11.5px]" style={{ color: '#8B9A3A' }}>{ytTranscriptSource === 'description' ? '영상 설명' : '원본 스크립트'} ({ytTranscript.length.toLocaleString()}자)</span>
                           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`text-white/30 transition-transform ${showTranscript ? 'rotate-180' : ''}`}>
                             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         </button>
                         {showTranscript && (
                           <div className="border-t border-white/5">
-                            <textarea value={ytTranscript} readOnly rows={6} className="w-full bg-transparent text-white/45 text-[12px] font-mono px-3 py-2 resize-none focus:outline-none leading-relaxed" />
+                            <textarea value={ytTranscript} readOnly rows={6} className="w-full bg-transparent text-white/45 text-[12px] px-3 py-2 resize-none focus:outline-none leading-relaxed" />
                             <div className="flex justify-end px-3 pb-2">
                               <button
                                 onClick={() => { navigator.clipboard.writeText(ytTranscript); setTranscriptCopied(true); setTimeout(() => setTranscriptCopied(false), 1500); }}
-                                className={`px-3 py-1 text-[11px] font-mono border transition-colors ${transcriptCopied ? 'border-green-400 text-green-400' : 'border-white/20 text-white/40 hover:border-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 text-[11px] border transition-colors ${transcriptCopied ? 'border-green-400 text-green-400' : 'border-white/20 text-white/40 hover:border-white/40 hover:text-white/70'}`}
                               >
                                 {transcriptCopied ? 'COPIED!' : '스크립트 복사'}
                               </button>
@@ -560,11 +559,11 @@ export default function PromptPage() {
               {/* ── 대본 직접 분석 ── */}
               <div className="border border-white/10 bg-white/[0.02] p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#17BEBB] shrink-0">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[white] shrink-0">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
-                  <span className="text-[#17BEBB] text-[12.5px] font-bold font-mono tracking-widest">대본 붙여넣기로 {catInfo.label} 전용 필드 자동 분석</span>
-                  <span className="text-[11px] font-mono px-1.5 py-0.5 border border-[#17BEBB]/30 text-[#17BEBB]/60">AI</span>
+                  <span className="text-white/90 text-[13px] font-medium">대본 붙여넣기로 {catInfo.label} 전용 필드 자동 분석</span>
+                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-white/20 text-white/50">AI</span>
                 </div>
                 <textarea
                   value={scriptText}
@@ -572,22 +571,22 @@ export default function PromptPage() {
                   rows={5}
                   placeholder="기존 대본을 붙여넣으면 아래 필드를 자동으로 채워드립니다..."
                   disabled={scriptStatus === 'loading'}
-                  className="w-full bg-black/40 text-white/80 border border-white/15 focus:border-[#17BEBB]/50 focus:outline-none text-[13px] font-mono placeholder:text-white/20 px-3 py-2 resize-none transition-colors mb-2"
+                  className="w-full bg-black/40 text-white/80 border border-white/15 focus:border-[white]/50 focus:outline-none text-[13px] placeholder:text-white/20 px-3 py-2 resize-none transition-colors mb-2"
                 />
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1">
-                    {scriptStatus === 'error' && <p className="text-red-400 text-[12px] font-mono">{scriptError}</p>}
+                    {scriptStatus === 'error' && <p className="text-red-400 text-[12px]">{scriptError}</p>}
                     {scriptStatus === 'done' && (
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                        <span className="text-green-400 text-[12px] font-mono">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
+                        <span className="text-green-400 text-[12px]">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
                       </div>
                     )}
                   </div>
                   <button
                     onClick={handleScriptAnalyze}
                     disabled={!scriptText.trim() || scriptStatus === 'loading'}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#17BEBB] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] font-mono whitespace-nowrap"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[white] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] whitespace-nowrap"
                   >
                     {scriptStatus === 'loading' ? <><span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />분석 중...</> : 'AI 분석 →'}
                   </button>
@@ -600,7 +599,7 @@ export default function PromptPage() {
                   <p className="text-white/80 text-[14px] font-light tracking-[0.05em]">공통 필드</p>
                   <button
                     onClick={resetAll}
-                    className="text-[13px] font-mono px-2.5 py-1 rounded border border-red-500/30 text-red-400/70 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/5 transition-colors"
+                    className="text-[13px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/70 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/5 transition-colors"
                   >
                     전체 초기화
                   </button>
@@ -632,18 +631,6 @@ export default function PromptPage() {
                   <input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />
                 </div>
 
-                {/* 영상 길이 */}
-                <div>
-                  <FieldLabel optional sub="영상 길이에 따라 대본 글자 수가 자동으로 조정됩니다">영상 목표 길이</FieldLabel>
-                  <select value={get('videoLength')} onChange={e => set('videoLength', e.target.value)} className={sCls}>
-                    <option value="">선택 안 함</option>
-                    <option value="5분 내외 (3,000자 이상)">5분 내외</option>
-                    <option value="10분 내외 (5,000자 이상)">10분 내외</option>
-                    <option value="15분 내외 (7,000자 이상)">15분 내외</option>
-                    <option value="20분 이상 (9,000자 이상)">20분 이상</option>
-                  </select>
-                </div>
-
                 {/* 도입 훅 방향 */}
                 <div>
                   <FieldLabel optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택">도입 훅 방향</FieldLabel>
@@ -670,7 +657,7 @@ export default function PromptPage() {
 
               {/* ── 카테고리 전용 필드 ── */}
               <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
-                <p className={`text-[11px] font-mono tracking-widest uppercase ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
+                <p className={`text-[11px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
 
                 {/* ═══ 일반 ═══ */}
                 {activeCategory === 'general' && (
@@ -691,7 +678,7 @@ export default function PromptPage() {
                           { key: 'genPoint3', label: '포인트 3', placeholder: '세 번째 강조 내용\n예: 한 달 후 실제 변화' },
                         ].map(({ key, label, placeholder }) => (
                           <div key={key}>
-                            <div className="mb-2"><span className="text-[11px] font-bold font-mono px-2 py-0.5 bg-sky-400/15 text-sky-400 border border-sky-400/30">{label}</span></div>
+                            <div className="mb-2"><span className="text-[11px] font-semibold px-2 py-0.5 bg-sky-400/15 text-sky-400 border border-sky-400/30">{label}</span></div>
                             <textarea value={get(key)} onChange={e => set(key, e.target.value)} rows={4} placeholder={placeholder} className={iCls + ' text-[12px]'} />
                           </div>
                         ))}
@@ -729,11 +716,11 @@ export default function PromptPage() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { key: 'econBullish', label: '낙관', labelCls: 'text-green-400 border-green-400/30 bg-green-400/10', placeholder: '조건 + 목표치\n예: 외국인 매수 지속 시 2,700 돌파 시도' },
-                          { key: 'econNeutral', label: '중립', labelCls: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10', placeholder: '박스권 + 대응법\n예: 2,500~2,650 레인지 횡보' },
+                          { key: 'econNeutral', label: '중립', labelCls: 'text-orange-500 border-orange-500/30 bg-orange-500/10', placeholder: '박스권 + 대응법\n예: 2,500~2,650 레인지 횡보' },
                           { key: 'econBearish', label: '비관', labelCls: 'text-red-400 border-red-400/30 bg-red-400/10', placeholder: '최악 조건 + 바닥선\n예: 환율 1,480원 돌파 시 2,400 재테스트' },
                         ].map(({ key, label, labelCls, placeholder }) => (
                           <div key={key}>
-                            <div className="mb-2"><span className={`text-[11px] font-bold font-mono px-2 py-0.5 border ${labelCls}`}>{label}</span></div>
+                            <div className="mb-2"><span className={`text-[11px] font-semibold px-2 py-0.5 border ${labelCls}`}>{label}</span></div>
                             <textarea value={get(key)} onChange={e => set(key, e.target.value)} rows={4} placeholder={placeholder} className={iCls + ' text-[12px]'} />
                           </div>
                         ))}
@@ -881,9 +868,9 @@ export default function PromptPage() {
                   onClick={handleGenerate}
                   disabled={!canGenerate}
                   title={!canGenerate ? '필수 항목을 모두 입력해주세요 (빨간 점 표시 항목)' : ''}
-                  className={`inline-flex items-center gap-2 px-8 py-3 font-bold text-[13px] font-mono tracking-widest uppercase transition-colors ${
+                  className={`inline-flex items-center gap-2 px-8 py-3 font-bold text-[13px] tracking-widest uppercase transition-colors ${
                     canGenerate
-                      ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
+                      ? 'bg-orange-500 hover:bg-orange-400 text-black'
                       : 'bg-white/10 text-white/20 cursor-not-allowed'
                   }`}
                 >
@@ -900,11 +887,11 @@ export default function PromptPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-1.5 h-1.5 rounded-full ${catInfo.dotCls}`} />
-                <span className={`text-[13px] font-bold font-mono ${catInfo.textCls}`}>생성된 요청서</span>
+                <span className={`text-[13px] font-semibold ${catInfo.textCls}`}>생성된 요청서</span>
               </div>
               <button
                 onClick={() => setPageStatus('idle')}
-                className="text-white/30 hover:text-white/60 text-[12px] font-mono transition-colors"
+                className="text-white/30 hover:text-white/60 text-[12px] transition-colors"
               >
                 ← 다시 편집
               </button>
@@ -914,18 +901,18 @@ export default function PromptPage() {
               <textarea
                 value={result}
                 onChange={e => setResult(e.target.value)}
-                className="w-full h-[560px] bg-white/[0.03] text-white/80 text-[13px] font-mono leading-relaxed border border-white/10 focus:border-white/25 focus:outline-none resize-none p-4"
+                className="w-full h-[560px] bg-white/[0.03] text-white/80 text-[13px] leading-relaxed border border-white/10 focus:border-white/25 focus:outline-none resize-none p-4"
               />
               <div className="absolute top-3 right-3 flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className={`px-3 py-1.5 text-[12px] font-mono border transition-colors ${copied ? 'border-green-400 text-green-400 bg-green-400/5' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60'}`}
+                  className={`px-3 py-1.5 text-[12px] border transition-colors ${copied ? 'border-green-400 text-green-400 bg-green-400/5' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60'}`}
                 >
                   {copied ? '복사됨!' : '복사'}
                 </button>
                 <button
                   onClick={handleDownload}
-                  className="px-3 py-1.5 text-[12px] font-mono border border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60 transition-colors"
+                  className="px-3 py-1.5 text-[12px] border border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60 transition-colors"
                 >
                   저장 (.txt)
                 </button>
@@ -935,13 +922,13 @@ export default function PromptPage() {
             <div className="flex items-center gap-3 mt-4">
               <button
                 onClick={handleUseAsScript}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-yellow-400 hover:bg-yellow-300 text-black font-black transition-colors text-[13px] tracking-widest uppercase font-mono"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-[#F97316] hover:bg-[#EA6C0A] text-white font-semibold transition-colors text-sm rounded-lg shadow-[0_0_16px_rgba(249,115,22,0.3)]"
               >
                 이 요청서로 대본 만들기 →
               </button>
               <button
                 onClick={() => setPageStatus('idle')}
-                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-[13px] font-mono transition-colors"
+                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-[13px] transition-colors"
               >
                 새로 작성
               </button>
@@ -951,35 +938,13 @@ export default function PromptPage() {
       </div>
 
       {/* ── 우측 가이드 패널 ── */}
-      <aside className="w-96 shrink-0 flex flex-col border-l border-white/5 overflow-y-auto">
+      <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
         <div className="flex-1 px-4 py-5 space-y-5">
-
-          {/* 입력 현황 */}
-          <div>
-            <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-3">입력 현황</p>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div className={`h-full transition-all duration-500 ${catInfo.bgCls.replace('[0.07]', '').trim()} ${catInfo.borderCls.replace('border-', 'bg-')}`}
-                  style={{ width: `${(fillStatus.filled / fillStatus.total) * 100}%` }} />
-              </div>
-              <span className="text-[12px] font-mono text-white/40 shrink-0">{fillStatus.filled}/{fillStatus.total}</span>
-            </div>
-            <div className="space-y-1">
-              {fillStatus.items.map(({ label, value, required }) => (
-                <div key={label} className="flex items-center justify-between text-[11.5px] font-mono">
-                  <span className="text-white/30">{label}{required && ' *'}</span>
-                  <span className={value.trim() ? 'text-green-400/70' : required ? 'text-red-400/40' : 'text-white/15'}>
-                    {value.trim() ? '✓' : '—'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* 카테고리별 필수 항목 안내 */}
           <div className="border-t border-white/5 pt-4">
             <p className={`text-[13px] tracking-widest uppercase mb-3 ${catInfo.textCls} opacity-70`}>{catInfo.label} 필수 항목</p>
-            <div className="space-y-1.5 text-[12px] font-mono text-white/45 leading-relaxed">
+            <div className="space-y-1.5 text-[12px] text-white/45 leading-relaxed">
               <div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>영상 주제 제목</span></div>
               <div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>핵심 앵글 / 대중의 착각</span></div>
               {activeCategory === 'general' && <div className="flex gap-1.5"><span className="text-sky-400/50 shrink-0">○</span><span className="text-white/30">추가 필수 항목 없음</span></div>}
@@ -993,7 +958,7 @@ export default function PromptPage() {
 
           {/* 카테고리별 팁 */}
           <div className="border-t border-white/5 pt-4">
-            <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-3">작성 팁</p>
+            <p className="text-[white]/60 text-[13px] tracking-widest uppercase mb-3">작성 팁</p>
             <div className="space-y-2.5">
               {(activeCategory === 'general' ? [
                 { tag: '주제', tip: '"요리"보다 "라면에 이것 하나 넣으면 식당 맛 나는 이유"처럼 구체적 제목이 클릭을 만듭니다' },
@@ -1021,8 +986,8 @@ export default function PromptPage() {
                 { tag: '지침', tip: '오늘 당장 실천 가능한 행동 1가지가 영상의 가치를 결정합니다' },
               ]).map(({ tag, tip }) => (
                 <div key={tag} className="border border-white/5 bg-white/[0.02] px-3 py-2.5">
-                  <span className={`text-[11px] font-bold font-mono tracking-widest ${catInfo.textCls} opacity-80`}>{tag}</span>
-                  <p className="text-[12px] font-mono text-white/40 mt-1 leading-relaxed">{tip}</p>
+                  <span className={`text-[11px] font-semibold tracking-widest ${catInfo.textCls} opacity-80`}>{tag}</span>
+                  <p className="text-[12px] text-white/40 mt-1 leading-relaxed">{tip}</p>
                 </div>
               ))}
             </div>
@@ -1030,8 +995,8 @@ export default function PromptPage() {
 
           {/* 사용 방법 */}
           <div className="border-t border-white/5 pt-4">
-            <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-3">사용 방법</p>
-            <div className="space-y-2 text-[12px] font-mono text-white/45 leading-relaxed">
+            <p className="text-[white]/60 text-[13px] tracking-widest uppercase mb-3">사용 방법</p>
+            <div className="space-y-2 text-[12px] text-white/45 leading-relaxed">
               {[
                 ['01', '카테고리 탭 선택'],
                 ['02', '필수 항목(●) 입력'],
@@ -1045,7 +1010,7 @@ export default function PromptPage() {
               ))}
             </div>
             <div className="mt-3 border border-white/8 bg-white/[0.02] px-3 py-2">
-              <p className="text-white/35 text-[11.5px] font-mono leading-relaxed">
+              <p className="text-white/35 text-[11.5px] leading-relaxed">
                 입력값은 카테고리별로 자동 저장되어 페이지를 닫아도 유지됩니다
               </p>
             </div>

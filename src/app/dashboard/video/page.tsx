@@ -170,8 +170,8 @@ function splitTextToSubtitles(text: string, maxChars = 30): { text: string; star
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-[#17BEBB]/60 text-[13px] tracking-widest uppercase mb-2">{label}</p>
+    <div className="border-b border-white/5 pb-5 mb-5">
+      <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-3">{label}</p>
       {children}
     </div>
   );
@@ -191,9 +191,9 @@ function PanelAccordion({ label, value, children, closeOnSelect = false }: {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between py-3 group"
       >
-        <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase">{label}</span>
+        <span className="text-white/40 text-xs font-semibold uppercase tracking-wide">{label}</span>
         <span className="flex items-center gap-2">
-          <span className="text-white/70 text-[13px] font-mono truncate max-w-[180px]">{value}</span>
+          <span className="text-white/60 text-sm truncate max-w-[160px]">{value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
             className={`text-white/20 group-hover:text-white/40 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -216,11 +216,11 @@ function PriceBadge({ price }: { price?: string }) {
   const val = parseFloat(price.replace(/[^0-9.]/g, ''));
   let cls = 'text-white/25 bg-white/5';
   if (isFree)      cls = 'text-green-400/80 bg-green-400/10';
-  else if (val < 1) cls = 'text-yellow-400/70 bg-yellow-400/10';
+  else if (val < 1) cls = 'text-orange-500/70 bg-orange-500/10';
   else if (val < 5) cls = 'text-orange-400/70 bg-orange-400/10';
   else              cls = 'text-red-400/60 bg-red-400/10';
   return (
-    <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-sm whitespace-nowrap ${cls}`}>
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>
       {isFree ? 'FREE' : price}
     </span>
   );
@@ -236,13 +236,13 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
+      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${
         active
-          ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
-          : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
+          ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+          : 'border-transparent text-white/55 hover:text-white hover:bg-white/5'
       }`}
     >
-      <span>{children}</span>
+      <span className="font-medium">{children}</span>
       <PriceBadge price={sub} />
     </button>
   );
@@ -847,22 +847,22 @@ export default function DashboardPage() {
         {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
           <div className="flex flex-col h-full">
             {/* 입력 카드 */}
-          <div className="relative mt-10 flex flex-col">
-              {/* 탭 레이블 */}
-              <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-orange-400/30 bg-[#0a0a0a]">
-                <span className="w-1 h-1 bg-orange-400 rounded-full" />
-                <span className="text-orange-400 text-[13px] font-mono tracking-widest uppercase">영상 만들기</span>
+          <div className="relative mt-6 flex flex-col">
+              {/* 카드 헤더 */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+                <span className="text-orange-500 text-sm font-semibold">영상 만들기</span>
               </div>
 
-              <div className={`flex flex-col border transition-colors duration-200 ${
-                isProcessing ? 'border-white/5' : 'border-white/10 hover:border-orange-400/60 focus-within:border-orange-400/60'
-              } bg-white/[0.02]`}>
+              <div className={`flex flex-col border rounded-xl transition-colors duration-200 ${
+                isProcessing ? 'border-white/5' : 'border-white/8 hover:border-orange-500/40 focus-within:border-orange-500/40'
+              } bg-[#161616]`}>
               {/* 상단 라벨 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/5">
-                <span className="text-[10.5px] tracking-widest uppercase font-mono" style={{color:'#8B9A3A'}}>
-                  {pptMode ? 'SLIDE DATA (TITLE & BULLETS)' : 'SCRIPT INPUT'}
+                <span className="text-white/40 text-xs font-medium uppercase tracking-wide">
+                  {pptMode ? 'Slide Data' : 'Script Input'}
                 </span>
-                <span className="text-[11px] font-mono tabular-nums" style={{ color: '#8B9A3A' }}>
+                <span className="text-white/30 text-xs tabular-nums">
                   {script.length.toLocaleString()}자
                 </span>
               </div>
@@ -871,20 +871,20 @@ export default function DashboardPage() {
               <textarea
                 value={script}
                 onChange={e => setScript(e.target.value)}
-                placeholder={pptMode 
-                  ? "슬라이드 내용을 입력하세요. (제목: ..., 내용: ... 형식)\n\n예) '제목: 인공지능의 미래, 내용: - AI 기술 현황 - 향후 전망'" 
+                placeholder={pptMode
+                  ? "슬라이드 내용을 입력하세요. (제목: ..., 내용: ... 형식)\n\n예) '제목: 인공지능의 미래, 내용: - AI 기술 현황 - 향후 전망'"
                   : "대본 또는 주제를 입력하세요.\n\n예) '커피의 역사에 대해 60초 영상을 만들어줘'"}
-                className="w-full h-[280px] overflow-y-auto bg-transparent text-white/90 border-0 focus:outline-none resize-none text-[13px] leading-relaxed font-mono placeholder:text-white/20 px-4 py-3"
+                className="w-full h-[280px] overflow-y-auto bg-transparent text-white/90 border-0 focus:outline-none resize-none text-[13px] leading-relaxed placeholder:text-white/20 px-4 py-3"
                 disabled={isProcessing}
               />
 
               {/* 하단: TIP + 버튼 */}
               <div className="px-4 pb-3 flex items-center justify-between border-t border-white/5 pt-3">
-                <span className="text-[12px] text-white/20 font-mono">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
+                <span className="text-xs text-white/25">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
                 <button
                   onClick={handlePreview}
                   disabled={!script.trim() || isProcessing}
-                  className="flex items-center gap-2 bg-orange-400 hover:bg-orange-300 disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[13px] tracking-wide uppercase font-mono px-3 py-1.5 transition-colors group"
+                  className="flex items-center gap-2 bg-[#F97316] hover:bg-[#EA6C0A] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-sm rounded-lg px-4 py-1.5 transition-colors"
                 >
                   {status === 'previewing' ? (
                     <>
@@ -958,7 +958,7 @@ export default function DashboardPage() {
           <>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
+                <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
                 {status === 'previewing' && (
                   <span className="flex items-center gap-2 text-orange-400/80 text-[11px] font-mono">
                     <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
@@ -969,20 +969,20 @@ export default function DashboardPage() {
                   <span className="text-white/25 text-[12px] font-mono">
                     LLM {(usageInfo.promptTokens + usageInfo.completionTokens).toLocaleString()}토큰 · 이미지 {usageInfo.imageCount}장
                     {calcEstimatedCost(usageInfo) && (
-                      <span className="text-yellow-400/50 ml-1">{calcEstimatedCost(usageInfo)}</span>
+                      <span className="text-orange-500/50 ml-1">{calcEstimatedCost(usageInfo)}</span>
                     )}
                   </span>
                 )}
                 {animatingCount > 0 && (
-                  <span className="flex items-center gap-2 bg-yellow-400/10 text-yellow-400 text-[11px] font-mono px-2 py-0.5 rounded-full animate-pulse">
-                    <span className="w-1 h-1 bg-yellow-400 rounded-full" />
+                  <span className="flex items-center gap-2 bg-orange-500/10 text-orange-500 text-[11px] font-mono px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="w-1 h-1 bg-orange-500 rounded-full" />
                     {animatingCount}개 애니메이션 중
                   </span>
                 )}
                 {scenes.filter(s => s.shouldAnimate && !s.videoUrl && !s.isAnimating).length > 0 && (
                   <button
                     onClick={handleAutoAnimate}
-                    className="flex items-center gap-1.5 bg-[#17BEBB]/10 border border-[#17BEBB]/40 hover:border-[#17BEBB] text-[#17BEBB] text-[11px] font-mono px-2 py-0.5 rounded-full transition-colors"
+                    className="flex items-center gap-1.5 bg-[white]/10 border border-[white]/40 hover:border-[white] text-[white] text-[11px] font-mono px-2 py-0.5 rounded-full transition-colors"
                   >
                     ✦ AI 추천 {scenes.filter(s => s.shouldAnimate && !s.videoUrl && !s.isAnimating).length}개 일괄 생성
                   </button>
@@ -992,7 +992,7 @@ export default function DashboardPage() {
                 {videoUrl && status === 'preview' && (
                   <button
                     onClick={() => setStatus('done')}
-                    className="text-[#17BEBB]/40 hover:text-[#17BEBB]/80 text-xs font-mono transition-colors"
+                    className="text-[white]/40 hover:text-[white]/80 text-xs font-mono transition-colors"
                   >완성 영상 →</button>
                 )}
                 {status === 'preview' && (
@@ -1016,7 +1016,7 @@ export default function DashboardPage() {
                   key={i}
                   className={`group rounded-lg overflow-hidden transition-all duration-200 ${
                     scene.videoUrl
-                      ? 'bg-[#0c1a1a] border border-[#17BEBB]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
+                      ? 'bg-[#0c1a1a] border border-[white]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
                       : scene.isAnimating
                       ? 'bg-[#151005] border border-orange-400/35 shadow-[0_2px_12px_rgba(251,146,60,0.08)]'
                       : 'bg-[#111] border border-white/15 hover:border-white/30'
@@ -1024,13 +1024,13 @@ export default function DashboardPage() {
                 >
                   {/* ── 헤더 행: 씬번호 + 미리듣기 + AI애니메이션 + 스타일 + 재생성/교체 ── */}
                   <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${
-                    scene.videoUrl ? 'border-[#17BEBB]/25 bg-[#17BEBB]/8' :
+                    scene.videoUrl ? 'border-[white]/25 bg-[white]/8' :
                     scene.isAnimating ? 'border-orange-400/25 bg-orange-400/8' :
                     'border-white/10 bg-white/[0.04]'
                   }`}>
                     {/* 씬 번호 */}
                     <span className={`text-[11px] font-medium tracking-widest uppercase shrink-0 ${
-                      scene.videoUrl ? 'text-[#17BEBB]' : scene.isAnimating ? 'text-orange-400' : 'text-white/50'
+                      scene.videoUrl ? 'text-[white]' : scene.isAnimating ? 'text-orange-400' : 'text-white/50'
                     }`}>
                       Scene {i + 1}
                     </span>
@@ -1041,7 +1041,7 @@ export default function DashboardPage() {
                     {!scene.isLoading && (
                       <span className={`text-[12px] font-mono tabular-nums px-2 py-0.5 rounded shrink-0 ${
                         scene.text.length < 150 ? 'text-red-400 bg-red-400/15 border border-red-400/30' :
-                        scene.text.length > 200 ? 'text-yellow-300 bg-yellow-400/15 border border-yellow-400/30' :
+                        scene.text.length > 200 ? 'text-orange-400 bg-orange-500/15 border border-orange-500/30' :
                         'text-white/60 bg-white/8 border border-white/15'
                       }`}>
                         {scene.text.length}자
@@ -1057,7 +1057,7 @@ export default function DashboardPage() {
                         onClick={() => handlePlayScene(i, scene.text)}
                         disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
                         className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border transition-colors disabled:opacity-30 shrink-0
-                          border-white/25 text-white/70 hover:text-yellow-300 hover:border-yellow-400/50 hover:bg-yellow-400/8"
+                          border-white/25 text-white/70 hover:text-orange-400 hover:border-orange-500/50 hover:bg-orange-500/8"
                       >
                         {loadingAudioIndex === i ? (
                           <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />로딩</>
@@ -1076,10 +1076,10 @@ export default function DashboardPage() {
                         disabled={status !== 'preview' || !!scene.videoUrl || scene.isAnimating}
                         className={`flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border transition-all shrink-0 ${
                           scene.videoUrl
-                            ? 'text-[#17BEBB] bg-[#17BEBB]/12 border-[#17BEBB]/50 cursor-default'
+                            ? 'text-[white] bg-[white]/12 border-[white]/50 cursor-default'
                             : scene.isAnimating
                             ? 'text-orange-300 bg-orange-400/12 border-orange-400/40 animate-pulse cursor-wait'
-                            : 'text-[#17BEBB] border-[#17BEBB]/40 hover:border-[#17BEBB]/70 hover:bg-[#17BEBB]/8 disabled:opacity-30 disabled:cursor-not-allowed'
+                            : 'text-[white] border-[white]/40 hover:border-[white]/70 hover:bg-[white]/8 disabled:opacity-30 disabled:cursor-not-allowed'
                         }`}
                       >
                         {scene.isAnimating ? (
@@ -1100,7 +1100,7 @@ export default function DashboardPage() {
                             <div className="w-px h-4 bg-white/20 shrink-0" />
                             <button
                               onClick={() => replaceInputRefs.current[i]?.click()}
-                              className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
+                              className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[white] hover:border-[white]/45 hover:bg-[white]/8 transition-colors shrink-0"
                             >
                               ↑ {scene.lottieData ? 'Lottie ✓' : '이미지/Lottie'}
                             </button>
@@ -1170,7 +1170,7 @@ export default function DashboardPage() {
                         {/* 교체 */}
                         <button
                           onClick={() => replaceInputRefs.current[i]?.click()}
-                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[#17BEBB] hover:border-[#17BEBB]/45 hover:bg-[#17BEBB]/8 transition-colors shrink-0"
+                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-[white] hover:border-[white]/45 hover:bg-[white]/8 transition-colors shrink-0"
                         >
                           ↑ {scene.lottieData ? 'Lottie ✓' : '교체'}
                         </button>
@@ -1192,15 +1192,15 @@ export default function DashboardPage() {
                       <div
                         className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md border cursor-pointer transition-colors ${
                           scene.lottieData
-                            ? 'bg-[#17BEBB]/10 border-[#17BEBB]/50 hover:border-[#17BEBB]'
-                            : 'bg-black/40 border-dashed border-white/25 hover:border-[#17BEBB]/60 hover:bg-[#17BEBB]/5'
+                            ? 'bg-[white]/10 border-[white]/50 hover:border-[white]'
+                            : 'bg-black/40 border-dashed border-white/25 hover:border-[white]/60 hover:bg-[white]/5'
                         }`}
                         onClick={() => replaceInputRefs.current[i]?.click()}
                       >
                         {scene.lottieData ? (
                           <div className="w-full h-full flex flex-col items-center justify-center gap-1">
                             <span className="text-[20px]">🎞️</span>
-                            <span className="text-[8px] font-bold text-[#17BEBB] tracking-widest">LOTTIE ✓</span>
+                            <span className="text-[8px] font-bold text-[white] tracking-widest">LOTTIE ✓</span>
                           </div>
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center gap-1">
@@ -1242,7 +1242,7 @@ export default function DashboardPage() {
                       ) : scene.lottieData ? (
                         <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 gap-1">
                           <span className="text-[16px]">🎞️</span>
-                          <span className="text-[8px] font-bold text-[#17BEBB] tracking-widest">LOTTIE</span>
+                          <span className="text-[8px] font-bold text-[white] tracking-widest">LOTTIE</span>
                         </div>
                       ) : scene.imageUrl ? (
                         <img
@@ -1260,7 +1260,7 @@ export default function DashboardPage() {
                       {/* 비디오 뱃지 */}
                       {scene.videoUrl && (
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center pb-1">
-                          <span className="text-[8px] font-bold font-mono text-[#17BEBB] tracking-widest">VIDEO</span>
+                          <span className="text-[8px] font-bold font-mono text-[white] tracking-widest">VIDEO</span>
                         </div>
                       )}
                       {scene.isAnimating && (
@@ -1299,7 +1299,7 @@ export default function DashboardPage() {
             {status === 'preview' && (
               <button
                 onClick={handleRender}
-                className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
+                className="w-full mt-8 bg-orange-500 hover:bg-orange-400 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
               >
                 영상 생성 →
               </button>
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
                           setStatus('preview');
                           setError('');
                         }}
-                        className="px-3 py-1 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-[12px] font-bold font-mono transition-all"
+                        className="px-3 py-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-500 text-[12px] font-bold font-mono transition-all"
                       >
                         MiniMax로 전환
                       </button>
@@ -1356,12 +1356,12 @@ export default function DashboardPage() {
             )}
 
             {status === 'rendering' && (
-              <div className="mt-8 border-l-2 border-yellow-400/40 pl-4 py-1">
+              <div className="mt-8 border-l-2 border-orange-500/40 pl-4 py-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-3.5 h-3.5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin shrink-0" />
                   <div>
-                    <p className="text-yellow-400/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
-                    <p className="text-[#17BEBB]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">
+                    <p className="text-orange-500/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
+                    <p className="text-[white]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">
                       {renderProgress > 0 ? 'AWS Lambda 렌더링 진행 중' : '나레이션(TTS) 생성 및 렌더링 준비 중...'}
                     </p>
                   </div>
@@ -1369,7 +1369,7 @@ export default function DashboardPage() {
                 {/* 미니 프로그레스 바 */}
                 <div className="w-full h-0.5 bg-white/5 overflow-hidden rounded-full">
                   <div 
-                    className="h-full bg-yellow-400 transition-all duration-500 ease-out" 
+                    className="h-full bg-orange-500 transition-all duration-500 ease-out" 
                     style={{ width: `${renderProgress * 100}%` }}
                   />
                 </div>
@@ -1385,7 +1385,7 @@ export default function DashboardPage() {
             <div className="w-full flex items-center justify-between pb-3 border-b border-white/5 mb-5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase font-mono">완성 영상</span>
+                <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">완성 영상</span>
               </div>
               <button
                 onClick={() => setStatus('preview')}
@@ -1424,7 +1424,7 @@ export default function DashboardPage() {
                   a.download = 'clipflow.mp4';
                   a.click();
                 }}
-                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-[13px] tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-black font-bold text-[13px] tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
               >
                 ↓ 다운로드
               </button>
@@ -1440,7 +1440,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── 오른쪽: 설정 패널 (w-56, 왼쪽 nav와 동일 너비) ─── */}
-      <aside className="w-96 shrink-0 flex flex-col border-l border-white/5 overflow-y-auto">
+      <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
         <div className="flex-1 px-4 py-5 space-y-0">
 
           {/* 입력 단계 설정 */}
@@ -1453,10 +1453,10 @@ export default function DashboardPage() {
                       key={s.id}
                       onClick={() => { setImageStyle(s.id); }}
                       disabled={isProcessing}
-                      className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
+                      className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
                         imageStyle === s.id
-                          ? 'border-yellow-400 text-yellow-400'
-                          : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+                          ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+                          : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                       }`}
                     >
                       {s.label}
@@ -1465,10 +1465,10 @@ export default function DashboardPage() {
                   <button
                     onClick={() => { setImageStyle('none'); }}
                     disabled={isProcessing}
-                    className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
+                    className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
                       imageStyle === 'none'
-                        ? 'border-yellow-400 text-yellow-400'
-                        : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/60'
+                        ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+                        : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                     }`}
                   >
                     선택 없음
@@ -1497,7 +1497,7 @@ export default function DashboardPage() {
                         >
                           <div className="flex flex-col items-start gap-0.5 text-left">
                             <span>{t.label}</span>
-                            <p className="text-[10px] text-white/30 font-mono leading-tight">
+                            <p className="text-xs text-white/30 leading-tight">
                               {t.description}
                             </p>
                           </div>
@@ -1507,13 +1507,13 @@ export default function DashboardPage() {
 
                     {templateId === 'codehike' && (
                       <div className="mt-4 px-2 pb-2">
-                        <p className="text-[#17BEBB] text-[10px] font-mono tracking-widest uppercase mb-2">Code Snippet</p>
+                        <p className="text-[white] text-[10px] font-mono tracking-widest uppercase mb-2">Code Snippet</p>
                         <textarea
                           value={codeSnippet}
                           onChange={(e) => setCodeSnippet(e.target.value)}
                           rows={6}
                           placeholder="분석할 코드를 입력하세요..."
-                          className="w-full bg-black/40 text-sky-200/90 border border-white/5 focus:border-[#17BEBB]/40 focus:outline-none text-[11px] font-mono p-3 rounded-sm resize-none"
+                          className="w-full bg-black/40 text-sky-200/90 border border-white/5 focus:border-[white]/40 focus:outline-none text-[11px] font-mono p-3 rounded-sm resize-none"
                         />
                       </div>
                     )}
@@ -1527,9 +1527,9 @@ export default function DashboardPage() {
                         { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
                       ] as const).map(t => (
                         <button key={t.id} onClick={() => setPptTheme(t.id)}
-                          className={`flex flex-col items-start px-2 py-2 border text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-orange-400 bg-orange-400/10' : 'border-white/10 hover:border-white/30'}`}>
-                          <span className={`text-[11px] font-mono font-bold ${pptTheme === t.id ? 'text-orange-400' : 'text-white/60'}`}>{t.label}</span>
-                          <span className="text-[9px] font-mono text-white/30 mt-0.5">{t.desc}</span>
+                          className={`flex flex-col items-start px-3 py-2 border rounded-lg text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#F97316]/60 bg-[#F97316]/10' : 'border-white/8 hover:border-white/20'}`}>
+                          <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-white' : 'text-white/55'}`}>{t.label}</span>
+                          <span className="text-[10px] text-white/30 mt-0.5">{t.desc}</span>
                         </button>
                       ))}
                     </div>
@@ -1569,9 +1569,9 @@ export default function DashboardPage() {
                   <p className="text-white/30 text-[11px] font-mono mb-2">씬에 사용할 Lottie JSON을 미리 업로드하세요.<br/>장면 생성 후 각 씬에 순서대로 배정됩니다.</p>
                   <div className="space-y-1.5 mb-2">
                     {lottieFiles.map((lf, i) => (
-                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 border border-[#17BEBB]/30 bg-[#17BEBB]/5 rounded">
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5 border border-[white]/30 bg-[white]/5 rounded">
                         <span className="text-[14px]">🎞️</span>
-                        <span className="flex-1 text-[11px] font-mono text-[#17BEBB] truncate">{lf.name}</span>
+                        <span className="flex-1 text-[11px] font-mono text-[white] truncate">{lf.name}</span>
                         <button
                           onClick={() => setLottieFiles(prev => prev.filter((_, j) => j !== i))}
                           className="text-white/20 hover:text-red-400 transition-colors text-xs shrink-0"
@@ -1581,9 +1581,9 @@ export default function DashboardPage() {
                   </div>
                   <div
                     onClick={() => lottieInputRef.current?.click()}
-                    className="w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-[#17BEBB]/30 text-[#17BEBB]/50 hover:border-[#17BEBB]/60 hover:text-[#17BEBB] hover:bg-[#17BEBB]/5 cursor-pointer transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-[white]/30 text-[white]/50 hover:border-[white]/60 hover:text-[white] hover:bg-[white]/5 cursor-pointer transition-colors"
                   >
-                    <span className="w-5 h-5 border border-[#17BEBB]/30 flex items-center justify-center text-[11px]">+</span>
+                    <span className="w-5 h-5 border border-[white]/30 flex items-center justify-center text-[11px]">+</span>
                     <span>Lottie JSON 추가</span>
                   </div>
                   <input
@@ -1610,11 +1610,11 @@ export default function DashboardPage() {
                 </PanelSection>
               ) : (
                 <PanelSection label="캐릭터">
-                  <p className="text-white/30 text-[11px] font-mono mb-1.5">메인 캐릭터</p>
+                  <p className="text-white/35 text-xs font-medium mb-1.5">메인 캐릭터</p>
                   <div
                     onClick={() => !isProcessing && characterInputRef.current?.click()}
-                    className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-white/10 text-white/30 transition-colors ${
-                      !isProcessing ? 'hover:border-white/30 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm border border-white/10 rounded-lg text-white/35 transition-colors ${
+                      !isProcessing ? 'hover:border-white/25 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                     }`}
                   >
                     {characterPreview
@@ -1632,7 +1632,7 @@ export default function DashboardPage() {
                   <input ref={characterInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharacterUpload} />
 
                   {/* 추가 캐릭터 */}
-                  <p className="text-white/30 text-[11px] font-mono mt-3 mb-1.5">서브 캐릭터 <span className="text-white/20">({subCharacters.length}/5)</span></p>
+                  <p className="text-white/35 text-xs font-medium mt-3 mb-1.5">서브 캐릭터 <span className="text-white/20">({subCharacters.length}/5)</span></p>
                   <div className="space-y-1.5">
                     {subCharacters.map((char, i) => (
                       <div key={i} className="flex items-center gap-2">
@@ -1653,8 +1653,8 @@ export default function DashboardPage() {
                     {subCharacters.length < 5 && (
                       <div
                         onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
-                        className={`w-full flex items-center gap-2 px-2 py-2 text-xs font-mono border border-dashed border-white/10 text-white/20 transition-colors ${
-                          !isProcessing ? 'hover:border-white/30 hover:text-white/40 cursor-pointer' : 'opacity-30 cursor-not-allowed'
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-white/10 rounded-lg text-white/25 transition-colors ${
+                          !isProcessing ? 'hover:border-white/25 hover:text-white/45 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                         }`}
                       >
                         <span className="w-5 h-5 border border-white/20 flex items-center justify-center text-[11px]">+</span>
@@ -1733,7 +1733,7 @@ export default function DashboardPage() {
                     onClick={() => setTtsProvider('none')}
                     className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
                       ttsProvider === 'none'
-                        ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                        ? 'border-orange-500 text-orange-500 bg-orange-500/5'
                         : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
                     }`}
                   >
@@ -1753,12 +1753,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('google'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'google' && voiceId === v.id
-                              ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'google' && voiceId === v.id ? 'text-yellow-400/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'google' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1778,12 +1778,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('minimax'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'minimax' && voiceId === v.id
-                              ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'minimax' && voiceId === v.id ? 'text-yellow-400/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'minimax' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1803,12 +1803,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('elevenlabs'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'elevenlabs' && voiceId === v.id
-                              ? 'border-yellow-400 text-yellow-400 bg-yellow-400/5'
+                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'elevenlabs' && voiceId === v.id ? 'text-yellow-400/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'elevenlabs' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1822,12 +1822,12 @@ export default function DashboardPage() {
                 <div className="px-1">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-white/30 text-[13px] font-mono">속도</span>
-                    <span className="text-yellow-400 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
+                    <span className="text-orange-500 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
                   </div>
                   <input
                     type="range" min={0.5} max={2.0} step={0.05} value={playbackRate}
                     onChange={e => setPlaybackRate(parseFloat(e.target.value))}
-                    className="w-full accent-yellow-400 h-0.5"
+                    className="w-full accent-orange-500 h-0.5"
                   />
                   <div className="flex justify-between text-white/15 text-[12px] font-mono mt-2">
                     <span>0.5x</span><span>0.75x</span><span>1.0x</span><span>1.5x</span><span>2.0x</span>
@@ -1837,10 +1837,10 @@ export default function DashboardPage() {
 
               {/* 현재 설정 요약 */}
               <div className="mt-4 space-y-1.5">
-                <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-2">설정 요약</p>
+                <p className="text-[white]/70 text-[13px] tracking-widest uppercase mb-2">설정 요약</p>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">갤러리 레이아웃</span>
-                  <span className="text-[#17BEBB]/80 truncate max-w-[120px]">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
+                  <span className="text-[white]/80 truncate max-w-[120px]">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">이미지 테마</span>
@@ -1865,14 +1865,14 @@ export default function DashboardPage() {
           {/* 완성 단계 */}
           {status === 'done' && (
             <div className="space-y-1.5">
-              <p className="text-[#17BEBB]/70 text-[13px] tracking-widest uppercase mb-3">생성 완료</p>
+              <p className="text-[white]/70 text-[13px] tracking-widest uppercase mb-3">생성 완료</p>
               <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">장면 수</span>
                 <span className="text-white/40">{scenes.length}개</span>
               </div>
               <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">레이아웃</span>
-                <span className="text-[#17BEBB]/80">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
+                <span className="text-[white]/80">{TEMPLATES.find(t => t.id === templateId)?.label}</span>
               </div>
               <div className="flex justify-between text-[13px] font-mono">
                 <span className="text-white/20">이미지 테마</span>

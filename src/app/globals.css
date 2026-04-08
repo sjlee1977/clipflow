@@ -3,10 +3,52 @@
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --accent: #F97316;
+  --accent-hover: #EA6C0A;
+  --accent-light: rgba(249, 115, 22, 0.12);
+  --card-bg: #161616;
+  --card-border: rgba(255,255,255,0.08);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Inter', sans-serif;
+}
+
+/* 공통 카드 스타일 */
+.cf-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+/* 공통 인풋 스타일 */
+.cf-input {
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s;
+}
+.cf-input:focus {
+  border-color: rgba(255,255,255,0.3);
+  outline: none;
+}
+
+/* 오렌지 버튼 */
+.cf-btn-primary {
+  background: #F97316;
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.cf-btn-primary:hover:not(:disabled) {
+  background: #EA6C0A;
+}
+.cf-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

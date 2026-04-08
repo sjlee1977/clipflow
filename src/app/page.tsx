@@ -19,7 +19,7 @@ export default function HomePage() {
       {/* 헤더 */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-3 border-b border-white/10 bg-black/80 backdrop-blur-sm">
         <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-4 h-4 bg-yellow-400" />
+          <div className="w-4 h-4 bg-[#F97316]" />
           <span className="text-white font-medium text-[15px] tracking-normal uppercase" style={{ fontFamily: "'Montserrat', sans-serif" }}>ClipFlow</span>
         </a>
         <nav className="hidden md:flex items-center gap-8 text-[12px] tracking-tight font-medium uppercase text-gray-400">
@@ -32,7 +32,7 @@ export default function HomePage() {
               로그인
             </Link>
           )}
-          <Link href="/dashboard" className="bg-yellow-400 hover:bg-yellow-300 text-black text-[12px] font-black tracking-tight uppercase px-5 py-2 transition-colors">
+          <Link href="/dashboard" className="bg-[#F97316] hover:bg-[#EA6C0A] text-white text-[12px] font-black tracking-tight uppercase px-5 py-2 transition-colors">
             {user ? '대시보드' : '무료 시작'}
           </Link>
         </div>
@@ -63,17 +63,16 @@ export default function HomePage() {
 
         {/* 메인 텍스트 */}
         <div className="relative text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-yellow-400/50 px-4 py-1.5 mb-8 text-[13px] tracking-widest text-yellow-400 uppercase">
-            <div className="w-2 h-2 bg-yellow-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 border border-[#F97316]/50 px-4 py-1.5 mb-8 text-[13px] tracking-widest text-[#F97316] uppercase">
+            <div className="w-2 h-2 bg-[#F97316] animate-pulse" />
             지금 바로 무료로 시작
           </div>
 
           <h1 className="text-5xl md:text-[78px] font-black leading-[1.05] tracking-tight mb-8" style={{ wordSpacing: '-0.1em' }}>
             <span className="block text-white">영상 한 편에</span>
             <span className="block text-white">몇 시간을</span>
-            <span className="block text-yellow-400">쓰고 계신가요?</span>
+            <span className="block text-[#F97316]">쓰고 계신가요?</span>
           </h1>
-
 
           <p className="text-gray-400 text-[15px] mt-14 mb-20 max-w-xl mx-auto leading-relaxed font-medium">
             대본만 입력하면 장면 구성·이미지·나레이션·자막까지 AI가 완성합니다.<br />
@@ -82,10 +81,10 @@ export default function HomePage() {
 
           <div className="flex items-center justify-center gap-3">
             <Link href="/dashboard"
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-black text-[13px] tracking-tight uppercase px-6 py-2.5 transition-colors">
+              className="bg-[#F97316] hover:bg-[#EA6C0A] text-white font-black text-[13px] tracking-tight uppercase px-6 py-2.5 transition-colors">
               시작하기 — 무료
             </Link>
-            </div>
+          </div>
         </div>
       </section>
 
@@ -93,7 +92,7 @@ export default function HomePage() {
       <footer className="border-t border-white/5 px-8 py-16 bg-black">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-400" />
+            <div className="w-4 h-4 bg-[#F97316]" />
             <span className="text-white font-medium text-[12px] tracking-normal uppercase" style={{ fontFamily: "'Montserrat', sans-serif" }}>ClipFlow</span>
           </div>
           <nav className="flex items-center gap-8 text-[12px] font-medium tracking-tight uppercase text-gray-500">
