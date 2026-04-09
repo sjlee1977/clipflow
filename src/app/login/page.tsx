@@ -58,7 +58,7 @@ export default function LoginPage() {
         {/* 로고 */}
         <div className="flex items-center justify-center mb-10">
           <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-3 h-3 bg-[#F97316] shrink-0" />
+            <div className="w-3 h-3 bg-[#22c55e] shrink-0" />
             <span className="text-white font-medium text-[15px] tracking-normal uppercase" style={{ fontFamily: "'Montserrat', sans-serif" }}>ClipFlow</span>
           </a>
         </div>
@@ -128,7 +128,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#F97316] hover:bg-[#EA6C0A] disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+              className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
             >
               {loading ? '처리 중...' : mode === 'login' ? '로그인' : '가입하기'}
             </button>
@@ -138,7 +138,7 @@ export default function LoginPage() {
             {mode === 'login' ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}{' '}
             <button
               onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage(''); }}
-              className="text-[#F97316] hover:text-[#EA6C0A] transition-colors"
+              className="text-[#22c55e] hover:text-[#16a34a] transition-colors"
             >
               {mode === 'login' ? '회원가입' : '로그인'}
             </button>

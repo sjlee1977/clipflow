@@ -14,36 +14,42 @@ const CATEGORIES = [
     textCls: 'text-sky-400', borderCls: 'border-sky-400',
     bgCls: 'bg-sky-400/[0.07]', dotCls: 'bg-sky-400',
     activeCls: 'border-sky-400 text-sky-400 bg-sky-400/[0.08]',
+    inputBorder: 'rgba(56,189,248,0.45)', inputFocusBorder: 'rgba(56,189,248,0.85)',
   },
   {
     id: 'economy' as CategoryId, label: '경제 / 주식',
     textCls: 'text-green-400', borderCls: 'border-green-400',
     bgCls: 'bg-green-400/[0.07]', dotCls: 'bg-green-400',
     activeCls: 'border-green-400 text-green-400 bg-green-400/[0.08]',
+    inputBorder: 'rgba(74,222,128,0.45)', inputFocusBorder: 'rgba(74,222,128,0.85)',
   },
   {
     id: 'history' as CategoryId, label: '역사',
     textCls: 'text-amber-400', borderCls: 'border-amber-400',
     bgCls: 'bg-amber-400/[0.07]', dotCls: 'bg-amber-400',
     activeCls: 'border-amber-400 text-amber-400 bg-amber-400/[0.08]',
+    inputBorder: 'rgba(251,191,36,0.45)', inputFocusBorder: 'rgba(251,191,36,0.85)',
   },
   {
     id: 'psychology' as CategoryId, label: '심리학',
     textCls: 'text-purple-400', borderCls: 'border-purple-400',
     bgCls: 'bg-purple-400/[0.07]', dotCls: 'bg-purple-400',
     activeCls: 'border-purple-400 text-purple-400 bg-purple-400/[0.08]',
+    inputBorder: 'rgba(192,132,252,0.45)', inputFocusBorder: 'rgba(192,132,252,0.85)',
   },
   {
     id: 'horror' as CategoryId, label: '공포',
     textCls: 'text-red-400', borderCls: 'border-red-400',
     bgCls: 'bg-red-400/[0.07]', dotCls: 'bg-red-400',
     activeCls: 'border-red-400 text-red-400 bg-red-400/[0.08]',
+    inputBorder: 'rgba(248,113,113,0.45)', inputFocusBorder: 'rgba(248,113,113,0.85)',
   },
   {
     id: 'health' as CategoryId, label: '건강',
     textCls: 'text-lime-400', borderCls: 'border-lime-400',
     bgCls: 'bg-lime-400/[0.07]', dotCls: 'bg-lime-400',
     activeCls: 'border-lime-400 text-lime-400 bg-lime-400/[0.08]',
+    inputBorder: 'rgba(163,230,53,0.45)', inputFocusBorder: 'rgba(163,230,53,0.85)',
   },
 ] as const;
 
@@ -67,8 +73,8 @@ function FieldLabel({
   );
 }
 
-const iCls = 'w-full bg-[#1a1a1a] text-white/90 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] rounded-lg placeholder:text-white/30 px-3 py-2.5 resize-none transition-colors';
-const sCls = `w-full bg-[#1a1a1a] text-white/90 border border-white/10 focus:border-white/30 focus:outline-none text-[13px] rounded-lg px-3 py-2.5 transition-colors cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white/90`;
+const iCls = 'w-full border focus:outline-none text-[13px] rounded-lg px-3 py-2.5 resize-none transition-colors cf-input';
+const sCls = 'w-full border focus:outline-none text-[13px] rounded-lg px-3 py-2.5 transition-colors cursor-pointer cf-input';
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
@@ -458,11 +464,11 @@ export default function PromptPage() {
         {/* 헤더 탭 */}
         <div className="relative mt-4 mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-            <span className="text-orange-500 text-sm font-semibold">대본 요청 스크립트 생성기</span>
+            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            <span className="text-green-500 text-sm font-semibold">대본 요청 스크립트 생성기</span>
           </div>
 
-          <div className="border border-white/8 rounded-xl bg-[#161616]">
+          <div className="border rounded-xl cf-card" style={{ borderColor: 'var(--border)' }}>
 
             {/* 카테고리 탭 */}
             <div className="flex border-b border-white/10">
@@ -507,7 +513,10 @@ export default function PromptPage() {
                     onKeyDown={e => e.key === 'Enter' && handleYoutubeAnalyze()}
                     placeholder="https://www.youtube.com/watch?v=..."
                     disabled={ytStatus === 'loading'}
-                    className="flex-1 bg-black/40 text-white/80 border border-white/15 focus:border-[white]/50 focus:outline-none text-[13px] placeholder:text-white/20 px-3 py-2 transition-colors"
+                    className="flex-1 cf-input text-[13px] px-3 py-2 focus:outline-none transition-colors"
+                    style={{ borderColor: catInfo.inputBorder }}
+                    onFocus={e => e.currentTarget.style.borderColor = catInfo.inputFocusBorder}
+                    onBlur={e => e.currentTarget.style.borderColor = catInfo.inputBorder}
                   />
                   <button
                     onClick={handleYoutubeAnalyze}
@@ -525,7 +534,7 @@ export default function PromptPage() {
                       <span className="text-green-400 text-[12px]">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
                     </div>
                     {ytTitle && <p className="text-white/35 text-[11.5px] truncate">원본: {ytTitle}</p>}
-                    {ytTranscriptSource === 'description' && <p className="text-orange-500/60 text-[11.5px]">자막 없음 — 영상 설명란으로 분석</p>}
+                    {ytTranscriptSource === 'description' && <p className="text-green-500/60 text-[11.5px]">자막 없음 — 영상 설명란으로 분석</p>}
                     {ytTranscript && (
                       <div className="border border-white/10 bg-black/30">
                         <button
@@ -571,7 +580,10 @@ export default function PromptPage() {
                   rows={5}
                   placeholder="기존 대본을 붙여넣으면 아래 필드를 자동으로 채워드립니다..."
                   disabled={scriptStatus === 'loading'}
-                  className="w-full bg-black/40 text-white/80 border border-white/15 focus:border-[white]/50 focus:outline-none text-[13px] placeholder:text-white/20 px-3 py-2 resize-none transition-colors mb-2"
+                  className="w-full cf-input text-[13px] px-3 py-2 resize-none focus:outline-none transition-colors mb-2"
+                  style={{ borderColor: catInfo.inputBorder }}
+                  onFocus={e => e.currentTarget.style.borderColor = catInfo.inputFocusBorder}
+                  onBlur={e => e.currentTarget.style.borderColor = catInfo.inputBorder}
                 />
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1">
@@ -631,8 +643,8 @@ export default function PromptPage() {
                   <input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />
                 </div>
 
-                {/* 도입 훅 방향 */}
-                <div>
+                {/* 도입 훅 방향 — 일반 카테고리에만 표시 */}
+                {activeCategory === 'general' && <div>
                   <FieldLabel optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택">도입 훅 방향</FieldLabel>
                   <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls + ' mb-2'}>
                     <option value="">AI 자동 선택</option>
@@ -644,7 +656,7 @@ export default function PromptPage() {
                     <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
                       placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
                   )}
-                </div>
+                </div>}
 
                 {/* 경쟁 영상 차별점 */}
                 <div>
@@ -716,7 +728,7 @@ export default function PromptPage() {
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { key: 'econBullish', label: '낙관', labelCls: 'text-green-400 border-green-400/30 bg-green-400/10', placeholder: '조건 + 목표치\n예: 외국인 매수 지속 시 2,700 돌파 시도' },
-                          { key: 'econNeutral', label: '중립', labelCls: 'text-orange-500 border-orange-500/30 bg-orange-500/10', placeholder: '박스권 + 대응법\n예: 2,500~2,650 레인지 횡보' },
+                          { key: 'econNeutral', label: '중립', labelCls: 'text-green-500 border-green-500/30 bg-green-500/10', placeholder: '박스권 + 대응법\n예: 2,500~2,650 레인지 횡보' },
                           { key: 'econBearish', label: '비관', labelCls: 'text-red-400 border-red-400/30 bg-red-400/10', placeholder: '최악 조건 + 바닥선\n예: 환율 1,480원 돌파 시 2,400 재테스트' },
                         ].map(({ key, label, labelCls, placeholder }) => (
                           <div key={key}>
@@ -870,7 +882,7 @@ export default function PromptPage() {
                   title={!canGenerate ? '필수 항목을 모두 입력해주세요 (빨간 점 표시 항목)' : ''}
                   className={`inline-flex items-center gap-2 px-8 py-3 font-bold text-[13px] tracking-widest uppercase transition-colors ${
                     canGenerate
-                      ? 'bg-orange-500 hover:bg-orange-400 text-black'
+                      ? 'bg-green-500 hover:bg-green-400 text-black'
                       : 'bg-white/10 text-white/20 cursor-not-allowed'
                   }`}
                 >
@@ -922,7 +934,7 @@ export default function PromptPage() {
             <div className="flex items-center gap-3 mt-4">
               <button
                 onClick={handleUseAsScript}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-[#F97316] hover:bg-[#EA6C0A] text-white font-semibold transition-colors text-sm rounded-lg shadow-[0_0_16px_rgba(249,115,22,0.3)]"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold transition-colors text-sm rounded-lg shadow-[0_0_16px_rgba(34,197,94,0.3)]"
               >
                 이 요청서로 대본 만들기 →
               </button>

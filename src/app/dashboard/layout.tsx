@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import SidebarScripts from '@/components/SidebarScripts';
+import { useTheme } from '@/lib/useTheme';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const NAV_ITEMS = [
   {
@@ -33,6 +35,7 @@ const NAV_ITEMS = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isDark } = useTheme();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
@@ -60,13 +63,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       {/* 사이드바 */}
-      <aside className="w-[330px] shrink-0 flex flex-col border-r border-white/8 bg-[#0d0d0d]">
+      <aside className="w-[330px] shrink-0 flex flex-col" style={{ background: 'var(--sidebar)', borderRight: '1px solid var(--border)' }}>
         {/* 로고 */}
-        <div className="flex items-center gap-2 px-[26px] h-[52px] border-b border-white/8">
-          <div className="w-3 h-3 bg-[#F97316] shrink-0" />
-          <Link href="/" className="text-white font-medium text-[15px] tracking-normal uppercase hover:opacity-80 transition-opacity" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+        <div className="flex items-center gap-2 px-[26px] h-[52px]" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="w-3 h-3 bg-[#22c55e] shrink-0" />
+          <Link href="/" className="font-medium text-[15px] tracking-normal uppercase hover:opacity-80 transition-opacity" style={{ fontFamily: "'Montserrat', sans-serif", color: 'var(--text)' }}>
             ClipFlow
           </Link>
         </div>
@@ -75,29 +78,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {NAV_ITEMS.map((group) => (
             <div key={group.group}>
-              <p className="text-white/25 text-[11px] font-semibold tracking-widest uppercase px-2 mb-1.5">{group.group}</p>
+              <p className="text-[11px] font-semibold tracking-widest uppercase px-2 mb-1.5" style={{ color: 'var(--text-ultra)' }}>{group.group}</p>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const active = pathname === item.href;
                   return (
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
-                        <div className="flex items-center gap-2.5 px-3 py-2 text-white/30 cursor-not-allowed select-none rounded-lg">
+                        <div className="flex items-center gap-2.5 px-3 py-2 cursor-not-allowed select-none rounded-lg" style={{ color: 'var(--text-faint)' }}>
                           <span className="text-sm w-4">{item.icon}</span>
                           <span className="text-sm">{item.label}</span>
-                          <span className="ml-auto text-[11px] border border-white/15 px-1.5 py-0.5 rounded text-white/30">SOON</span>
+                          <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded" style={{ border: '1px solid var(--border-md)', color: 'var(--text-faint)' }}>SOON</span>
                         </div>
                       ) : (
                         <Link
                           href={item.href}
                           className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors text-sm ${
-                            active
-                              ? 'border border-[#F97316]/60 bg-[#F97316]/10 text-white font-medium'
-                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                            active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10 font-medium' : 'hover:bg-[var(--hover-bg)]'
                           }`}
+                          style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
                         >
                           <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 text-xs ${
-                            active ? 'bg-[#F97316]/80 text-white' : ''
+                            active ? 'bg-[#22c55e]/80 text-white' : ''
                           }`}>{item.icon}</span>
                           <span>{item.label}</span>
                         </Link>
@@ -107,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 })}
 
                 {group.group === 'LIBRARY' && (
-                  <div className="mt-3 border-t border-white/5 pt-2">
+                  <div className="mt-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
                     <SidebarScripts />
                   </div>
                 )}
@@ -117,26 +119,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* 하단 */}
-        <div className="px-4 py-4 border-t border-white/8 space-y-2">
-          {/* 크레딧 */}
+        <div className="px-4 py-4 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
           {credits !== null && (
             <div className="flex items-center gap-2 px-1 mb-2">
-              <span className="text-[#F97316] text-xs">⊙</span>
-              <span className="text-white/50 text-xs">크레딧</span>
-              <span className="ml-auto text-[#F97316] text-sm font-semibold">{credits.toLocaleString()}</span>
+              <span className="text-[#22c55e] text-xs">⊙</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>크레딧</span>
+              <span className="ml-auto text-[#22c55e] text-sm font-semibold">{credits.toLocaleString()}</span>
             </div>
           )}
           {userName && (
             <div className="flex items-center gap-2">
-              <p className="text-white/70 text-sm truncate">{userName}</p>
-              <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-500/30 text-orange-500/60 shrink-0">ADMIN</span>
+              <p className="text-sm truncate" style={{ color: 'var(--text-muted)' }}>{userName}</p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded border border-green-500/30 text-green-500/60 shrink-0">ADMIN</span>
             </div>
           )}
           {userEmail && (
-            <p className="text-white/30 text-xs truncate">{userEmail}</p>
+            <p className="text-xs truncate" style={{ color: 'var(--text-faint)' }}>{userEmail}</p>
           )}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-white/20 text-xs">v1.0.0</span>
+            <span className="text-xs" style={{ color: 'var(--text-ultra)' }}>v1.0.0</span>
             <button
               onClick={handleLogout}
               className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
@@ -148,12 +149,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* 콘텐츠 영역 */}
-      <main className="flex-1 overflow-y-auto bg-[#0a0a0a]">
+      <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
         {/* 상단 바 */}
-        <div className="sticky top-0 z-10 flex items-center justify-end px-6 h-[52px] border-b border-white/8 bg-[#0a0a0a]/90 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-green-400/70 text-xs tracking-widest">LIVE</span>
+        <div className="sticky top-0 z-10 flex items-center justify-end px-6 h-[52px] backdrop-blur-sm" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-topbar)' }}>
+          <div className="flex items-center gap-3">
+            {/* 테마 토글 - LIVE 왼쪽 */}
+            <ThemeToggle />
+
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-green-400/70 text-xs tracking-widest">LIVE</span>
+            </div>
           </div>
         </div>
 

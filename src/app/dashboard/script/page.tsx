@@ -92,8 +92,8 @@ function PriceBadge({ price }: { price?: string }) {
   const val = parseFloat(price.replace(/[^0-9.]/g, ''));
   let cls = 'text-white/25 bg-white/5';
   if (isFree)      cls = 'text-green-400/80 bg-green-400/10';
-  else if (val < 1) cls = 'text-orange-500/70 bg-orange-500/10';
-  else if (val < 5) cls = 'text-orange-400/70 bg-orange-400/10';
+  else if (val < 1) cls = 'text-green-500/70 bg-green-500/10';
+  else if (val < 5) cls = 'text-green-400/70 bg-green-400/10';
   else              cls = 'text-red-400/60 bg-red-400/10';
   return (
     <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-sm whitespace-nowrap ${cls}`}>
@@ -114,7 +114,7 @@ function OptionItem({ active, onClick, children, sub }: {
       onClick={onClick}
       className={`w-full flex items-center justify-between px-2 py-2 text-[12.5px] font-mono border-l-2 transition-colors ${
         active
-          ? 'border-orange-500 text-orange-500 bg-orange-500/5'
+          ? 'border-green-500 text-green-500 bg-green-500/5'
           : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
       }`}
     >
@@ -212,12 +212,12 @@ export default function ScriptPage() {
           <>
             <div className="relative mt-4 mb-4">
               <div className="flex items-center gap-2 mb-4">
-                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-                <span className="text-orange-500 text-sm font-semibold">대본 만들기</span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                <span className="text-green-500 text-sm font-semibold">대본 만들기</span>
               </div>
 
               <div
-                className={`relative flex flex-col border transition-colors duration-200 bg-[#161616] rounded-xl ${topicFocused ? 'border-orange-500/50' : 'border-white/8'}`}
+                className={`relative flex flex-col border transition-colors duration-200 bg-[#161616] rounded-xl ${topicFocused ? 'border-green-500/50' : 'border-white/8'}`}
                 onMouseEnter={() => setTopicFocused(true)}
                 onMouseLeave={() => setTopicFocused(false)}
               >
@@ -240,7 +240,7 @@ export default function ScriptPage() {
                   <button
                     onClick={handleGenerate}
                     disabled={!topic.trim() || status === 'loading'}
-                    className="inline-flex items-center gap-2 px-5 py-2 bg-[#F97316] hover:bg-[#EA6C0A] disabled:bg-white/8 disabled:cursor-not-allowed text-white disabled:text-white/25 font-semibold text-sm rounded-lg transition-colors shadow-[0_0_16px_rgba(249,115,22,0.35)] disabled:shadow-none"
+                    className="inline-flex items-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/8 disabled:cursor-not-allowed text-white disabled:text-white/25 font-semibold text-sm rounded-lg transition-colors shadow-[0_0_16px_rgba(34,197,94,0.35)] disabled:shadow-none"
                   >
                     {status === 'loading' ? (
                       <>
@@ -259,7 +259,7 @@ export default function ScriptPage() {
                 <div className="mt-2 flex items-center gap-3">
                   <button onClick={() => setStatus('idle')} className="text-white/25 hover:text-white/60 text-xs font-mono transition-colors">다시 시도 →</button>
                   {error.startsWith('__KEY__') && (
-                    <a href="/dashboard/settings" className="text-orange-500/70 hover:text-orange-500 text-xs font-mono transition-colors">API 키 설정 →</a>
+                    <a href="/dashboard/settings" className="text-green-500/70 hover:text-green-500 text-xs font-mono transition-colors">API 키 설정 →</a>
                   )}
                 </div>
               </div>
@@ -270,8 +270,8 @@ export default function ScriptPage() {
         {status === 'done' && (
           <>
             {saveWarning && (
-              <div className="mb-4 px-3 py-2 border-l-2 border-orange-500 bg-orange-500/5">
-                <p className="text-orange-500 text-xs font-mono">{saveWarning}</p>
+              <div className="mb-4 px-3 py-2 border-l-2 border-green-500 bg-green-500/5">
+                <p className="text-green-500 text-xs font-mono">{saveWarning}</p>
               </div>
             )}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
@@ -305,10 +305,10 @@ export default function ScriptPage() {
             <div className="flex items-center gap-8 mt-12 pb-10">
               <button
                 onClick={handleUseScript}
-                className="group flex items-center gap-3 text-orange-500 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-orange-400"
+                className="group flex items-center gap-3 text-green-500 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-green-400"
               >
                 영상만들기
-                <span className="w-8 h-[1px] bg-orange-500/30 group-hover:w-12 group-hover:bg-orange-500 transition-all duration-300" />
+                <span className="w-8 h-[1px] bg-green-500/30 group-hover:w-12 group-hover:bg-green-500 transition-all duration-300" />
               </button>
 
               <button
@@ -347,12 +347,12 @@ export default function ScriptPage() {
                     disabled={status === 'loading'}
                     className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${
                       tone === t.id
-                        ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+                        ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
                         : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/80 hover:bg-white/4'
                     }`}
                   >
                     <span className="font-medium">{t.label}</span>
-                    <span className={`text-xs ${tone === t.id ? 'text-[#F97316]/60' : 'text-white/20'}`}>{t.sub}</span>
+                    <span className={`text-xs ${tone === t.id ? 'text-[#22c55e]/60' : 'text-white/20'}`}>{t.sub}</span>
                   </button>
                 ))}
               </div>

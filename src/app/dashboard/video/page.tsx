@@ -193,7 +193,7 @@ function PanelAccordion({ label, value, children, closeOnSelect = false }: {
       >
         <span className="text-white/40 text-xs font-semibold uppercase tracking-wide">{label}</span>
         <span className="flex items-center gap-2">
-          <span className="text-white/60 text-sm truncate max-w-[160px]">{value}</span>
+          <span className="text-white/60 text-xs truncate max-w-[160px]">{value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
             className={`text-white/20 group-hover:text-white/40 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -216,8 +216,8 @@ function PriceBadge({ price }: { price?: string }) {
   const val = parseFloat(price.replace(/[^0-9.]/g, ''));
   let cls = 'text-white/25 bg-white/5';
   if (isFree)      cls = 'text-green-400/80 bg-green-400/10';
-  else if (val < 1) cls = 'text-orange-500/70 bg-orange-500/10';
-  else if (val < 5) cls = 'text-orange-400/70 bg-orange-400/10';
+  else if (val < 1) cls = 'text-green-500/70 bg-green-500/10';
+  else if (val < 5) cls = 'text-green-400/70 bg-green-400/10';
   else              cls = 'text-red-400/60 bg-red-400/10';
   return (
     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>
@@ -236,9 +236,9 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${
+      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-colors ${
         active
-          ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+          ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
           : 'border-transparent text-white/55 hover:text-white hover:bg-white/5'
       }`}
     >
@@ -850,12 +850,12 @@ export default function DashboardPage() {
           <div className="relative mt-6 flex flex-col">
               {/* 카드 헤더 */}
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-                <span className="text-orange-500 text-sm font-semibold">영상 만들기</span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                <span className="text-green-500 text-sm font-semibold">영상 만들기</span>
               </div>
 
               <div className={`flex flex-col border rounded-xl transition-colors duration-200 ${
-                isProcessing ? 'border-white/5' : 'border-white/8 hover:border-orange-500/40 focus-within:border-orange-500/40'
+                isProcessing ? 'border-white/5' : 'border-white/8 hover:border-green-500/40 focus-within:border-green-500/40'
               } bg-[#161616]`}>
               {/* 상단 라벨 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/5">
@@ -884,7 +884,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handlePreview}
                   disabled={!script.trim() || isProcessing}
-                  className="flex items-center gap-2 bg-[#F97316] hover:bg-[#EA6C0A] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-sm rounded-lg px-4 py-1.5 transition-colors"
+                  className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-sm rounded-lg px-4 py-1.5 transition-colors"
                 >
                   {status === 'previewing' ? (
                     <>
@@ -907,8 +907,8 @@ export default function DashboardPage() {
               <div className="mt-4 border border-white/10 bg-white/[0.02] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
-                    <span className="text-orange-400/80 text-[11px] font-mono tracking-widest uppercase">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-green-400/80 text-[11px] font-mono tracking-widest uppercase">
                       {genTotal === 0 ? '장면 분석 중...' : `이미지 생성 중 ${genCompleted} / ${genTotal}`}
                     </span>
                   </div>
@@ -920,7 +920,7 @@ export default function DashboardPage() {
                 {/* 프로그레스바 */}
                 <div className="w-full h-1 bg-white/5 overflow-hidden">
                   <div
-                    className="h-full bg-orange-400 transition-all duration-500 ease-out"
+                    className="h-full bg-green-400 transition-all duration-500 ease-out"
                     style={{ width: genTotal === 0 ? '5%' : `${Math.max(5, (genCompleted / genTotal) * 100)}%` }}
                   />
                 </div>
@@ -929,7 +929,7 @@ export default function DashboardPage() {
                 {scenes.length > 0 && (
                   <div className="mt-3 flex gap-1.5 flex-wrap">
                     {scenes.map((scene, i) => scene?.imageUrl ? (
-                      <div key={i} className="relative w-10 h-14 shrink-0 overflow-hidden border border-orange-400/30">
+                      <div key={i} className="relative w-10 h-14 shrink-0 overflow-hidden border border-green-400/30">
                         <img src={scene.imageUrl} alt="" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/20" />
                       </div>
@@ -960,8 +960,8 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
                 {status === 'previewing' && (
-                  <span className="flex items-center gap-2 text-orange-400/80 text-[11px] font-mono">
-                    <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
+                  <span className="flex items-center gap-2 text-green-400/80 text-[11px] font-mono">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                     이미지 생성 중 {genCompleted} / {genTotal}
                   </span>
                 )}
@@ -969,13 +969,13 @@ export default function DashboardPage() {
                   <span className="text-white/25 text-[12px] font-mono">
                     LLM {(usageInfo.promptTokens + usageInfo.completionTokens).toLocaleString()}토큰 · 이미지 {usageInfo.imageCount}장
                     {calcEstimatedCost(usageInfo) && (
-                      <span className="text-orange-500/50 ml-1">{calcEstimatedCost(usageInfo)}</span>
+                      <span className="text-green-500/50 ml-1">{calcEstimatedCost(usageInfo)}</span>
                     )}
                   </span>
                 )}
                 {animatingCount > 0 && (
-                  <span className="flex items-center gap-2 bg-orange-500/10 text-orange-500 text-[11px] font-mono px-2 py-0.5 rounded-full animate-pulse">
-                    <span className="w-1 h-1 bg-orange-500 rounded-full" />
+                  <span className="flex items-center gap-2 bg-green-500/10 text-green-500 text-[11px] font-mono px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="w-1 h-1 bg-green-500 rounded-full" />
                     {animatingCount}개 애니메이션 중
                   </span>
                 )}
@@ -1018,19 +1018,19 @@ export default function DashboardPage() {
                     scene.videoUrl
                       ? 'bg-[#0c1a1a] border border-[white]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
                       : scene.isAnimating
-                      ? 'bg-[#151005] border border-orange-400/35 shadow-[0_2px_12px_rgba(251,146,60,0.08)]'
+                      ? 'bg-[#151005] border border-green-400/35 shadow-[0_2px_12px_rgba(251,146,60,0.08)]'
                       : 'bg-[#111] border border-white/15 hover:border-white/30'
                   }`}
                 >
                   {/* ── 헤더 행: 씬번호 + 미리듣기 + AI애니메이션 + 스타일 + 재생성/교체 ── */}
                   <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${
                     scene.videoUrl ? 'border-[white]/25 bg-[white]/8' :
-                    scene.isAnimating ? 'border-orange-400/25 bg-orange-400/8' :
+                    scene.isAnimating ? 'border-green-400/25 bg-green-400/8' :
                     'border-white/10 bg-white/[0.04]'
                   }`}>
                     {/* 씬 번호 */}
                     <span className={`text-[11px] font-medium tracking-widest uppercase shrink-0 ${
-                      scene.videoUrl ? 'text-[white]' : scene.isAnimating ? 'text-orange-400' : 'text-white/50'
+                      scene.videoUrl ? 'text-[white]' : scene.isAnimating ? 'text-green-400' : 'text-white/50'
                     }`}>
                       Scene {i + 1}
                     </span>
@@ -1041,7 +1041,7 @@ export default function DashboardPage() {
                     {!scene.isLoading && (
                       <span className={`text-[12px] font-mono tabular-nums px-2 py-0.5 rounded shrink-0 ${
                         scene.text.length < 150 ? 'text-red-400 bg-red-400/15 border border-red-400/30' :
-                        scene.text.length > 200 ? 'text-orange-400 bg-orange-500/15 border border-orange-500/30' :
+                        scene.text.length > 200 ? 'text-green-400 bg-green-500/15 border border-green-500/30' :
                         'text-white/60 bg-white/8 border border-white/15'
                       }`}>
                         {scene.text.length}자
@@ -1057,7 +1057,7 @@ export default function DashboardPage() {
                         onClick={() => handlePlayScene(i, scene.text)}
                         disabled={loadingAudioIndex !== null && loadingAudioIndex !== i || scene.isAnimating}
                         className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border transition-colors disabled:opacity-30 shrink-0
-                          border-white/25 text-white/70 hover:text-orange-400 hover:border-orange-500/50 hover:bg-orange-500/8"
+                          border-white/25 text-white/70 hover:text-green-400 hover:border-green-500/50 hover:bg-green-500/8"
                       >
                         {loadingAudioIndex === i ? (
                           <><span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />로딩</>
@@ -1078,12 +1078,12 @@ export default function DashboardPage() {
                           scene.videoUrl
                             ? 'text-[white] bg-[white]/12 border-[white]/50 cursor-default'
                             : scene.isAnimating
-                            ? 'text-orange-300 bg-orange-400/12 border-orange-400/40 animate-pulse cursor-wait'
+                            ? 'text-green-300 bg-green-400/12 border-green-400/40 animate-pulse cursor-wait'
                             : 'text-[white] border-[white]/40 hover:border-[white]/70 hover:bg-[white]/8 disabled:opacity-30 disabled:cursor-not-allowed'
                         }`}
                       >
                         {scene.isAnimating ? (
-                          <><span className="w-3 h-3 border border-orange-400/50 border-t-orange-300 rounded-full animate-spin" />변환 중</>
+                          <><span className="w-3 h-3 border border-green-400/50 border-t-green-300 rounded-full animate-spin" />변환 중</>
                         ) : scene.videoUrl ? (
                           <>✓ AI 비디오</>
                         ) : (
@@ -1163,7 +1163,7 @@ export default function DashboardPage() {
                         <button
                           onClick={() => handleRegenerateImage(i)}
                           disabled={regeneratingIndex !== null}
-                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-orange-300 hover:border-orange-400/45 hover:bg-orange-400/8 transition-colors disabled:opacity-30 shrink-0"
+                          className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded border border-white/20 text-white/65 hover:text-green-300 hover:border-green-400/45 hover:bg-green-400/8 transition-colors disabled:opacity-30 shrink-0"
                         >
                           ↺ 재생성
                         </button>
@@ -1223,7 +1223,7 @@ export default function DashboardPage() {
                     >
                       {scene.isLoading ? (
                         <div className="w-full h-full flex items-center justify-center bg-white/[0.03]">
-                          <span className="w-4 h-4 border-2 border-white/15 border-t-orange-400/70 rounded-full animate-spin" />
+                          <span className="w-4 h-4 border-2 border-white/15 border-t-green-400/70 rounded-full animate-spin" />
                         </div>
                       ) : regeneratingIndex === i ? (
                         <div className="w-full h-full flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -1265,7 +1265,7 @@ export default function DashboardPage() {
                       )}
                       {scene.isAnimating && (
                         <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
-                          <span className="w-5 h-5 border-2 border-orange-400/40 border-t-orange-400 rounded-full animate-spin" />
+                          <span className="w-5 h-5 border-2 border-green-400/40 border-t-green-400 rounded-full animate-spin" />
                         </div>
                       )}
                     </div>
@@ -1299,7 +1299,7 @@ export default function DashboardPage() {
             {status === 'preview' && (
               <button
                 onClick={handleRender}
-                className="w-full mt-8 bg-orange-500 hover:bg-orange-400 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
+                className="w-full mt-8 bg-green-500 hover:bg-green-400 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
               >
                 영상 생성 →
               </button>
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
                           setStatus('preview');
                           setError('');
                         }}
-                        className="px-3 py-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-500 text-[12px] font-bold font-mono transition-all"
+                        className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-500 text-[12px] font-bold font-mono transition-all"
                       >
                         MiniMax로 전환
                       </button>
@@ -1345,7 +1345,7 @@ export default function DashboardPage() {
                           setStatus('preview');
                           setError('');
                         }}
-                        className="px-3 py-1 bg-orange-400/10 hover:bg-orange-400/20 border border-orange-400/30 text-orange-400 text-[12px] font-bold font-mono transition-all"
+                        className="px-3 py-1 bg-green-400/10 hover:bg-green-400/20 border border-green-400/30 text-green-400 text-[12px] font-bold font-mono transition-all"
                       >
                         ElevenLabs로 전환
                       </button>
@@ -1356,11 +1356,11 @@ export default function DashboardPage() {
             )}
 
             {status === 'rendering' && (
-              <div className="mt-8 border-l-2 border-orange-500/40 pl-4 py-1">
+              <div className="mt-8 border-l-2 border-green-500/40 pl-4 py-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span className="w-3.5 h-3.5 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
                   <div>
-                    <p className="text-orange-500/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
+                    <p className="text-green-500/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
                     <p className="text-[white]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">
                       {renderProgress > 0 ? 'AWS Lambda 렌더링 진행 중' : '나레이션(TTS) 생성 및 렌더링 준비 중...'}
                     </p>
@@ -1369,7 +1369,7 @@ export default function DashboardPage() {
                 {/* 미니 프로그레스 바 */}
                 <div className="w-full h-0.5 bg-white/5 overflow-hidden rounded-full">
                   <div 
-                    className="h-full bg-orange-500 transition-all duration-500 ease-out" 
+                    className="h-full bg-green-500 transition-all duration-500 ease-out" 
                     style={{ width: `${renderProgress * 100}%` }}
                   />
                 </div>
@@ -1424,7 +1424,7 @@ export default function DashboardPage() {
                   a.download = 'clipflow.mp4';
                   a.click();
                 }}
-                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-black font-bold text-[13px] tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-bold text-[13px] tracking-widest uppercase font-mono px-4 py-1.5 transition-colors"
               >
                 ↓ 다운로드
               </button>
@@ -1455,7 +1455,7 @@ export default function DashboardPage() {
                       disabled={isProcessing}
                       className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
                         imageStyle === s.id
-                          ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+                          ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
                           : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                       }`}
                     >
@@ -1467,7 +1467,7 @@ export default function DashboardPage() {
                     disabled={isProcessing}
                     className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
                       imageStyle === 'none'
-                        ? 'border-[#F97316]/60 text-white bg-[#F97316]/10'
+                        ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
                         : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                     }`}
                   >
@@ -1527,7 +1527,7 @@ export default function DashboardPage() {
                         { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
                       ] as const).map(t => (
                         <button key={t.id} onClick={() => setPptTheme(t.id)}
-                          className={`flex flex-col items-start px-3 py-2 border rounded-lg text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#F97316]/60 bg-[#F97316]/10' : 'border-white/8 hover:border-white/20'}`}>
+                          className={`flex flex-col items-start px-3 py-2 border rounded-lg text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#22c55e]/60 bg-[#22c55e]/10' : 'border-white/8 hover:border-white/20'}`}>
                           <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-white' : 'text-white/55'}`}>{t.label}</span>
                           <span className="text-[10px] text-white/30 mt-0.5">{t.desc}</span>
                         </button>
@@ -1613,7 +1613,7 @@ export default function DashboardPage() {
                   <p className="text-white/35 text-xs font-medium mb-1.5">메인 캐릭터</p>
                   <div
                     onClick={() => !isProcessing && characterInputRef.current?.click()}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm border border-white/10 rounded-lg text-white/35 transition-colors ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-white/10 rounded-lg text-white/35 transition-colors ${
                       !isProcessing ? 'hover:border-white/25 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                     }`}
                   >
@@ -1653,7 +1653,7 @@ export default function DashboardPage() {
                     {subCharacters.length < 5 && (
                       <div
                         onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-white/10 rounded-lg text-white/25 transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-dashed border-white/10 rounded-lg text-white/25 transition-colors ${
                           !isProcessing ? 'hover:border-white/25 hover:text-white/45 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                         }`}
                       >
@@ -1733,7 +1733,7 @@ export default function DashboardPage() {
                     onClick={() => setTtsProvider('none')}
                     className={`w-full flex items-center justify-between px-2 py-2 text-[13px] font-mono border-l-2 transition-colors ${
                       ttsProvider === 'none'
-                        ? 'border-orange-500 text-orange-500 bg-orange-500/5'
+                        ? 'border-green-500 text-green-500 bg-green-500/5'
                         : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
                     }`}
                   >
@@ -1753,12 +1753,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('google'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'google' && voiceId === v.id
-                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
+                              ? 'border-green-500 text-green-500 bg-green-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'google' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'google' && voiceId === v.id ? 'text-green-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1778,12 +1778,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('minimax'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'minimax' && voiceId === v.id
-                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
+                              ? 'border-green-500 text-green-500 bg-green-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'minimax' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'minimax' && voiceId === v.id ? 'text-green-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1803,12 +1803,12 @@ export default function DashboardPage() {
                           onClick={() => { setVoiceId(v.id); setTtsProvider('elevenlabs'); }}
                           className={`w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-mono border transition-colors ${
                             ttsProvider === 'elevenlabs' && voiceId === v.id
-                              ? 'border-orange-500 text-orange-500 bg-orange-500/5'
+                              ? 'border-green-500 text-green-500 bg-green-500/5'
                               : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/70'
                           }`}
                         >
                           <span>{v.name}</span>
-                          <span className={`text-[11.5px] font-light ${ttsProvider === 'elevenlabs' && voiceId === v.id ? 'text-orange-500/60' : 'text-white/45'}`}>
+                          <span className={`text-[11.5px] font-light ${ttsProvider === 'elevenlabs' && voiceId === v.id ? 'text-green-500/60' : 'text-white/45'}`}>
                             {v.gender === 'female' ? '여성' : '남성'} · {v.desc}
                           </span>
                         </button>
@@ -1822,12 +1822,12 @@ export default function DashboardPage() {
                 <div className="px-1">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-white/30 text-[13px] font-mono">속도</span>
-                    <span className="text-orange-500 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
+                    <span className="text-green-500 text-[13px] font-mono">{playbackRate.toFixed(2)}x</span>
                   </div>
                   <input
                     type="range" min={0.5} max={2.0} step={0.05} value={playbackRate}
                     onChange={e => setPlaybackRate(parseFloat(e.target.value))}
-                    className="w-full accent-orange-500 h-0.5"
+                    className="w-full accent-green-500 h-0.5"
                   />
                   <div className="flex justify-between text-white/15 text-[12px] font-mono mt-2">
                     <span>0.5x</span><span>0.75x</span><span>1.0x</span><span>1.5x</span><span>2.0x</span>

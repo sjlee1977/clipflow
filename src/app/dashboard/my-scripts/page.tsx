@@ -79,9 +79,9 @@ export default function MyScriptsPage() {
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-orange-400/30 bg-[#0a0a0a]">
-            <span className="w-1 h-1 bg-orange-400 rounded-full" />
-            <span className="text-orange-400 text-[11px] font-mono tracking-widest uppercase">내 대본</span>
+          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-green-400/30 bg-[#0a0a0a]">
+            <span className="w-1 h-1 bg-green-400 rounded-full" />
+            <span className="text-green-400 text-[11px] font-mono tracking-widest uppercase">내 대본</span>
           </div>
           <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">총 {scripts.length}개</span>
         </div>
