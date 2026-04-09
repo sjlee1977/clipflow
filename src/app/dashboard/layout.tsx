@@ -7,34 +7,35 @@ import { createClient } from '@/lib/supabase-browser';
 import SidebarScripts from '@/components/SidebarScripts';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, type LucideIcon } from 'lucide-react';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
     group: 'STUDIO',
     items: [
-      { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: '⌘' },
-      { href: '/dashboard/script', label: '대본 만들기', icon: '✎' },
-      { href: '/dashboard/video', label: '영상 만들기', icon: '▶' },
+      { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: FileText },
+      { href: '/dashboard/script', label: '대본 만들기', icon: PenLine },
+      { href: '/dashboard/video', label: '영상 만들기', icon: Video },
     ],
   },
   {
     group: 'TRENDS',
     items: [
-      { href: '/dashboard/trends/viral', label: '급상승 영상', icon: '🔥' },
-      { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: '⚡' },
+      { href: '/dashboard/trends/viral', label: '급상승 영상', icon: TrendingUp },
+      { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: Zap },
     ],
   },
   {
     group: 'LIBRARY',
     items: [
-      { href: '/dashboard/history', label: '내 영상', icon: '◫' },
-      { href: '/dashboard/my-scripts', label: '내 대본', icon: '☰' },
+      { href: '/dashboard/history', label: '내 영상', icon: Film },
+      { href: '/dashboard/my-scripts', label: '내 대본', icon: ScrollText },
     ],
   },
   {
     group: 'SETTINGS',
     items: [
-      { href: '/dashboard/settings', label: '설정', icon: '◈' },
+      { href: '/dashboard/settings', label: '설정', icon: Settings },
     ],
   },
 ];
@@ -93,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
                         <div className="flex items-center gap-2.5 px-3 py-2 cursor-not-allowed select-none rounded-lg" style={{ color: 'var(--text-faint)' }}>
-                          <span className="text-sm w-4">{item.icon}</span>
+                          <span className="w-4 flex items-center justify-center"><item.icon size={14} /></span>
                           <span className="text-sm">{item.label}</span>
                           <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded" style={{ border: '1px solid var(--border-md)', color: 'var(--text-faint)' }}>SOON</span>
                         </div>
@@ -105,9 +106,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           }`}
                           style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
                         >
-                          <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 text-xs ${
+                          <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 ${
                             active ? 'bg-[#22c55e]/80 text-white' : ''
-                          }`}>{item.icon}</span>
+                          }`}><item.icon size={14} /></span>
                           <span>{item.label}</span>
                         </Link>
                       )}

@@ -47,15 +47,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   general:    '일반',
 };
 
-/* ── 오른쪽 패널 섹션 (일반) ── */
-function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-white/5 pb-4 mb-4">
-      <p className="text-[white]/70 text-[13px] tracking-widest uppercase mb-3">{label}</p>
-      {children}
-    </div>
-  );
-}
 
 /* ── 오른쪽 패널 섹션 (아코디언) ── */
 function PanelAccordion({ label, value, open, onToggle, children }: {
@@ -351,8 +342,8 @@ export default function ScriptPage() {
                         : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/80 hover:bg-white/4'
                     }`}
                   >
-                    <span className="font-medium">{t.label}</span>
-                    <span className={`text-xs ${tone === t.id ? 'text-[#22c55e]/60' : 'text-white/20'}`}>{t.sub}</span>
+                    <span className="font-mono text-[13px]">{t.label}</span>
+                    <span className={`font-mono text-[12px] ${tone === t.id ? 'text-[#22c55e]/60' : 'text-white/20'}`}>{t.sub}</span>
                   </button>
                 ))}
               </div>
@@ -436,15 +427,15 @@ export default function ScriptPage() {
           {/* 설정 요약 */}
           <div className="pt-4 border-t border-white/5 space-y-2">
             <p className="text-white/30 text-xs font-semibold uppercase tracking-wide mb-3">대본 설정 요약</p>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-[13px]">
               <span className="text-white/35">톤</span>
-              <span className="text-white/65">
+              <span className="text-white/65 font-mono">
                 {(!category || category === 'general') ? selectedTone?.label : '카테고리 내장'}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-[13px]">
               <span className="text-white/35">AI 모델</span>
-              <span className="text-white/65">{selectedLlm?.name}</span>
+              <span className="text-white/65 font-mono">{selectedLlm?.name}</span>
             </div>
           </div>
 
