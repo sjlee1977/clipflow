@@ -18,6 +18,13 @@ const NAV_ITEMS = [
     ],
   },
   {
+    group: 'TRENDS',
+    items: [
+      { href: '/dashboard/trends/viral', label: '급상승 영상', icon: '🔥' },
+      { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: '⚡' },
+    ],
+  },
+  {
     group: 'LIBRARY',
     items: [
       { href: '/dashboard/history', label: '내 영상', icon: '◫' },
