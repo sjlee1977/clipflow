@@ -202,16 +202,6 @@ export default function SubscriberPage() {
           ))}
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={triggerCollect}
-            disabled={collecting || loading}
-            className="px-2.5 py-1 rounded-lg text-xs transition-colors ml-auto"
-            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
-          >
-            {collecting ? '수집 중...' : '지금 수집'}
-          </button>
-        )}
       </div>
 
       {/* 구독자 범위 필터 */}
@@ -282,6 +272,16 @@ export default function SubscriberPage() {
             {cat.label}
           </button>
         ))}
+        {isAdmin && (
+          <button
+            onClick={triggerCollect}
+            disabled={collecting || loading}
+            className="px-2.5 py-1.5 rounded-lg text-xs transition-colors ml-1"
+            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
+          >
+            {collecting ? '수집 중...' : '지금 수집'}
+          </button>
+        )}
       </div>
 
       {/* 영상 목록 */}
