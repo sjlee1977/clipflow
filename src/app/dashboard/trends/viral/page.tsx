@@ -43,7 +43,7 @@ export default function ViralPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: { email?: string } | null } }) => {
       const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '';
       if (user?.email && adminEmail && user.email.toLowerCase() === adminEmail.toLowerCase()) {
         setIsAdmin(true);
