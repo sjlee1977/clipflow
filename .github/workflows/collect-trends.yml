@@ -2,7 +2,7 @@ name: Collect Trends
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # 6시간마다 자동 실행
+    - cron: '0 0 * * *'     # 매일 자정(UTC) 자동 실행
   workflow_dispatch:          # GitHub에서 수동 실행 버튼
 
 jobs:

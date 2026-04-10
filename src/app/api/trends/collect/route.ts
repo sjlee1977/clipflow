@@ -9,7 +9,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const summary = await runTrendsCollection();
+    const summary = await runTrendsCollection(
+      ['KR', 'US', 'GB', 'JP', 'FR'], // 전체 지역
+    );
     return NextResponse.json({ success: true, summary });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
