@@ -166,18 +166,6 @@ export default function ViralPage() {
               {collecting ? '수집 중...' : '지금 수집'}
             </button>
           )}
-          <button
-            onClick={fetchSignals}
-            disabled={loading}
-            className="px-2.5 py-1 rounded-lg text-xs transition-colors"
-            style={{
-              border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
-              background: loading ? 'var(--hover-bg)' : 'transparent',
-            }}
-          >
-            {loading ? '로딩 중...' : '새로고침'}
-          </button>
         </div>
       </div>
 
