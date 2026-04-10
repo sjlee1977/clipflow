@@ -49,8 +49,59 @@ function getApiKey(): string {
   return key;
 }
 
-// 카테고리별 최근 영상 검색 (publishedAfter: 최근 N시간)
-// videoType: 'short' = 4분 이하(쇼츠), 'regular' = 4분~20분+
+// ISO 8601 duration → 초 변환 (PT1H2M3S 등)
+function parseIsoDuration(iso: string): number {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  return (parseInt(match[1] ?? '0', 10) * 3600) +
+         (parseInt(match[2] ?? '0', 10) * 60) +
+         (parseInt(match[3] ?? '0', 10));
+}
+
+// youtubeId 있는 카테고리: mostPopular 사용 (1 유닛)
+async function fetchMostPopularVideos(
+  categoryId: string,
+  maxResults: number,
+  regionCode: string,
+  videoType: 'short' | 'regular'
+): Promise<YTVideoItem[]> {
+  const params = new URLSearchParams({
+    part: 'snippet,contentDetails',
+    chart: 'mostPopular',
+    regionCode,
+    videoCategoryId: categoryId,
+    maxResults: '50',
+    key: getApiKey(),
+  });
+
+  const res = await fetch(`${YOUTUBE_API_BASE}/videos?${params}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`YouTube mostPopular API 오류 (${res.status}): ${JSON.stringify(err)}`);
+  }
+
+  const data = await res.json();
+  return (data.items ?? [])
+    .filter((item: any) => {
+      const secs = parseIsoDuration(item.contentDetails?.duration ?? '');
+      return videoType === 'short' ? secs < 240 : secs >= 240;
+    })
+    .slice(0, maxResults)
+    .map((item: any) => ({
+      videoId: item.id,
+      channelId: item.snippet.channelId,
+      title: item.snippet.title,
+      thumbnail:
+        item.snippet.thumbnails?.medium?.url ||
+        item.snippet.thumbnails?.default?.url ||
+        '',
+      publishedAt: item.snippet.publishedAt,
+    }));
+}
+
+// 카테고리별 최근 영상 검색
+// - youtubeId 있는 카테고리: videos.list mostPopular (1 유닛)
+// - keyword 기반 카테고리: search.list (100 유닛, 불가피)
 export async function searchRecentVideos(
   category: string,
   maxResults = 30,
@@ -61,28 +112,27 @@ export async function searchRecentVideos(
   const cat = TREND_CATEGORIES[category];
   if (!cat) return [];
 
+  // youtubeId 있으면 mostPopular 사용 (1 유닛)
+  if (cat.youtubeId) {
+    return fetchMostPopularVideos(cat.youtubeId, maxResults, regionCode, videoType);
+  }
+
+  // keyword 기반: search.list 사용 (100 유닛)
   const region = SEARCH_REGIONS[regionCode] ?? SEARCH_REGIONS.KR;
   const publishedAfter = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
 
   const params = new URLSearchParams({
     part: 'snippet',
     type: 'video',
-    order: 'date',
+    order: 'viewCount',
     regionCode,
     relevanceLanguage: region.language,
     maxResults: String(Math.min(maxResults, 50)),
     publishedAfter,
+    q: cat.keyword!,
+    videoDuration: videoType === 'short' ? 'short' : 'medium',
     key: getApiKey(),
   });
-
-  // short = 4분 이하(쇼츠), regular = 4분 이상(일반 영상)
-  params.set('videoDuration', videoType === 'short' ? 'short' : 'medium');
-
-  if (cat.youtubeId) {
-    params.set('videoCategoryId', cat.youtubeId);
-  } else if (cat.keyword) {
-    params.set('q', cat.keyword);
-  }
 
   const res = await fetch(`${YOUTUBE_API_BASE}/search?${params}`);
   if (!res.ok) {

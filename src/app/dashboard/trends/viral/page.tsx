@@ -85,6 +85,7 @@ export default function ViralPage() {
         body: JSON.stringify({
           regions: selectedRegion ? [selectedRegion] : ['KR'],
           categories: selectedCategory ? [selectedCategory] : [],
+          videoTypes: [videoType],
         }),
       });
       const body = await res.json().catch(() => ({}));

@@ -21,6 +21,7 @@ export interface CollectSummary {
 export async function runTrendsCollection(
   regions?: string[],
   categories?: string[],
+  videoTypes?: ('regular' | 'short')[],
 ): Promise<CollectSummary> {
   const supabase = await createAdminClient();
   const summary: CollectSummary = { discovered: 0, snapshots: 0, viral: 0, outliers: 0, errors: [] };
@@ -42,6 +43,9 @@ export async function runTrendsCollection(
   const targetRegions = regions && regions.length > 0
     ? regions
     : ['KR']; // 기본값은 한국만
+
+  const targetVideoTypes: ('regular' | 'short')[] =
+    videoTypes && videoTypes.length > 0 ? videoTypes : ['regular', 'short'];
 
   if (allCategories.length === 0) {
     summary.errors.push('수집할 카테고리가 없습니다. 카테고리를 선택해주세요.');
@@ -74,7 +78,7 @@ export async function runTrendsCollection(
   if (shouldDiscover) {
     for (const region of targetRegions) {
       for (const category of allCategories) {
-        for (const videoType of ['regular', 'short'] as const) {
+        for (const videoType of targetVideoTypes) {
         try {
           const videos = await searchRecentVideos(category, 20, 24, region, videoType);
 
@@ -142,11 +146,15 @@ export async function runTrendsCollection(
     }
   }
 
-  // 3. 조회수 스냅샷 수집
-  const { data: activeVideos } = await supabase
+  // 3. 조회수 스냅샷 수집 (선택된 카테고리/지역만)
+  let activeVideoQuery = supabase
     .from('trend_videos')
     .select('video_id')
     .eq('is_active', true);
+  if (allCategories.length > 0) activeVideoQuery = activeVideoQuery.in('category', allCategories);
+  if (targetRegions.length > 0) activeVideoQuery = activeVideoQuery.in('region', targetRegions);
+  activeVideoQuery = activeVideoQuery.in('video_type', targetVideoTypes);
+  const { data: activeVideos } = await activeVideoQuery;
 
   const videoIds = (activeVideos ?? []).map((v) => v.video_id);
 

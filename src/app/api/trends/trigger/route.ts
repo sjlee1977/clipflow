@@ -11,11 +11,13 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const regions: string[] = body.regions ?? [];
   const categories: string[] = body.categories ?? [];
+  const videoTypes: ('regular' | 'short')[] = body.videoTypes ?? [];
 
   try {
     const summary = await runTrendsCollection(
       regions.length > 0 ? regions : undefined,
       categories.length > 0 ? categories : undefined,
+      videoTypes.length > 0 ? videoTypes : undefined,
     );
     return NextResponse.json({ success: true, summary });
   } catch (e) {
