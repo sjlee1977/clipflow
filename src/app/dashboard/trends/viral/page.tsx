@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Video, Zap } from 'lucide-react';
 import { TREND_CATEGORIES, SEARCH_REGIONS } from '@/lib/youtube-trends';
 import DateRangePicker from '@/components/DateRangePicker';
+import { createClient } from '@/lib/supabase-browser';
 
 interface ViralSignal {
   id: string;
@@ -38,6 +39,17 @@ export default function ViralPage() {
   const [collecting, setCollecting] = useState(false);
   const [collectStatus, setCollectStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '';
+      if (user?.email && adminEmail && user.email.toLowerCase() === adminEmail.toLowerCase()) {
+        setIsAdmin(true);
+      }
+    });
+  }, []);
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
@@ -140,18 +152,20 @@ export default function ViralPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={triggerCollect}
-            disabled={collecting || loading}
-            className="px-2.5 py-1 rounded-lg text-xs transition-colors"
-            style={{
-              border: '1px solid #22c55e',
-              color: collecting ? 'var(--text-faint)' : '#22c55e',
-              background: 'transparent',
-            }}
-          >
-            {collecting ? '수집 중...' : '지금 수집'}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={triggerCollect}
+              disabled={collecting || loading}
+              className="px-2.5 py-1 rounded-lg text-xs transition-colors"
+              style={{
+                border: '1px solid #22c55e',
+                color: collecting ? 'var(--text-faint)' : '#22c55e',
+                background: 'transparent',
+              }}
+            >
+              {collecting ? '수집 중...' : '지금 수집'}
+            </button>
+          )}
           <button
             onClick={fetchSignals}
             disabled={loading}
