@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       categories.length > 0 ? categories : undefined,
       videoTypes.length > 0 ? videoTypes : undefined,
       subscriberRange,
+      true, // 수동 수집은 항상 탐색 실행
     );
     return NextResponse.json({ success: true, summary });
   } catch (e) {

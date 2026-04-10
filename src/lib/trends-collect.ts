@@ -26,6 +26,7 @@ export async function runTrendsCollection(
   categories?: string[],
   videoTypes?: ('regular' | 'short')[],
   subscriberRange?: { min?: number; max?: number },
+  forceDiscover = false,  // 수동 수집 시 6시간 제한 무시
 ): Promise<CollectSummary> {
   const supabase = await createAdminClient();
   const summary: CollectSummary = {
@@ -75,7 +76,7 @@ export async function runTrendsCollection(
   const lastDiscovery = lastSetting?.last_discovery_at
     ? new Date(lastSetting.last_discovery_at)
     : new Date(0);
-  const shouldDiscover = (now.getTime() - lastDiscovery.getTime()) / 3600000 >= 6;
+  const shouldDiscover = forceDiscover || (now.getTime() - lastDiscovery.getTime()) / 3600000 >= 6;
 
   if (shouldDiscover) {
     for (const region of targetRegions) {
