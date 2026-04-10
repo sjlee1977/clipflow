@@ -151,22 +151,6 @@ export default function ViralPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <button
-              onClick={triggerCollect}
-              disabled={collecting || loading}
-              className="px-2.5 py-1 rounded-lg text-xs transition-colors"
-              style={{
-                border: '1px solid #22c55e',
-                color: collecting ? 'var(--text-faint)' : '#22c55e',
-                background: 'transparent',
-              }}
-            >
-              {collecting ? '수집 중...' : '지금 수집'}
-            </button>
-          )}
-        </div>
       </div>
 
       {/* 수집 결과 메시지 */}
@@ -226,6 +210,21 @@ export default function ViralPage() {
             setPeriod('custom');
           }}
         />
+
+        {isAdmin && (
+          <button
+            onClick={triggerCollect}
+            disabled={collecting || loading}
+            className="px-2.5 py-1 rounded-lg text-xs transition-colors ml-auto"
+            style={{
+              border: '1px solid #22c55e',
+              color: collecting ? 'var(--text-faint)' : '#22c55e',
+              background: 'transparent',
+            }}
+          >
+            {collecting ? '수집 중...' : '지금 수집'}
+          </button>
+        )}
       </div>
 
       {/* 일반/쇼츠 탭 */}
