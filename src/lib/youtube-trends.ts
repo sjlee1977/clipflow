@@ -20,6 +20,9 @@ export const TREND_CATEGORIES: Record<string, { label: string; youtubeId?: strin
   finance:       { label: '경제/금융',  keyword: '경제 주식 재테크 투자' },
   food:          { label: '음식/요리',  keyword: '요리 레시피 맛집 먹방' },
   travel:        { label: '여행',       keyword: '여행 vlog 해외여행' },
+  animals:       { label: '동물',       keyword: '동물 강아지 고양이 펫' },
+  ai:            { label: 'AI 영상',    keyword: 'AI generated video shorts' },
+  funny:         { label: '유머/짤',    keyword: '웃긴 영상 짤 meme funny' },
 };
 
 export interface YTVideoItem {

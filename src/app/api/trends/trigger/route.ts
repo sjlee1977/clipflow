@@ -14,16 +14,18 @@ export async function POST(req: Request) {
   const videoTypes: ('regular' | 'short')[] = body.videoTypes ?? [];
   const subscriberRange: { min?: number; max?: number } | undefined = body.subscriberRange;
 
-  try {
-    const summary = await runTrendsCollection(
-      regions.length > 0 ? regions : undefined,
-      categories.length > 0 ? categories : undefined,
-      videoTypes.length > 0 ? videoTypes : undefined,
-      subscriberRange,
-      true, // 수동 수집은 항상 탐색 실행
-    );
-    return NextResponse.json({ success: true, summary });
-  } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
-  }
+  // 백그라운드로 실행 — UI는 즉시 응답받음
+  runTrendsCollection(
+    regions.length > 0 ? regions : undefined,
+    categories.length > 0 ? categories : undefined,
+    videoTypes.length > 0 ? videoTypes : undefined,
+    subscriberRange,
+    true,
+  ).then((summary) => {
+    console.log('[trigger] 수집 완료:', JSON.stringify(summary));
+  }).catch((e) => {
+    console.error('[trigger] 수집 오류:', e.message);
+  });
+
+  return NextResponse.json({ success: true, message: '수집을 시작했습니다. 잠시 후 새로고침하세요.' });
 }

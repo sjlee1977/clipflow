@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Video, Zap } from 'lucide-react';
 import { TREND_CATEGORIES, SEARCH_REGIONS } from '@/lib/youtube-trends';
 import DateRangePicker from '@/components/DateRangePicker';
 
@@ -84,19 +85,14 @@ export default function ViralPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           regions: selectedRegion ? [selectedRegion] : ['KR'],
-          categories: selectedCategory ? [selectedCategory] : [],
+          categories: selectedCategory ? [selectedCategory] : Object.keys(TREND_CATEGORIES),
           videoTypes: [videoType],
         }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        const s = body.summary;
-        const errMsg = s?.errors?.length > 0 ? ` | ${friendlyError(s.errors[0])}` : '';
-        setCollectStatus({
-          ok: s?.errors?.length === 0,
-          msg: `수집 완료 — 영상 ${s?.discovered ?? 0}개, 스냅샷 ${s?.snapshots ?? 0}개, 바이럴 ${s?.viral ?? 0}개${errMsg}`,
-        });
-        await fetchSignals();
+        setCollectStatus({ ok: true, msg: '수집을 시작했습니다. 30초 후 자동으로 갱신됩니다.' });
+        setTimeout(() => fetchSignals(), 30000);
       } else {
         setCollectStatus({ ok: false, msg: friendlyError(body.error ?? `오류 (${res.status})`) });
       }
@@ -236,14 +232,17 @@ export default function ViralPage() {
           <button
             key={t}
             onClick={() => setVideoType(t)}
-            className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+            className="px-4 py-1.5 rounded-md text-xs font-medium transition-colors"
             style={
               videoType === t
                 ? { background: 'var(--sidebar)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
                 : { color: 'var(--text-faint)' }
             }
           >
-            {t === 'regular' ? '📹 일반 영상' : '⚡ 쇼츠'}
+            {t === 'regular'
+              ? <><Video size={13} className="inline-block mr-1.5 opacity-80" />일반 영상</>
+              : <><Zap size={13} className="inline-block mr-1.5 opacity-80" />쇼츠</>
+            }
           </button>
         ))}
       </div>
