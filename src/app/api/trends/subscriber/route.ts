@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const period = searchParams.get('period') ?? '24h';
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
 
-  const periodHours: Record<string, number> = { '6h': 6, '24h': 24, '1m': 720, '3m': 2160, '6m': 4380, '1y': 8760 };
+  const periodHours: Record<string, number> = { '6h': 6, '24h': 24, '1w': 168, '1m': 720, '3m': 2160, '6m': 4380, '1y': 8760 };
   const since = new Date(Date.now() - (periodHours[period] ?? 24) * 3600000).toISOString();
 
   // 1단계: 시그널 조회

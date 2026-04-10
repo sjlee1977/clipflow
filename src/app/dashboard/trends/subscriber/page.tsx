@@ -59,7 +59,7 @@ export default function SubscriberPage() {
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ signalType, period, videoType });
+    const params = new URLSearchParams({ signalType, period, videoType, limit: '100' });
     if (selectedCategory) params.set('category', selectedCategory);
     if (selectedRegion) params.set('region', selectedRegion);
     if (subRange.min) params.set('subMin', String(subRange.min));
@@ -197,7 +197,7 @@ export default function SubscriberPage() {
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs shrink-0" style={{ color: 'var(--text-faint)' }}>기간</span>
         <div className="flex items-center gap-0.5 p-1 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
-          {([['6h','6시간'], ['24h','24시간'], ['1m','1개월'], ['3m','3개월']] as const).map(([val, label]) => (
+          {([['6h','6시간'], ['24h','24시간'], ['1w','1주일'], ['1m','1개월'], ['3m','3개월']] as const).map(([val, label]) => (
             <button key={val} onClick={() => setPeriod(val)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
               style={period === val

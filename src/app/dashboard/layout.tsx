@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import SidebarScripts from '@/components/SidebarScripts';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
 import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, type LucideIcon } from 'lucide-react';
@@ -117,11 +116,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   );
                 })}
 
-                {group.group === 'LIBRARY' && (
-                  <div className="mt-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-                    <SidebarScripts />
-                  </div>
-                )}
               </div>
             </div>
           ))}
