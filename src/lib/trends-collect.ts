@@ -358,5 +358,11 @@ export async function runTrendsCollection(
     .lt('published_at', new Date(now.getTime() - 7 * 24 * 3600000).toISOString())
     .eq('is_active', true);
 
+  // 7. 오래된 데이터 정리 (30일 이상)
+  const cleanupBefore = new Date(now.getTime() - 30 * 24 * 3600000).toISOString();
+  await supabase.from('trend_snapshots').delete().lt('captured_at', cleanupBefore);
+  await supabase.from('channel_snapshots').delete().lt('captured_at', cleanupBefore);
+  await supabase.from('trend_signals').delete().lt('updated_at', cleanupBefore);
+
   return summary;
 }
