@@ -12,12 +12,14 @@ export async function POST(req: Request) {
   const regions: string[] = body.regions ?? [];
   const categories: string[] = body.categories ?? [];
   const videoTypes: ('regular' | 'short')[] = body.videoTypes ?? [];
+  const subscriberRange: { min?: number; max?: number } | undefined = body.subscriberRange;
 
   try {
     const summary = await runTrendsCollection(
       regions.length > 0 ? regions : undefined,
       categories.length > 0 ? categories : undefined,
       videoTypes.length > 0 ? videoTypes : undefined,
+      subscriberRange,
     );
     return NextResponse.json({ success: true, summary });
   } catch (e) {

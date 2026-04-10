@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase-browser';
 import SidebarScripts from '@/components/SidebarScripts';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, type LucideIcon } from 'lucide-react';
 
 const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
@@ -23,6 +23,7 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
     items: [
       { href: '/dashboard/trends/viral', label: '급상승 영상', icon: TrendingUp },
       { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: Zap },
+      { href: '/dashboard/trends/subscriber', label: '구독자 분석', icon: Users },
     ],
   },
   {
