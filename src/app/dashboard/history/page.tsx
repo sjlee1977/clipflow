@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 영상 첫 프레임을 canvas로 캡처해 썸네일로 표시
 function VideoThumbnail({ src, className }: { src: string; className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,7 +15,6 @@ function VideoThumbnail({ src, className }: { src: string; className?: string })
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-
     const handleSeeked = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -25,11 +23,7 @@ function VideoThumbnail({ src, className }: { src: string; className?: string })
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       setReady(true);
     };
-
-    const handleMeta = () => {
-      video.currentTime = 0.5;
-    };
-
+    const handleMeta = () => { video.currentTime = 0.5; };
     video.addEventListener('loadedmetadata', handleMeta);
     video.addEventListener('seeked', handleSeeked);
     return () => {
@@ -42,7 +36,7 @@ function VideoThumbnail({ src, className }: { src: string; className?: string })
     <>
       <video ref={videoRef} src={src} preload="metadata" muted style={{ display: 'none' }} crossOrigin="anonymous" />
       <canvas ref={canvasRef} className={className} style={{ display: ready ? 'block' : 'none' }} />
-      {!ready && <div className="absolute inset-0 bg-black/80 flex items-center justify-center"><span className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" /></div>}
+      {!ready && <div className="absolute inset-0 bg-black/80 flex items-center justify-center"><span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" /></div>}
     </>
   );
 }
@@ -56,6 +50,7 @@ type Video = {
   voice_id: string;
   image_style: string;
   image_model: string;
+  template_id: string;
   tts_provider: string;
   file_name: string;
   created_at: string;
@@ -65,79 +60,38 @@ type Video = {
 const IMAGE_STYLE_LABELS: Record<string, string> = {
   cinematic: '영화', realistic: '실사', anime: '애니', documentary: '다큐',
   '3d': '3D', watercolor: '수채화', cartoon: '카툰', noir: '누아르', kinetic: '키네틱',
+  lineart: '라인아트', none: '없음',
+};
+
+const TEMPLATE_LABELS: Record<string, string> = {
+  classic: '클래식', cinematic: '시네마틱', audiogram: '오디오그램',
+  captions: 'TikTok', codehike: '코드하이크', slides: 'PPT 슬라이드',
+  kinetic: '키네틱', '3d': '3D', lightleak: '라이트릭', matrix: '매트릭스', particle: '파티클',
+};
+
+const IMAGE_MODEL_LABELS: Record<string, string> = {
+  'qwen/qwen-image-2.0': 'Qwen Image',
+  'fal/fast-sdxl': 'SDXL',
+  'fal/flux/dev': 'FLUX Dev',
+  'fal/flux/schnell': 'FLUX Schnell',
+  'fal/stable-diffusion-v3-medium': 'SD3',
+  'fal/aura-flow': 'AuraFlow',
+  'fal/hyper-sdxl': 'Hyper SDXL',
+  'imagen-3.0-generate-001': 'Imagen 3',
+  'imagen-3.0-fast-generate-001': 'Imagen 3 Fast',
 };
 
 const ALL_VOICES: { id: string; name: string }[] = [
-  // Google TTS
-  { id: 'ko-KR-Standard-A', name: 'Standard A' },
-  { id: 'ko-KR-Standard-B', name: 'Standard B' },
-  { id: 'ko-KR-Standard-C', name: 'Standard C' },
-  { id: 'ko-KR-Standard-D', name: 'Standard D' },
-  { id: 'ko-KR-Wavenet-A', name: 'Wavenet A' },
-  { id: 'ko-KR-Wavenet-B', name: 'Wavenet B' },
-  { id: 'ko-KR-Wavenet-C', name: 'Wavenet C' },
-  { id: 'ko-KR-Wavenet-D', name: 'Wavenet D' },
-  { id: 'ko-KR-Neural2-A', name: 'Neural2 A' },
-  { id: 'ko-KR-Neural2-B', name: 'Neural2 B' },
-  { id: 'ko-KR-Neural2-C', name: 'Neural2 C' },
-  { id: 'female1', name: '여성 1' },
-  { id: 'female2', name: '여성 2' },
-  { id: 'male1', name: '남성 1' },
-  { id: 'male2', name: '남성 2' },
-  // ElevenLabs
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam' },
-  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel' },
-  { id: 'oWAxZDx7w5VEj9dCyTzz', name: 'Grace' },
-  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily' },
-  { id: 'ThT5KcBeq8keWAlS799P', name: 'Rachel' },
-  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill' },
-  { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger' },
-  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie' },
-  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George' },
-  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum' },
-  { id: 'ODq5zmih8GrVes37Dizd', name: 'Patrick' },
-  { id: 'SOYHLrjzK2X1ezoPC6cr', name: 'Harry' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam' },
-  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will' },
-  { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris' },
-  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian' },
-  { id: 't0jbNlBVZ17f02VDIeMI', name: 'Jessie' },
-  // MiniMax TTS
-  { id: 'Korean_SoothingLady',       name: 'Soothing' },
-  { id: 'Korean_SweetGirl',          name: 'Sweet' },
-  { id: 'Korean_ReliableSister',     name: 'Reliable' },
-  { id: 'Korean_MatureLady',         name: 'Mature' },
-  { id: 'Korean_ThoughtfulWoman',    name: 'Thoughtful' },
-  { id: 'Korean_SassyGirl',          name: 'Sassy' },
-  { id: 'Korean_QuirkyGirl',         name: 'Quirky' },
-  { id: 'Korean_MysteriousGirl',     name: 'Mysterious' },
-  { id: 'Korean_ShyGirl',            name: 'Shy' },
-  { id: 'Korean_AirheadedGirl',      name: 'Airheaded' },
-  { id: 'Korean_ReliableYouth',      name: 'Youth' },
-  { id: 'Korean_OptimisticYouth',    name: 'Optimistic' },
-  { id: 'Korean_IntellectualMan',    name: 'Intellectual' },
-  { id: 'Korean_IntellectualSenior', name: 'Senior' },
-  { id: 'Korean_LonelyWarrior',      name: 'Warrior' },
-  { id: 'Korean_PlayboyCharmer',     name: 'Charmer' },
-  { id: 'Korean_PossessiveMan',      name: 'Possessive' },
-  { id: 'Korean_StrictBoss',         name: 'Boss' },
-  { id: 'Korean_WiseTeacher',        name: 'Teacher' },
-  { id: 'Korean_WiseElf',            name: 'Elf' },
+  { id: 'ko-KR-Standard-A', name: 'Standard A' }, { id: 'ko-KR-Standard-B', name: 'Standard B' },
+  { id: 'ko-KR-Wavenet-A', name: 'Wavenet A' }, { id: 'ko-KR-Neural2-A', name: 'Neural2 A' },
+  { id: 'Korean_SoothingLady', name: 'Soothing' }, { id: 'Korean_SweetGirl', name: 'Sweet' },
+  { id: 'Korean_ReliableSister', name: 'Reliable' }, { id: 'Korean_MatureLady', name: 'Mature' },
+  { id: 'Korean_StrictBoss', name: 'Boss' }, { id: 'Korean_WiseTeacher', name: 'Teacher' },
+  { id: 'Korean_IntellectualMan', name: 'Intellectual' }, { id: 'Korean_OptimisticYouth', name: 'Optimistic' },
 ];
-
-const PAGE_SIZE = 6;
 
 async function downloadVideo(url: string, title: string) {
   const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(title || 'video')}`;
-
   if ('showSaveFilePicker' in window) {
     try {
       const handle = await (window as any).showSaveFilePicker({
@@ -150,248 +104,257 @@ async function downloadVideo(url: string, title: string) {
       await writable.write(blob);
       await writable.close();
       return;
-    } catch (e: any) {
-      if (e.name === 'AbortError') return; // 사용자가 취소
-    }
+    } catch (e: any) { if (e.name === 'AbortError') return; }
   }
-
-  // fallback
   const a = document.createElement('a');
   a.href = proxyUrl;
   a.download = `${title || 'video'}.mp4`;
   a.click();
 }
 
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}일 전`;
+  if (hours > 0) return `${hours}시간 전`;
+  return `${mins}분 전`;
+}
+
 export default function HistoryPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
   const [downloading, setDownloading] = useState<string | null>(null);
   const router = useRouter();
 
   function handleEditScenes(v: Video) {
     if (!v.scenes?.length) return;
-    // 기존 active 세션 완전 제거 → edit 데이터만 남김
     sessionStorage.removeItem('clipflow_active_scenes');
     sessionStorage.removeItem('clipflow_script');
     sessionStorage.setItem('clipflow_edit_scenes', JSON.stringify({
-      scenes: v.scenes,
-      format: v.format === 'landscape' ? 'landscape' : 'shorts',
-      imageModelId: v.image_model,
-      imageStyle: v.image_style,
-      voiceId: v.voice_id,
-      ttsProvider: v.tts_provider,
+      scenes: v.scenes, format: v.format === 'landscape' ? 'landscape' : 'shorts',
+      imageModelId: v.image_model, imageStyle: v.image_style,
+      voiceId: v.voice_id, ttsProvider: v.tts_provider,
     }));
     window.dispatchEvent(new Event('clipflow_edit_scenes_updated'));
     router.push('/dashboard/video');
   }
 
   useEffect(() => {
-    supabase
-      .from('videos')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setVideos(data ?? []);
-        setLoading(false);
-      });
+    supabase.from('videos').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => { setVideos(data ?? []); setLoading(false); });
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('영상과 관련 파일(이미지, 오디오)이 모두 삭제됩니다. 계속하시겠습니까?')) return;
-
+    if (!window.confirm('영상과 관련 파일이 모두 삭제됩니다. 계속하시겠습니까?')) return;
     try {
-      const res = await fetch('/api/delete-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) {
-        const { error } = await res.json();
-        throw new Error(error);
-      }
+      const res = await fetch('/api/delete-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) { const { error } = await res.json(); throw new Error(error); }
       setVideos(prev => prev.filter(v => v.id !== id));
-    } catch (err) {
-      alert('삭제 중 오류가 발생했습니다');
-      console.error(err);
-    }
+    } catch (err) { alert('삭제 중 오류가 발생했습니다'); }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 text-white/20 text-xs font-mono">
-        <span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" />
-        불러오는 중...
+      <div className="flex items-center justify-center py-32 gap-3 text-white/20">
+        <span className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+        <span className="text-[12px] font-mono tracking-widest uppercase">Loading...</span>
       </div>
     );
   }
 
   if (videos.length === 0) {
     return (
-      <div className="text-white/20 text-xs font-mono">
-        <p>아직 생성된 영상이 없습니다.</p>
-        <p className="mt-1 text-white/10">영상 만들기에서 영상을 생성하면 여기에 저장됩니다.</p>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <span className="w-1 h-7 bg-[#22c55e]" />
+          <div>
+            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 영상</h1>
+            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">VIDEO LIBRARY</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-32 gap-5">
+          <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
+            <span className="text-2xl text-white/10">▶</span>
+          </div>
+          <div className="text-center">
+            <p className="text-[13px] text-white/30 font-mono">아직 생성된 영상이 없습니다</p>
+            <a href="/dashboard/video" className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors mt-1 block font-mono">
+              영상 만들기 →
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const totalPages = Math.ceil(videos.length / PAGE_SIZE);
-  const paged = videos.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-green-400/30 bg-[#0a0a0a]">
-          <span className="w-1 h-1 bg-green-400 rounded-full" />
-          <span className="text-green-400 text-[11px] font-mono tracking-widest uppercase">내 영상</span>
+    <div className="max-w-6xl mx-auto">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="w-1 h-7 bg-[#22c55e]" />
+          <div>
+            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 영상</h1>
+            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">VIDEO LIBRARY</p>
+          </div>
         </div>
-        <span className="text-[#17BEBB]/70 text-xs tracking-widest uppercase font-mono">총 {videos.length}개</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
+          <span className="text-[13px] font-black font-mono text-[#22c55e]">{videos.length}</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {paged.map((v) => (
-          <div key={v.id} className="border border-white/10 flex flex-col">
-            {/* 썸네일 / 영상 영역 */}
-            <div className="relative bg-black h-[320px] overflow-hidden">
-              {playing === v.id ? (
-                <video
-                  src={v.video_url}
-                  controls
-                  autoPlay
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <button
-                  onClick={() => setPlaying(v.id)}
-                  className="w-full h-full flex items-center justify-center group relative"
+      {/* 테이블 헤더 */}
+      <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2 mb-1 border-b border-white/6">
+        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">순위</span>
+        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">썸네일</span>
+        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">제목 / 옵션</span>
+        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase text-right">게시일</span>
+        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase text-right">액션</span>
+      </div>
+
+      {/* 영상 리스트 */}
+      <div className="space-y-0.5">
+        {videos.map((v, i) => (
+          <div key={v.id} className="group rounded-lg border border-white/5 hover:border-white/12 bg-white/[0.015] hover:bg-white/[0.035] transition-all duration-150 overflow-hidden">
+            <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2.5">
+
+              {/* 순위 */}
+              <span className={`text-[13px] font-black font-mono tabular-nums ${i < 3 ? 'text-[#22c55e]' : 'text-white/25'}`}>
+                #{i + 1}
+              </span>
+
+              {/* 썸네일 — 고정 크기 */}
+              <div className="relative w-[96px] h-[60px] rounded overflow-hidden bg-black/60 border border-white/8 flex-shrink-0">
+                  <div className="cursor-pointer w-full h-full relative" onClick={() => setPlaying(playing === v.id ? null : v.id)}>
+                    {v.scenes?.[0]?.imageUrl ? (
+                      <img src={v.scenes[0].imageUrl} alt={v.title} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-95 transition-opacity" />
+                    ) : (
+                      <VideoThumbnail src={v.video_url} className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-95 transition-opacity" />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-6 h-6 flex items-center justify-center bg-black/50 rounded-full text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">▶</span>
+                    </div>
+                    <span className={`absolute bottom-0.5 left-0.5 text-[8px] font-mono font-bold px-1 rounded-sm ${v.format === 'shorts' ? 'bg-purple-500/80 text-white' : 'bg-blue-500/80 text-white'}`}>
+                      {v.format === 'shorts' ? '9:16' : v.format === 'landscape' ? '16:9' : '1:1'}
+                    </span>
+                  </div>
+              </div>
+
+              {/* 제목 + 모든 뱃지 (영상스타일·이미지·TTS 통합) */}
+              <div className="min-w-0">
+                <p
+                  className="text-[13px] font-semibold text-white/85 truncate leading-tight mb-1.5 cursor-pointer hover:text-white transition-colors"
+                  onClick={() => setPlaying(playing === v.id ? null : v.id)}
                 >
-                  {/* 썸네일: 이미지가 있으면 img, 없으면 영상 첫 프레임 캡처 */}
-                  {v.scenes?.[0]?.imageUrl ? (
-                    <img
-                      src={v.scenes[0].imageUrl}
-                      alt={v.title}
-                      className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
-                    />
-                  ) : (
-                    <VideoThumbnail
-                      src={v.video_url}
-                      className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                  <span className="relative text-3xl text-white/60 group-hover:text-white/90 transition-colors drop-shadow-lg z-10">▶</span>
-                  {v.title && (
-                    <span className="absolute bottom-2 left-2 right-2 text-white/80 text-[11px] font-mono line-clamp-2 leading-snug drop-shadow z-10">
-                      {v.title}
+                  {v.title || '제목 없는 영상'}
+                  <span className={`ml-1.5 text-[10px] font-mono text-white/20 transition-transform inline-block ${playing === v.id ? 'rotate-180' : ''}`}>▾</span>
+                </p>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {v.scene_count > 0 && (
+                    <span className="text-[10px] font-mono text-white/40 bg-white/6 border border-white/10 px-1.5 py-0.5 rounded">
+                      {v.scene_count}장면
                     </span>
                   )}
-                </button>
-              )}
-              {playing === v.id && (
+                  {v.template_id && (
+                    <span className="text-[10px] font-mono text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
+                      {TEMPLATE_LABELS[v.template_id] ?? v.template_id}
+                    </span>
+                  )}
+                  {v.image_style && v.image_style !== 'none' && (
+                    <span className="text-[10px] font-mono text-sky-300/70 bg-sky-500/8 border border-sky-500/15 px-1.5 py-0.5 rounded">
+                      {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
+                    </span>
+                  )}
+                  {v.image_model && (
+                    <span className="text-[10px] font-mono text-amber-300/60 bg-amber-500/8 border border-amber-500/15 px-1.5 py-0.5 rounded">
+                      {IMAGE_MODEL_LABELS[v.image_model] ?? v.image_model.split('/').pop()}
+                    </span>
+                  )}
+                  {v.tts_provider && (
+                    <span className="text-[10px] font-mono text-emerald-300/60 bg-emerald-500/8 border border-emerald-500/15 px-1.5 py-0.5 rounded">
+                      {v.tts_provider === 'google' ? 'Google' : v.tts_provider === 'minimax' ? 'MiniMax' : 'ElevenLabs'}
+                      {ALL_VOICES.find(vo => vo.id === v.voice_id) ? ` · ${ALL_VOICES.find(vo => vo.id === v.voice_id)!.name}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 게시일 */}
+              <div className="text-right">
+                <span className="text-[12px] font-mono text-white/40">{timeAgo(v.created_at)}</span>
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="flex items-center justify-end gap-1.5">
+                {v.scenes?.length ? (
+                  <button
+                    onClick={() => handleEditScenes(v)}
+                    className="text-[11px] font-mono px-2.5 py-1 border border-white/12 hover:border-white/30 text-white/40 hover:text-white/75 rounded transition-colors"
+                  >
+                    편집
+                  </button>
+                ) : null}
                 <button
-                  onClick={() => setPlaying(null)}
-                  className="absolute top-1 right-1 text-[10px] font-mono text-white/60 hover:text-white bg-black/70 px-1.5 py-0.5"
+                  onClick={() => handleDelete(v.id)}
+                  className="text-[11px] font-mono px-2.5 py-1 border border-red-500/15 hover:border-red-500/40 text-red-400/50 hover:text-red-400 rounded transition-colors"
                 >
-                  ■
+                  삭제
                 </button>
-              )}
-              <span className="absolute top-1 left-1 text-[9px] font-mono text-white/30 bg-black/60 px-1 py-0.5">
-                {v.format === 'shorts' ? '9:16' : '16:9'}
-              </span>
+                <button
+                  onClick={async () => {
+                    setDownloading(v.id);
+                    let fileName = v.file_name;
+                    if (!fileName) {
+                      const d = new Date(v.created_at);
+                      const yy = String(d.getFullYear()).slice(2);
+                      const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+                      const dateStr = d.toDateString();
+                      const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
+                      const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
+                      fileName = `clipflow${yy}${mmdd}${seq}`;
+                    }
+                    await downloadVideo(v.video_url, fileName);
+                    setDownloading(null);
+                  }}
+                  disabled={downloading === v.id}
+                  className="bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded transition-colors"
+                >
+                  {downloading === v.id ? '...' : '↓ MP4'}
+                </button>
+              </div>
+
             </div>
 
-            {/* 정보 + 버튼 */}
-            <div className="p-2 flex flex-col gap-1.5">
-              <div className="flex flex-wrap gap-1">
-                <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
-                  {v.format === 'shorts' ? '9:16 쇼츠' : '16:9 유튜브'}
-                </span>
-                {v.image_style && v.image_style !== 'none' && (
-                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
-                    {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
-                  </span>
-                )}
-                {v.scene_count && (
-                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
-                    {v.scene_count}장면
-                  </span>
-                )}
-                {v.tts_provider && (
-                  <span className="text-[13px] 2xl:text-[12px] font-mono text-[#17BEBB]/60 border border-[#17BEBB]/20 px-1 py-0.5">
-                    {v.tts_provider === 'google' ? 'Google TTS' : v.tts_provider === 'minimax' ? 'MiniMax TTS' : 'ElevenLabs'}
-                    {v.voice_id && ALL_VOICES.find(vo => vo.id === v.voice_id) && (
-                      <> · {ALL_VOICES.find(vo => vo.id === v.voice_id)!.name}</>
-                    )}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-white/50 text-[13px] font-mono">
-                  {new Date(v.created_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </p>
-                <div className="flex items-center gap-2">
-                  {v.scenes?.length ? (
-                    <button
-                      onClick={() => handleEditScenes(v)}
-                      className="text-[12px] 2xl:text-[11.5px] font-mono text-[#17BEBB]/70 hover:text-[#17BEBB] border border-[#17BEBB]/30 hover:border-[#17BEBB]/60 px-2 py-1 transition-colors shrink-0"
-                    >
-                      장면 편집
-                    </button>
-                  ) : null}
+            {/* 펼침 영상 플레이어 */}
+            {playing === v.id && (
+              <div className="border-t border-white/6 bg-black/40 px-4 py-4">
+                <div className={`mx-auto relative bg-black rounded-lg overflow-hidden ${v.format === 'shorts' ? 'max-w-[280px]' : 'max-w-[640px]'}`}>
+                  <video
+                    src={v.video_url}
+                    controls
+                    autoPlay
+                    className="w-full block"
+                    style={{ maxHeight: v.format === 'shorts' ? '500px' : '360px', objectFit: 'contain' }}
+                  />
+                </div>
+                <div className="flex items-center justify-center mt-2">
                   <button
-                    onClick={() => handleDelete(v.id)}
-                    className="text-[13px] 2xl:text-[12.5px] font-mono text-red-500/70 hover:text-red-500 px-2 py-1 transition-colors shrink-0"
+                    onClick={() => setPlaying(null)}
+                    className="text-[11px] font-mono text-white/30 hover:text-white/60 transition-colors"
                   >
-                    삭제
-                  </button>
-                  <button
-                    onClick={async () => {
-                      setDownloading(v.id);
-                      let fileName = v.file_name;
-                      if (!fileName) {
-                        const d = new Date(v.created_at);
-                        const yy = String(d.getFullYear()).slice(2);
-                        const mmdd = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-                        const dateStr = d.toDateString();
-                        const sameDay = videos.filter(x => new Date(x.created_at).toDateString() === dateStr);
-                        const seq = String(sameDay.findIndex(x => x.id === v.id) + 1).padStart(3, '0');
-                        fileName = `clipflow${yy}${mmdd}${seq}`;
-                      }
-                      await downloadVideo(v.video_url, fileName);
-                      setDownloading(null);
-                    }}
-                    disabled={downloading === v.id}
-                    className="text-[12px] 2xl:text-[11.5px] font-mono text-black bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-400/50 px-3 py-1 transition-colors shrink-0"
-                  >
-                    {downloading === v.id ? '다운 중...' : 'MP4 다운'}
+                    ▴ 닫기
                   </button>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         ))}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <button
-            onClick={() => setPage(p => p - 1)}
-            disabled={page === 0}
-            className="px-3 py-1.5 text-xs font-mono border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-          >
-            ← 이전
-          </button>
-          <span className="text-white/20 text-xs font-mono">{page + 1} / {totalPages}</span>
-          <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= totalPages - 1}
-            className="px-3 py-1.5 text-xs font-mono border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-          >
-            다음 →
-          </button>
-        </div>
-      )}
     </div>
   );
 }

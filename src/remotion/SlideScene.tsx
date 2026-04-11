@@ -5,6 +5,7 @@ import {
   useCurrentFrame, useVideoConfig,
 } from 'remotion';
 import { Lottie } from '@remotion/lottie';
+import { Animated, Move, Fade, Scale, Rotate } from 'remotion-animated';
 import { Scene as SceneType } from './types';
 import { SubtitleOverlay } from './SubtitleOverlay';
 
@@ -708,14 +709,24 @@ const IconGridLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont:
   const t = getTheme(scene.pptTheme, slideIndex);
   const p = getPal(t, slideIndex);
   const items = scene.slideData?.bullets ?? [];
-  const boxColors = p
+  const accentColors = p
     ? [p.accent, p.accent2, '#ff79c6', '#50fa7b', '#ffb86c', '#40c4ff']
     : [t.accent, t.accent2 || '#00d4ff', '#06ffa5', '#f7c948', '#ff79c6', '#ff6b35'];
 
   const titleS = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 25 });
 
-  // 2열 그리드
-  const cols = items.length <= 4 ? 2 : 3;
+  // 항목 수에 맞는 최적 열 수 (홀수 빈칸 방지)
+  const cols = items.length === 1 ? 1
+    : items.length === 2 ? 2
+    : items.length === 3 ? 3
+    : items.length === 4 ? 2
+    : items.length <= 6 ? 3
+    : 4;
+
+  // 항목 수에 따른 카드 크기 조정
+  const fontSize = cols === 1 ? 44 : cols === 2 ? 36 : cols === 3 ? 30 : 24;
+  const emojiSize = cols <= 2 ? 52 : cols === 3 ? 42 : 34;
+  const cardPad = cols <= 2 ? '40px 32px' : cols === 3 ? '32px 24px' : '24px 18px';
 
   return (
     <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
@@ -725,62 +736,61 @@ const IconGridLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont:
       <div style={{
         position: 'absolute', inset: 0, zIndex: 1,
         display: 'flex', flexDirection: 'column',
-        alignItems: 'center', padding: '150px 80px 60px',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '100px 80px 80px',
       }}>
         {/* 제목 */}
         <div style={{
-          fontSize: 52, fontWeight: 800, fontFamily: bodyFont,
+          fontSize: 50, fontWeight: 800, fontFamily: bodyFont,
           color: t.isColorful ? t.accent : t.title,
-          marginBottom: 60, textAlign: 'center',
+          marginBottom: 64, textAlign: 'center',
           opacity: interpolate(frame, [0, 18], [0, 1], { extrapolateRight: 'clamp' }),
-          transform: `translateY(${interpolate(titleS, [0, 1], [-20, 0])}px)`,
+          transform: `translateY(${interpolate(titleS, [0, 1], [-16, 0])}px)`,
+          letterSpacing: '-0.5px',
         }}>
           {scene.slideData?.title || ''}
         </div>
 
-        {/* 그리드 */}
+        {/* 그리드 — 항목 수에 맞게 열 수 자동 결정 */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: 28, width: '100%',
+          gap: cols >= 3 ? 20 : 28,
+          width: '100%',
+          maxWidth: cols === 1 ? 480 : '100%',
         }}>
           {items.map((item, ii) => {
-            const delay = 12 + ii * 10;
-            const cs = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 16, stiffness: 160 }, durationInFrames: 30 });
-            const color = boxColors[ii % boxColors.length];
+            const delay = 10 + ii * 8;
+            const cs = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 22, stiffness: 180 }, durationInFrames: 28 });
+            const color = accentColors[ii % accentColors.length];
 
-            // 이모지 분리: 첫 번째 이모지 또는 특수문자 추출
+            // 이모지 분리
             const emojiMatch = item.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
             const emoji = emojiMatch ? emojiMatch[0].trim() : '';
             const text = emojiMatch ? item.slice(emojiMatch[0].length).trim() : item;
 
             return (
               <div key={ii} style={{
-                background: `linear-gradient(145deg, ${color}28 0%, ${color}10 100%)`,
-                borderRadius: 18,
-                border: `2px solid ${color}70`,
-                padding: '28px 22px',
+                // 미니멀: 배경 없음, 얇은 상단 선 + 좌우 구분선
+                background: 'transparent',
+                borderRadius: 12,
+                border: `1px solid ${color}30`,
+                borderTop: `3px solid ${color}`,
+                padding: cardPad,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: 14, textAlign: 'center',
+                gap: 16, textAlign: 'center',
                 opacity: cs,
-                transform: `scale(${interpolate(cs, [0, 1], [0.7, 1])}) translateY(${interpolate(cs, [0, 1], [30, 0])}px)`,
-                boxShadow: `0 6px 24px ${color}25, inset 0 1px 0 ${color}35`,
+                transform: `translateY(${interpolate(cs, [0, 1], [24, 0])}px)`,
               }}>
-                {/* 이모지 배경 원 */}
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
-                  background: `${color}22`,
-                  border: `2px solid ${color}55`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 36,
-                }}>
-                  {emoji || '⚡'}
+                {/* 이모지 — 원 없이 단독 표시 */}
+                <div style={{ fontSize: emojiSize, lineHeight: 1 }}>
+                  {emoji || '—'}
                 </div>
                 {/* 텍스트 */}
                 <div style={{
-                  fontSize: items.length <= 4 ? 32 : 26,
+                  fontSize,
                   fontWeight: 700, fontFamily: bodyFont,
-                  color: t.body, lineHeight: 1.4,
+                  color: t.body, lineHeight: 1.35,
                 }}>
                   {text}
                 </div>
@@ -1220,6 +1230,125 @@ const EquationLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont:
 
 // ─── BOXLIST 레이아웃 ─────────────────────────────────────────────────────────
 // 미니멀 포인트 스타일: 좌측 얇은 컬러 라인 + 컴팩트 카드
+// ─── NUMBERED CARDS 레이아웃 ─────────────────────────────────────────────────
+// 번호 배지 + 컬러 타이틀 + 설명 텍스트 구조
+// bullets 포맷: "제목 | 설명 텍스트" (| 기준으로 분리)
+const NumberedCardsLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const bullets = scene.slideData?.bullets ?? [];
+
+  const cardColors = p
+    ? [p.accent, p.accent2, '#ff79c6', '#50fa7b', '#ffb86c', '#40c4ff']
+    : [t.accent, t.accent2 || '#00d4ff', '#06ffa5', '#f7c948', '#ff79c6', '#ff6b35'];
+
+  const titleOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: 'clamp' });
+  const titleY = interpolate(frame, [0, 20], [-14, 0], { extrapolateRight: 'clamp' });
+
+  // 항목 수에 따라 카드 높이/패딩 조정
+  const cardPadY = bullets.length <= 3 ? 28 : bullets.length <= 4 ? 22 : 16;
+  const titleFontSize = bullets.length <= 3 ? 32 : 28;
+  const descFontSize = bullets.length <= 3 ? 24 : 21;
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '80px 90px',
+      }}>
+        {/* 슬라이드 제목 */}
+        <div style={{
+          marginBottom: 48,
+          opacity: titleOpacity,
+          transform: `translateY(${titleY}px)`,
+        }}>
+          <div style={{
+            fontSize: 48, fontWeight: 900, fontFamily: bodyFont,
+            color: t.title, letterSpacing: '-0.02em', lineHeight: 1.2,
+          }}>
+            {scene.slideData?.title || ''}
+          </div>
+          <div style={{
+            marginTop: 10, height: 3, width: 56,
+            background: `linear-gradient(90deg, ${cardColors[0]}, ${cardColors[1] ?? cardColors[0]}88)`,
+            borderRadius: 2,
+          }} />
+        </div>
+
+        {/* 번호 카드 목록 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {bullets.map((bullet, bi) => {
+            const delay = 14 + bi * 12;
+            const bs = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 24, stiffness: 180 }, durationInFrames: 26 });
+            const bOpacity = interpolate(frame, [delay, delay + 10], [0, 1], { extrapolateRight: 'clamp' });
+            const color = cardColors[bi % cardColors.length];
+
+            // "제목 | 설명" 파싱
+            const pipeIdx = bullet.indexOf('|');
+            const cardTitle = pipeIdx > 0 ? bullet.slice(0, pipeIdx).trim() : bullet;
+            const cardDesc = pipeIdx > 0 ? bullet.slice(pipeIdx + 1).trim() : '';
+
+            return (
+              <div key={bi} style={{
+                display: 'flex', alignItems: 'center', gap: 20,
+                opacity: bOpacity,
+                transform: `translateX(${interpolate(bs, [0, 1], [-40, 0])}px)`,
+              }}>
+                {/* 번호 배지 */}
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+                  background: `${color}22`,
+                  border: `2px solid ${color}80`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 22, fontWeight: 900, fontFamily: bodyFont,
+                  color,
+                }}>
+                  {bi + 1}
+                </div>
+
+                {/* 카드 본체 */}
+                <div style={{
+                  flex: 1,
+                  background: `${color}0e`,
+                  border: `1px solid ${color}28`,
+                  borderLeft: `3px solid ${color}`,
+                  borderRadius: '0 10px 10px 0',
+                  padding: `${cardPadY}px 28px`,
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  {/* 컬러 타이틀 */}
+                  <div style={{
+                    fontSize: titleFontSize, fontWeight: 800, fontFamily: bodyFont,
+                    color, lineHeight: 1.25, letterSpacing: '-0.01em',
+                  }}>
+                    {cardTitle}
+                  </div>
+                  {/* 설명 텍스트 */}
+                  {cardDesc && (
+                    <div style={{
+                      fontSize: descFontSize, fontWeight: 400, fontFamily: bodyFont,
+                      color: `${t.body}cc`, lineHeight: 1.5,
+                    }}>
+                      {cardDesc}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const BoxListLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -1299,7 +1428,7 @@ const BoxListLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: 
 
             // "제목 | 서브텍스트" 파싱
             const sepIdx = bullet.indexOf('|');
-            const mainText = sepIdx > 0 ? bullet.slice(0, sepIdx).trim() : bullet;
+            const mainText = (sepIdx > 0 ? bullet.slice(0, sepIdx).trim() : bullet).replace(/\n/g, ' ');
             const subText = sepIdx > 0 ? bullet.slice(sepIdx + 1).trim() : '';
 
             return (
@@ -1513,6 +1642,631 @@ const ComparisonLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFon
              </span>
           </div>
         )}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── COMPARISON ARROW 레이아웃 ───────────────────────────────────────────────
+// 화살표(→) 스타일 비교 + 하단 결과 카드
+const ComparisonArrowLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const data = scene.slideData?.comparisonData;
+  const bullets = scene.slideData?.bullets ?? [];
+
+  if (!data) return <TitleLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+
+  const headerBadge = scene.slideData?.headerBadge;
+  const titleEnter = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
+  const leftEnter = spring({ frame: Math.max(0, frame - 15), fps, config: { damping: 16, stiffness: 110 } });
+  const arrowEnter = spring({ frame: Math.max(0, frame - 25), fps, config: { damping: 14, stiffness: 130 } });
+  const rightEnter = spring({ frame: Math.max(0, frame - 32), fps, config: { damping: 16, stiffness: 110 } });
+
+  const cardBg = t.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+  const cardBorder = t.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const accentCardBg = `${t.accent}18`;
+  const accentCardBorder = `${t.accent}55`;
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 100px', gap: 48,
+      }}>
+        {/* 헤더 뱃지 + 타이틀 */}
+        <div style={{
+          textAlign: 'center',
+          opacity: titleEnter,
+          transform: `translateY(${interpolate(titleEnter, [0, 1], [-24, 0])}px)`,
+        }}>
+          {headerBadge && (
+            <div style={{
+              display: 'inline-block', marginBottom: 16,
+              background: `${t.accent}22`, border: `1px solid ${t.accent}55`,
+              borderRadius: 6, padding: '6px 20px',
+              fontSize: 22, fontWeight: 700, color: t.accent, letterSpacing: '0.12em',
+            }}>
+              {headerBadge.text}
+            </div>
+          )}
+          <div style={{
+            fontSize: 68, fontWeight: 900, color: t.title, fontFamily: bodyFont, lineHeight: 1.15,
+          }}>
+            {renderHighlighted(scene.slideData?.title || '', t.accent, { fontSize: 68, fontWeight: 900, fontFamily: bodyFont })}
+          </div>
+        </div>
+
+        {/* 비교 박스 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%' }}>
+          {/* 왼쪽 (기존) */}
+          <div style={{
+            flex: 1, background: cardBg, border: `1.5px solid ${cardBorder}`,
+            borderRadius: 20, padding: '28px 36px', textAlign: 'center',
+            opacity: leftEnter,
+            transform: `translateX(${interpolate(leftEnter, [0, 1], [-50, 0])}px)`,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: t.isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)', marginBottom: 10, letterSpacing: '0.08em' }}>
+              {data.leftTitle}
+            </div>
+            <div style={{ fontSize: 62, fontWeight: 900, color: t.isDark ? '#ccc' : '#555', fontFamily: bodyFont, marginBottom: 8 }}>
+              {data.leftItems[0] ?? ''}
+            </div>
+            {data.leftItems[1] && (
+              <div style={{ fontSize: 22, color: t.isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)', fontWeight: 500 }}>
+                {data.leftItems[1]}
+              </div>
+            )}
+          </div>
+
+          {/* 화살표 */}
+          <div style={{
+            fontSize: 72, fontWeight: 900, color: t.accent,
+            opacity: arrowEnter,
+            transform: `scale(${arrowEnter})`,
+            flexShrink: 0, lineHeight: 1,
+            filter: `drop-shadow(0 0 16px ${t.accent}88)`,
+          }}>→</div>
+
+          {/* 오른쪽 (변화) */}
+          <div style={{
+            flex: 1, background: accentCardBg, border: `1.5px solid ${accentCardBorder}`,
+            borderRadius: 20, padding: '28px 36px', textAlign: 'center',
+            opacity: rightEnter,
+            transform: `translateX(${interpolate(rightEnter, [0, 1], [50, 0])}px)`,
+            boxShadow: `0 8px 40px ${t.accent}22`,
+          }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: t.accent, marginBottom: 10, letterSpacing: '0.08em' }}>
+              {data.rightTitle}
+            </div>
+            <div style={{ fontSize: 62, fontWeight: 900, color: t.accent, fontFamily: bodyFont, marginBottom: 8 }}>
+              {data.rightItems[0] ?? ''}
+            </div>
+            {data.rightItems[1] && (
+              <div style={{ fontSize: 22, color: t.accent, fontWeight: 500, opacity: 0.75 }}>
+                {data.rightItems[1]}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 하단 결과 카드 (bullets) */}
+        {bullets.length > 0 && (
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center' }}>
+            {bullets.map((b, i) => {
+              const s = spring({ frame: Math.max(0, frame - 45 - i * 10), fps, config: { damping: 15, stiffness: 120 } });
+              return (
+                <React.Fragment key={i}>
+                  {i > 0 && (
+                    <div style={{ fontSize: 36, color: t.isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)', opacity: s }}>+</div>
+                  )}
+                  <div style={{
+                    background: `${t.accent}22`, border: `1.5px solid ${t.accent}55`,
+                    borderRadius: 14, padding: '16px 32px',
+                    fontSize: 28, fontWeight: 800, color: t.accent, fontFamily: bodyFont,
+                    opacity: s, transform: `translateY(${interpolate(s, [0, 1], [20, 0])}px)`,
+                    boxShadow: `0 6px 24px ${t.accent}18`,
+                  }}>
+                    {b}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── HUB SPOKE 레이아웃 ──────────────────────────────────────────────────────
+// 중앙 허브 원 + 오른쪽 스포크 항목들
+const HubSpokeLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+
+  const bullets = scene.slideData?.bullets ?? [];
+  const hubLabel = scene.slideData?.stats?.[0]?.label || scene.slideData?.title?.split(' ').slice(-1)[0] || 'HUB';
+  const headerBadge = scene.slideData?.headerBadge;
+  const summary = scene.slideData?.summary;
+
+  const titleEnter = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
+  const hubEnter = spring({ frame: Math.max(0, frame - 12), fps, config: { damping: 14, stiffness: 100 } });
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 100px', gap: 40,
+      }}>
+        {/* 헤더 뱃지 + 타이틀 */}
+        <div style={{
+          textAlign: 'center',
+          opacity: titleEnter,
+          transform: `translateY(${interpolate(titleEnter, [0, 1], [-20, 0])}px)`,
+        }}>
+          {headerBadge && (
+            <div style={{
+              display: 'inline-block', marginBottom: 14,
+              background: `${t.accent}22`, border: `1px solid ${t.accent}55`,
+              borderRadius: 6, padding: '5px 18px',
+              fontSize: 20, fontWeight: 700, color: t.accent, letterSpacing: '0.12em',
+            }}>
+              {headerBadge.text}
+            </div>
+          )}
+          <div style={{ fontSize: 62, fontWeight: 900, color: t.title, fontFamily: bodyFont, lineHeight: 1.2 }}>
+            {renderHighlighted(scene.slideData?.title || '', t.accent, { fontSize: 62, fontWeight: 900, fontFamily: bodyFont })}
+          </div>
+        </div>
+
+        {/* 허브 + 스포크 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%', justifyContent: 'center' }}>
+          {/* 허브 원 */}
+          <div style={{
+            width: 160, height: 160, borderRadius: '50%', flexShrink: 0,
+            background: `linear-gradient(135deg, ${t.accent}, ${t.accent2 || t.accent}cc)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+            boxShadow: `0 0 50px ${t.accent}55`,
+            opacity: hubEnter, transform: `scale(${hubEnter})`,
+            padding: 16,
+          }}>
+            <span style={{ fontSize: 26, fontWeight: 900, color: '#fff', fontFamily: bodyFont, lineHeight: 1.3 }}>
+              {hubLabel}
+            </span>
+          </div>
+
+          {/* 연결선 */}
+          <div style={{
+            width: 60, height: 2, flexShrink: 0,
+            background: `linear-gradient(90deg, ${t.accent}88, ${t.accent}22)`,
+            opacity: interpolate(frame, [20, 35], [0, 1], { extrapolateRight: 'clamp' }),
+          }} />
+
+          {/* 스포크 항목들 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {bullets.map((b, i) => {
+              const s = spring({ frame: Math.max(0, frame - 20 - i * 8), fps, config: { damping: 16, stiffness: 120 } });
+              return (
+                <div key={i} style={{
+                  background: t.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  border: `1.5px solid ${t.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
+                  borderLeft: `3px solid ${t.accent}`,
+                  borderRadius: 10, padding: '14px 28px',
+                  fontSize: 28, fontWeight: 700, color: t.body, fontFamily: bodyFont,
+                  opacity: s,
+                  transform: `translateX(${interpolate(s, [0, 1], [30, 0])}px)`,
+                  minWidth: 220,
+                }}>
+                  {b}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 하단 요약 */}
+        {summary && (
+          <div style={{
+            opacity: interpolate(frame, [50, 70], [0, 1], { extrapolateRight: 'clamp' }),
+            fontSize: 24, color: t.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+            fontFamily: bodyFont, letterSpacing: '0.04em',
+          }}>
+            {summary}
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── PIE CHART 레이아웃 ──────────────────────────────────────────────────────
+// SVG 도넛 차트 - stats[].value(숫자%), stats[].label 사용
+const PieChartLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const stats = scene.slideData?.stats ?? [];
+
+  const COLORS = [t.accent, t.accent2 || '#60a5fa', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444'];
+  const R = 180, CX = 200, CY = 200, STROKE = 70;
+  const circumference = 2 * Math.PI * R;
+
+  // 퍼센트 합산 → 각 세그먼트 offset 계산
+  const total = stats.reduce((s, d) => s + (parseFloat(d.value) || 0), 0) || 100;
+  let cumulative = 0;
+  const segments = stats.map((d, i) => {
+    const pct = (parseFloat(d.value) || 0) / total;
+    const offset = cumulative;
+    cumulative += pct;
+    return { pct, offset, label: d.label, color: COLORS[i % COLORS.length] };
+  });
+
+  const titleEnter = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 80px', gap: 40,
+      }}>
+        {/* 타이틀 */}
+        <div style={{
+          textAlign: 'center', opacity: titleEnter,
+          transform: `translateY(${interpolate(titleEnter, [0, 1], [-20, 0])}px)`,
+        }}>
+          {scene.slideData?.headerBadge && (
+            <div style={{
+              display: 'inline-block', marginBottom: 12,
+              background: `${t.accent}22`, border: `1px solid ${t.accent}55`,
+              borderRadius: 6, padding: '4px 16px',
+              fontSize: 20, fontWeight: 700, color: t.accent,
+            }}>{scene.slideData.headerBadge.text}</div>
+          )}
+          <div style={{ fontSize: 56, fontWeight: 900, color: t.title, fontFamily: bodyFont }}>
+            {renderHighlighted(scene.slideData?.title || '', t.accent, { fontSize: 56, fontWeight: 900, fontFamily: bodyFont })}
+          </div>
+        </div>
+
+        {/* 도넛 차트 + 범례 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 80 }}>
+          {/* SVG 도넛 */}
+          <svg width={400} height={400} viewBox="0 0 400 400">
+            {segments.map((seg, i) => {
+              const delay = 8 + i * 10;
+              const progress = interpolate(frame, [delay, delay + 30], [0, 1], { extrapolateRight: 'clamp' });
+              const dashArray = circumference * seg.pct * progress;
+              const dashOffset = circumference * (0.25 - seg.offset); // 12시 방향 시작
+              return (
+                <circle
+                  key={i}
+                  cx={CX} cy={CY} r={R}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth={STROKE}
+                  strokeDasharray={`${dashArray} ${circumference}`}
+                  strokeDashoffset={circumference * 0.25 - circumference * seg.offset}
+                  style={{ transform: 'rotate(-90deg)', transformOrigin: `${CX}px ${CY}px` }}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {/* 중앙 텍스트 */}
+            <text x={CX} y={CY - 10} textAnchor="middle" fontSize={36} fontWeight={900} fill={t.title} fontFamily={bodyFont}>
+              {scene.slideData?.summary?.split(' ')[0] || '100%'}
+            </text>
+            <text x={CX} y={CY + 28} textAnchor="middle" fontSize={20} fill={t.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'} fontFamily={bodyFont}>
+              {scene.slideData?.summary?.split(' ').slice(1).join(' ') || '합계'}
+            </text>
+          </svg>
+
+          {/* 범례 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {segments.map((seg, i) => {
+              const s = spring({ frame: Math.max(0, frame - 15 - i * 8), fps, config: { damping: 16, stiffness: 120 } });
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  opacity: s, transform: `translateX(${interpolate(s, [0, 1], [30, 0])}px)`,
+                }}>
+                  <div style={{ width: 16, height: 16, borderRadius: 4, background: seg.color, flexShrink: 0 }} />
+                  <div style={{ fontFamily: bodyFont }}>
+                    <span style={{ fontSize: 28, fontWeight: 800, color: seg.color }}>{seg.pct > 0 ? `${Math.round(seg.pct * 100)}%` : ''} </span>
+                    <span style={{ fontSize: 24, color: t.body }}>{seg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── WORD CAROUSEL 레이아웃 ───────────────────────────────────────────────────
+// 단어/키워드 순차 등장 - bullets 항목을 큰 타이포로 순환 표시
+const WordCarouselLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const words = scene.slideData?.bullets ?? [];
+  const FRAMES_PER_WORD = 40;
+
+  const titleEnter = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '80px 100px', gap: 48,
+      }}>
+        {/* 서브 타이틀 */}
+        {scene.slideData?.title && (
+          <div style={{
+            fontSize: 32, fontWeight: 600, color: t.isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)',
+            fontFamily: bodyFont, letterSpacing: '0.1em', textTransform: 'uppercase',
+            opacity: titleEnter,
+          }}>
+            {scene.slideData.title}
+          </div>
+        )}
+
+        {/* 단어 캐러셀 */}
+        <div style={{ position: 'relative', width: '100%', height: 200, overflow: 'hidden' }}>
+          {words.map((word, i) => {
+            const start = i * FRAMES_PER_WORD;
+            const end = start + FRAMES_PER_WORD;
+            const fadeIn = interpolate(frame, [start, start + 12], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+            const fadeOut = interpolate(frame, [end - 12, end], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+            const opacity = frame < start ? 0 : frame > end ? 0 : Math.min(fadeIn, fadeOut);
+            const y = interpolate(frame, [start, start + 15], [40, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+            if (opacity === 0) return null;
+            return (
+              <div key={i} style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity, transform: `translateY(${y}px)`,
+              }}>
+                <span style={{
+                  fontSize: 96, fontWeight: 900, color: t.accent, fontFamily: bodyFont,
+                  textAlign: 'center', lineHeight: 1.1,
+                  textShadow: `0 0 60px ${t.accent}55`,
+                }}>
+                  {word}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 진행 도트 */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          {words.map((_, i) => {
+            const active = Math.floor(frame / FRAMES_PER_WORD) === i;
+            return (
+              <div key={i} style={{
+                width: active ? 32 : 10, height: 10, borderRadius: 5,
+                background: active ? t.accent : `${t.accent}44`,
+                transition: 'width 0.3s',
+              }} />
+            );
+          })}
+        </div>
+
+        {/* 하단 요약 */}
+        {scene.slideData?.summary && (
+          <div style={{
+            fontSize: 26, color: t.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)',
+            fontFamily: bodyFont, opacity: interpolate(frame, [0, 20], [0, 1], { extrapolateRight: 'clamp' }),
+          }}>
+            {scene.slideData.summary}
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SOCIAL CARD 레이아웃 ─────────────────────────────────────────────────────
+// 소셜미디어 카드 스타일 (플랫폼 포스트 / 통계 / 인용)
+const SocialCardLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const stats = scene.slideData?.stats ?? [];
+
+  const cardEnter = spring({ frame, fps, config: { damping: 16, stiffness: 100 } });
+  const cardBg = t.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.9)';
+  const cardBorder = t.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 120px',
+      }}>
+        {/* 카드 */}
+        <div style={{
+          width: '100%', background: cardBg,
+          border: `1.5px solid ${cardBorder}`,
+          borderRadius: 28, padding: '48px 56px',
+          boxShadow: t.isDark ? '0 24px 80px rgba(0,0,0,0.5)' : '0 24px 80px rgba(0,0,0,0.12)',
+          opacity: cardEnter,
+          transform: `scale(${interpolate(cardEnter, [0, 1], [0.92, 1])}) translateY(${interpolate(cardEnter, [0, 1], [30, 0])}px)`,
+        }}>
+          {/* 상단: 플랫폼 + 계정명 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${t.accent}, ${t.accent2 || t.accent}cc)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28, fontWeight: 900, color: '#fff',
+            }}>
+              {(scene.slideData?.headerBadge?.icon || scene.slideData?.title?.[0] || 'S')}
+            </div>
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: t.title, fontFamily: bodyFont }}>
+                {scene.slideData?.headerBadge?.text || scene.slideData?.title || ''}
+              </div>
+              <div style={{ fontSize: 18, color: t.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)', marginTop: 2 }}>
+                {scene.slideData?.warningTag || ''}
+              </div>
+            </div>
+          </div>
+
+          {/* 메인 텍스트 */}
+          <div style={{
+            fontSize: 36, fontWeight: 700, color: t.body, fontFamily: bodyFont,
+            lineHeight: 1.6, marginBottom: 36,
+          }}>
+            {renderHighlighted(scene.slideData?.summary || '', t.accent, { fontSize: 36, fontWeight: 700, fontFamily: bodyFont })}
+          </div>
+
+          {/* 통계 (좋아요, 공유, 조회수 등) */}
+          {stats.length > 0 && (
+            <div style={{
+              display: 'flex', gap: 40, paddingTop: 28,
+              borderTop: `1px solid ${t.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            }}>
+              {stats.map((s, i) => {
+                const statEnter = spring({ frame: Math.max(0, frame - 20 - i * 10), fps, config: { damping: 15, stiffness: 120 } });
+                return (
+                  <div key={i} style={{ opacity: statEnter, transform: `translateY(${interpolate(statEnter, [0, 1], [10, 0])}px)` }}>
+                    <div style={{ fontSize: 34, fontWeight: 900, color: t.accent, fontFamily: bodyFont }}>{s.value}</div>
+                    <div style={{ fontSize: 18, color: t.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', marginTop: 2 }}>{s.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SPLIT SCREEN 레이아웃 ────────────────────────────────────────────────────
+// 좌: 빅 스탯/키워드  우: 불릿 리스트
+const SplitScreenLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const bullets = scene.slideData?.bullets ?? [];
+  const stats = scene.slideData?.stats ?? [];
+
+  const leftEnter = spring({ frame, fps, config: { damping: 16, stiffness: 90 } });
+  const rightEnter = spring({ frame: Math.max(0, frame - 12), fps, config: { damping: 16, stiffness: 90 } });
+
+  const dividerH = interpolate(frame, [10, 35], [0, 1], { extrapolateRight: 'clamp' });
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 5,
+        display: 'flex', alignItems: 'stretch',
+      }}>
+        {/* 왼쪽: 빅 스탯 / 키워드 */}
+        <div style={{
+          flex: 1.1, display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', alignItems: 'flex-end',
+          padding: '80px 60px 80px 80px', gap: 24,
+          opacity: leftEnter,
+          transform: `translateX(${interpolate(leftEnter, [0, 1], [-40, 0])}px)`,
+        }}>
+          {scene.slideData?.headerBadge && (
+            <div style={{
+              background: `${t.accent}22`, border: `1px solid ${t.accent}55`,
+              borderRadius: 6, padding: '5px 16px',
+              fontSize: 20, fontWeight: 700, color: t.accent,
+            }}>{scene.slideData.headerBadge.text}</div>
+          )}
+          <div style={{
+            fontSize: 64, fontWeight: 900, color: t.title, fontFamily: bodyFont,
+            lineHeight: 1.15, textAlign: 'right',
+          }}>
+            {renderHighlighted(scene.slideData?.title || '', t.accent, { fontSize: 64, fontWeight: 900, fontFamily: bodyFont })}
+          </div>
+          {stats.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-end' }}>
+              {stats.map((s, i) => (
+                <div key={i} style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: 56, fontWeight: 900, color: t.accent, fontFamily: bodyFont }}>{s.value}</span>
+                  <span style={{ fontSize: 22, color: t.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', marginLeft: 10 }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {scene.slideData?.summary && (
+            <div style={{
+              fontSize: 24, color: t.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+              fontFamily: bodyFont, textAlign: 'right',
+            }}>
+              {scene.slideData.summary}
+            </div>
+          )}
+        </div>
+
+        {/* 구분선 */}
+        <div style={{
+          width: 2, alignSelf: 'center', height: `${dividerH * 70}%`,
+          background: `linear-gradient(180deg, transparent, ${t.accent}66, transparent)`,
+        }} />
+
+        {/* 오른쪽: 불릿 리스트 */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', padding: '80px 80px 80px 60px', gap: 20,
+          opacity: rightEnter,
+          transform: `translateX(${interpolate(rightEnter, [0, 1], [40, 0])}px)`,
+        }}>
+          {bullets.map((b, i) => {
+            const s = spring({ frame: Math.max(0, frame - 18 - i * 10), fps, config: { damping: 16, stiffness: 120 } });
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 18,
+                opacity: s, transform: `translateX(${interpolate(s, [0, 1], [20, 0])}px)`,
+              }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%', background: t.accent,
+                  marginTop: 14, flexShrink: 0,
+                  boxShadow: `0 0 8px ${t.accent}`,
+                }} />
+                <div style={{ fontSize: 30, fontWeight: 700, color: t.body, fontFamily: bodyFont, lineHeight: 1.5 }}>
+                  {b}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </AbsoluteFill>
   );
@@ -2791,6 +3545,555 @@ const PortfolioLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont
   );
 };
 
+// ─── CARD FLIP 레이아웃 ───────────────────────────────────────────────────────
+// 앞면: title, 뒷면: summary 또는 bullets[0]
+const CardFlipLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+
+  const frontText = scene.slideData?.title ?? '';
+  const backText = scene.slideData?.summary ?? scene.slideData?.bullets?.[0] ?? '';
+
+  const rotation = spring({ frame, fps, from: 0, to: 360, config: { damping: 15, mass: 0.5 } });
+
+  const accent1 = p ? p.accent : t.accent;
+  const accent2 = p ? p.accent2 : (t.accent2 ?? '#3b82f6');
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+        <div style={{ perspective: '1200px' }}>
+          <div style={{
+            width: 420, height: 520,
+            transform: `rotateY(${rotation}deg)`,
+            transformStyle: 'preserve-3d',
+            position: 'relative',
+          }}>
+            {/* 앞면 */}
+            <div style={{
+              position: 'absolute', width: '100%', height: '100%',
+              backfaceVisibility: 'hidden',
+              background: `linear-gradient(135deg, ${accent1}22 0%, ${accent2}44 100%)`,
+              border: `2px solid ${accent1}60`,
+              borderRadius: 28,
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', alignItems: 'center',
+              padding: '40px 36px', gap: 20,
+              boxShadow: `0 20px 60px ${accent1}30`,
+            }}>
+              <div style={{ fontSize: 64, lineHeight: 1 }}>✨</div>
+              <div style={{
+                fontSize: 38, fontWeight: 900, fontFamily: bodyFont,
+                color: t.title, textAlign: 'center', lineHeight: 1.25,
+                letterSpacing: '-0.02em',
+              }}>{frontText}</div>
+            </div>
+            {/* 뒷면 */}
+            <div style={{
+              position: 'absolute', width: '100%', height: '100%',
+              backfaceVisibility: 'hidden',
+              background: `linear-gradient(135deg, ${accent2}33 0%, ${accent1}22 100%)`,
+              border: `2px solid ${accent2}60`,
+              borderRadius: 28,
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', alignItems: 'center',
+              padding: '40px 36px', gap: 20,
+              transform: 'rotateY(180deg)',
+              boxShadow: `0 20px 60px ${accent2}30`,
+            }}>
+              <div style={{ fontSize: 52, lineHeight: 1 }}>💡</div>
+              <div style={{
+                fontSize: 30, fontWeight: 700, fontFamily: bodyFont,
+                color: t.body, textAlign: 'center', lineHeight: 1.5,
+              }}>{backText}</div>
+            </div>
+          </div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── ANIMATED TEXT 레이아웃 ───────────────────────────────────────────────────
+// 글자별 순차 spring 등장 애니메이션
+const AnimatedTextLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+
+  const title = scene.slideData?.title ?? '';
+  const subtitle = scene.slideData?.summary ?? '';
+  const chars = title.split('');
+
+  const colors = p
+    ? [p.accent, p.accent2, '#ff79c6', '#50fa7b', '#ffb86c']
+    : [t.accent, t.accent2 ?? '#00d4ff', '#06ffa5', '#f7c948', '#ff79c6'];
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        zIndex: 1, gap: 32, padding: '60px 80px',
+      }}>
+        {/* 글자별 애니메이션 */}
+        <div style={{ textAlign: 'center', lineHeight: 1.1 }}>
+          {chars.map((char, i) => {
+            const delay = i * 4;
+            const opacity = spring({ frame: frame - delay, fps, from: 0, to: 1, config: { mass: 0.5, damping: 10 } });
+            const y = spring({ frame: frame - delay, fps, from: -60, to: 0, config: { mass: 0.5, damping: 10 } });
+            const rotate = spring({ frame: frame - delay, fps, from: -120, to: 0, config: { mass: 0.5, damping: 12 } });
+            const color = colors[i % colors.length];
+
+            return (
+              <span key={i} style={{
+                display: 'inline-block',
+                opacity,
+                fontSize: title.length > 10 ? 72 : 96,
+                fontWeight: 900,
+                fontFamily: bodyFont,
+                color: t.isColorful ? color : t.title,
+                transform: `translateY(${y}px) rotate(${rotate}deg)`,
+                letterSpacing: '-0.02em',
+              }}>
+                {char === ' ' ? '\u00A0' : char}
+              </span>
+            );
+          })}
+        </div>
+        {/* 서브타이틀 */}
+        {subtitle && (
+          <div style={{
+            fontSize: 28, fontWeight: 500, fontFamily: bodyFont,
+            color: t.body, textAlign: 'center', opacity: interpolate(frame, [chars.length * 4 + 10, chars.length * 4 + 30], [0, 1], { extrapolateRight: 'clamp' }),
+          }}>{subtitle}</div>
+        )}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── TYPEWRITER TEXT 레이아웃 ─────────────────────────────────────────────────
+// 타이프라이터 효과 + 깜빡이는 커서
+const TypewriterTextLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+
+  const title = scene.slideData?.title ?? '';
+  const bullets = scene.slideData?.bullets ?? [];
+  const lines = bullets.length > 0 ? bullets : [title];
+
+  const accent = p ? p.accent : t.accent;
+
+  // 전체 글자 수 계산해서 표시 속도 결정
+  const totalChars = lines.join('').length;
+  const typeDuration = Math.min(durationInFrames * 0.7, totalChars * 3 + 30);
+
+  // 전체 진행률로 각 줄의 표시 글자 수 계산
+  let charsShown = Math.floor(interpolate(frame, [0, typeDuration], [0, totalChars], { extrapolateRight: 'clamp' }));
+
+  const lineTexts: string[] = [];
+  for (const line of lines) {
+    const take = Math.min(charsShown, line.length);
+    lineTexts.push(line.slice(0, take));
+    charsShown = Math.max(0, charsShown - line.length);
+  }
+
+  const cursorVisible = frame % 18 < 9;
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', padding: '80px 100px',
+        zIndex: 1, gap: 8,
+      }}>
+        {lineTexts.map((text, li) => (
+          <div key={li} style={{
+            fontFamily: "'Courier New', 'D2Coding', monospace",
+            fontSize: lines.length === 1 ? 64 : lines.length <= 3 ? 44 : 34,
+            fontWeight: 700,
+            color: li === 0 ? t.title : t.body,
+            lineHeight: 1.4,
+            display: 'flex', alignItems: 'center',
+          }}>
+            {li === 0 && (
+              <span style={{
+                color: accent, marginRight: 16, fontSize: '0.7em', fontWeight: 900,
+              }}>{'>'}</span>
+            )}
+            {text}
+            {/* 커서는 현재 타이핑 중인 마지막 줄에만 */}
+            {li === lineTexts.length - 1 && (
+              <span style={{
+                display: 'inline-block', width: '0.55em', height: '1em',
+                background: accent,
+                marginLeft: 4, verticalAlign: 'middle',
+                opacity: cursorVisible ? 1 : 0,
+                borderRadius: 2,
+              }} />
+            )}
+          </div>
+        ))}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── CHART ANIMATION 레이아웃 ─────────────────────────────────────────────────
+// 막대 아래에서 위로 성장하는 애니메이션 바 차트
+// stats: [{ value: "80", label: "Feb" }, ...] 형식 사용
+const ChartAnimationLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+
+  const rawStats = scene.slideData?.stats ?? [];
+  const data = rawStats.length > 0
+    ? rawStats.map(s => ({ label: s.label, value: parseFloat(s.value) || 0 }))
+    : [
+        { label: 'Jan', value: 50 }, { label: 'Feb', value: 80 },
+        { label: 'Mar', value: 30 }, { label: 'Apr', value: 70 },
+        { label: 'May', value: 90 },
+      ];
+
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const title = scene.slideData?.title ?? '';
+
+  const barColors = p
+    ? [p.accent, p.accent2, '#ff79c6', '#50fa7b', '#ffb86c', '#40c4ff', '#ff6b35', '#a78bfa', '#f472b6', '#34d399']
+    : [t.accent, t.accent2 ?? '#00d4ff', '#06ffa5', '#f7c948', '#ff79c6', '#ff6b35', '#a78bfa', '#f472b6', '#40c4ff', '#34d399'];
+
+  const chartW = 1080;
+  const chartH = 420;
+  const padX = 60;
+  const padY = 40;
+  const barGap = 12;
+  const barW = Math.min(80, (chartW - padX * 2) / data.length - barGap);
+
+  const titleOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: 'clamp' });
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        zIndex: 1, padding: '60px 60px 40px',
+      }}>
+        {/* 제목 */}
+        {title && (
+          <div style={{
+            fontSize: 44, fontWeight: 900, fontFamily: bodyFont,
+            color: t.title, marginBottom: 40, textAlign: 'center',
+            opacity: titleOpacity, letterSpacing: '-0.02em',
+          }}>{title}</div>
+        )}
+
+        {/* SVG 차트 */}
+        <svg width={chartW} height={chartH} style={{ overflow: 'visible' }}>
+          {/* X축 기준선 */}
+          <line
+            x1={padX} y1={chartH - padY}
+            x2={chartW - padX} y2={chartH - padY}
+            stroke={`${t.body}30`} strokeWidth={2}
+          />
+          {/* 가로 가이드라인 */}
+          {[25, 50, 75, 100].map(pct => {
+            const y = chartH - padY - (pct / 100) * (chartH - padY * 2);
+            return (
+              <line key={pct}
+                x1={padX} y1={y} x2={chartW - padX} y2={y}
+                stroke={`${t.body}15`} strokeWidth={1} strokeDasharray="6 4"
+              />
+            );
+          })}
+
+          {/* 막대 */}
+          {data.map((d, i) => {
+            const totalBars = data.length;
+            const totalBarW = (chartW - padX * 2);
+            const step = totalBarW / totalBars;
+            const x = padX + step * i + step / 2;
+            const maxBarH = chartH - padY * 2;
+            const targetH = (d.value / maxVal) * maxBarH;
+
+            const delay = i * 4;
+            const progress = interpolate(frame, [delay, delay + 20], [0, 1], { extrapolateRight: 'clamp' });
+            const currentH = targetH * progress;
+            const y = chartH - padY - currentH;
+            const color = barColors[i % barColors.length];
+
+            return (
+              <g key={i}>
+                {/* 막대 */}
+                <rect
+                  x={x - barW / 2} y={y}
+                  width={barW} height={currentH}
+                  fill={color} rx={6} ry={6}
+                  style={{ filter: `drop-shadow(0 4px 12px ${color}50)` }}
+                />
+                {/* 값 레이블 */}
+                <text
+                  x={x} y={y - 10}
+                  textAnchor="middle"
+                  fill={color}
+                  fontSize={18} fontWeight={700}
+                  fontFamily={bodyFont}
+                  opacity={progress > 0.85 ? interpolate(progress, [0.85, 1], [0, 1]) : 0}
+                >
+                  {d.value}
+                </text>
+                {/* X축 레이블 */}
+                <text
+                  x={x} y={chartH - padY + 28}
+                  textAnchor="middle"
+                  fill={`${t.body}99`}
+                  fontSize={16} fontWeight={500}
+                  fontFamily={bodyFont}
+                >
+                  {d.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── STAGGERED 레이아웃 (remotion-animated) ───────────────────────────────────
+// bullets 항목들이 순서대로 Move+Fade로 등장하는 스태거 애니메이션
+const StaggeredLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const bullets = scene.slideData?.bullets ?? [];
+  const title = scene.slideData?.title ?? '';
+  const accent = p ? p.accent : t.accent;
+
+  const staggerDelay = 12; // 항목당 딜레이 프레임
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{ zIndex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 100px', gap: 0 }}>
+
+        {/* 제목 */}
+        <Animated animations={[
+          Fade({ to: 1, initial: 0, duration: 20 }),
+          Move({ initialY: -30, y: 0, duration: 22 }),
+        ]}>
+          <div style={{
+            fontSize: 52, fontWeight: 900, fontFamily: bodyFont,
+            color: t.isColorful ? accent : t.title,
+            marginBottom: 48, lineHeight: 1.2, letterSpacing: '-0.02em',
+          }}>{title}</div>
+        </Animated>
+
+        {/* 항목별 스태거 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {bullets.map((bullet, i) => (
+            <Animated key={i} animations={[
+              Fade({ to: 1, initial: 0, start: staggerDelay * i + 10, duration: 18 }),
+              Move({ initialX: -50, x: 0, start: staggerDelay * i + 10, duration: 22, damping: 18 }),
+              Scale({ by: 1, initial: 0.92, start: staggerDelay * i + 10, duration: 18 }),
+            ]}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: accent, marginTop: 10,
+                  boxShadow: `0 0 8px ${accent}80`,
+                }} />
+                <div style={{
+                  fontSize: bullets.length <= 4 ? 34 : 28,
+                  fontWeight: 600, fontFamily: bodyFont,
+                  color: t.body, lineHeight: 1.45,
+                }}>{bullet}</div>
+              </div>
+            </Animated>
+          ))}
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── FLOAT CARD 레이아웃 (remotion-animated) ─────────────────────────────────
+// 카드들이 아래에서 떠오르며 Scale+Fade로 등장
+// bullets 포맷: 이모지 + 텍스트 (예: "🚀 빠른 배포")
+const FloatCardLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const bullets = scene.slideData?.bullets ?? [];
+  const title = scene.slideData?.title ?? '';
+
+  const cols = bullets.length <= 2 ? bullets.length : bullets.length <= 4 ? 2 : 3;
+  const cardDelay = 10;
+  const accentColors = p
+    ? [p.accent, p.accent2, '#ff79c6', '#50fa7b', '#ffb86c', '#40c4ff']
+    : [t.accent, t.accent2 ?? '#00d4ff', '#06ffa5', '#f7c948', '#ff79c6', '#ff6b35'];
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 80px', gap: 0 }}>
+
+        {/* 제목 */}
+        <Animated animations={[
+          Fade({ to: 1, initial: 0, duration: 18 }),
+          Move({ initialY: -24, y: 0, duration: 20 }),
+        ]}>
+          <div style={{
+            fontSize: 48, fontWeight: 900, fontFamily: bodyFont,
+            color: t.isColorful ? accentColors[0] : t.title,
+            marginBottom: 48, textAlign: 'center', letterSpacing: '-0.02em',
+          }}>{title}</div>
+        </Animated>
+
+        {/* 카드 그리드 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gap: 24, width: '100%',
+        }}>
+          {bullets.map((bullet, i) => {
+            const emojiMatch = bullet.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u);
+            const emoji = emojiMatch ? emojiMatch[0].trim() : '';
+            const text = emojiMatch ? bullet.slice(emojiMatch[0].length).trim() : bullet;
+            const color = accentColors[i % accentColors.length];
+
+            return (
+              <Animated key={i} animations={[
+                Fade({ to: 1, initial: 0, start: cardDelay * i + 8, duration: 20 }),
+                Move({ initialY: 40, y: 0, start: cardDelay * i + 8, duration: 24, damping: 16 }),
+                Scale({ by: 1, initial: 0.85, start: cardDelay * i + 8, duration: 22 }),
+              ]}>
+                <div style={{
+                  background: `linear-gradient(145deg, ${color}18 0%, ${color}08 100%)`,
+                  border: `1.5px solid ${color}45`,
+                  borderTop: `3px solid ${color}`,
+                  borderRadius: 20,
+                  padding: cols === 1 ? '36px 40px' : '28px 24px',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 14, textAlign: 'center',
+                  boxShadow: `0 8px 32px ${color}20`,
+                }}>
+                  {emoji && <div style={{ fontSize: cols <= 2 ? 48 : 38, lineHeight: 1 }}>{emoji}</div>}
+                  <div style={{
+                    fontSize: cols <= 2 ? 30 : 24, fontWeight: 700,
+                    fontFamily: bodyFont, color: t.body, lineHeight: 1.4,
+                  }}>{text}</div>
+                </div>
+              </Animated>
+            );
+          })}
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SPIN REVEAL 레이아웃 (remotion-animated) ────────────────────────────────
+// 제목이 Rotate+Scale로 스핀하며 등장, 서브 항목들은 Fade+Move로 순차 등장
+const SpinRevealLayout: React.FC<{ scene: SceneType; slideIndex: number; bodyFont: string }> = ({ scene, slideIndex, bodyFont }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = getTheme(scene.pptTheme, slideIndex);
+  const p = getPal(t, slideIndex);
+  const title = scene.slideData?.title ?? '';
+  const summary = scene.slideData?.summary ?? '';
+  const bullets = scene.slideData?.bullets ?? [];
+  const accent = p ? p.accent : t.accent;
+  const accent2 = p ? p.accent2 : (t.accent2 ?? '#00d4ff');
+
+  return (
+    <AbsoluteFill style={{ background: t.bg, overflow: 'hidden' }}>
+      {scene.audioUrl && <Audio src={scene.audioUrl} />}
+      {p && <BgShapes p={p} frame={frame} fps={fps} slideIndex={slideIndex} />}
+      <AbsoluteFill style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 80px', gap: 32 }}>
+
+        {/* 스핀 등장 제목 */}
+        <Animated animations={[
+          Fade({ to: 1, initial: 0, duration: 20 }),
+          Rotate({ degrees: 0, initial: -8, duration: 28, damping: 14 }),
+          Scale({ by: 1, initial: 0.6, duration: 26, damping: 12 }),
+        ]}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: title.length > 12 ? 64 : 80,
+              fontWeight: 900, fontFamily: bodyFont,
+              color: t.isColorful ? accent : t.title,
+              letterSpacing: '-0.03em', lineHeight: 1.1,
+            }}>{title}</div>
+            {/* 언더라인 액센트 */}
+            <div style={{
+              height: 5, borderRadius: 3, marginTop: 12,
+              background: `linear-gradient(90deg, ${accent}, ${accent2})`,
+              boxShadow: `0 0 16px ${accent}60`,
+            }} />
+          </div>
+        </Animated>
+
+        {/* 요약 */}
+        {summary && (
+          <Animated animations={[
+            Fade({ to: 1, initial: 0, start: 22, duration: 20 }),
+            Move({ initialY: 20, y: 0, start: 22, duration: 22 }),
+          ]}>
+            <div style={{
+              fontSize: 30, fontWeight: 500, fontFamily: bodyFont,
+              color: t.body, textAlign: 'center', lineHeight: 1.5,
+              maxWidth: 800,
+            }}>{summary}</div>
+          </Animated>
+        )}
+
+        {/* 서브 항목들 */}
+        {bullets.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginTop: 8 }}>
+            {bullets.map((b, i) => (
+              <Animated key={i} animations={[
+                Fade({ to: 1, initial: 0, start: 30 + i * 8, duration: 16 }),
+                Move({ initialY: 16, y: 0, start: 30 + i * 8, duration: 18 }),
+                Scale({ by: 1, initial: 0.8, start: 30 + i * 8, duration: 16 }),
+              ]}>
+                <div style={{
+                  padding: '10px 22px',
+                  background: `${accent}18`,
+                  border: `1.5px solid ${accent}50`,
+                  borderRadius: 100,
+                  fontSize: 24, fontWeight: 600, fontFamily: bodyFont,
+                  color: t.isColorful ? accent : t.body,
+                }}>{b}</div>
+              </Animated>
+            ))}
+          </div>
+        )}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export const SlideSceneComponent: React.FC<SlideSceneProps> = ({ scene, slideIndex, fontFamily }) => {
   // PPT 본문은 자막 폰트 설정을 따르지 않고 가독성 높은 기본 폰트(Pretendard 등)를 고정 사용함
@@ -2813,12 +4116,19 @@ export const SlideSceneComponent: React.FC<SlideSceneProps> = ({ scene, slideInd
       return <QuoteLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
     }
     if (layout === 'comparison') {
-      return hasComparison
+      if (!hasComparison) return <BulletsLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+      // slideIndex 기반 랜덤 선택 (VS vs 화살표 스타일)
+      return slideIndex % 2 === 0
         ? <ComparisonLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />
-        : <BulletsLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+        : <ComparisonArrowLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
     }
     if (layout === 'bigword') {
       return <BigWordLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'numberedcards') {
+      return hasBullets
+        ? <NumberedCardsLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />
+        : <TitleLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
     }
     if (layout === 'boxlist') {
       return hasBullets
@@ -2898,6 +4208,42 @@ export const SlideSceneComponent: React.FC<SlideSceneProps> = ({ scene, slideInd
       return hasStats
         ? <PortfolioLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />
         : <StatCardLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'hubspoke') {
+      return <HubSpokeLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'piechart') {
+      return <PieChartLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'wordcarousel') {
+      return <WordCarouselLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'socialcard') {
+      return <SocialCardLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'splitscreen') {
+      return <SplitScreenLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'cardflip') {
+      return <CardFlipLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'animatedtext') {
+      return <AnimatedTextLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'typewritertext') {
+      return <TypewriterTextLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'chartanimation') {
+      return <ChartAnimationLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'staggered') {
+      return <StaggeredLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'floatcard') {
+      return <FloatCardLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
+    }
+    if (layout === 'spinreveal') {
+      return <SpinRevealLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
     }
     return <TitleLayout scene={scene} slideIndex={slideIndex} bodyFont={bodyFont} />;
   };

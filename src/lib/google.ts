@@ -494,7 +494,7 @@ export type SlideSceneData = {
   text: string;
   title: string;
   bullets?: string[];
-  layout: 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit' | 'equation' | 'stepflow' | 'calendar' | 'barchart' | 'usercloud' | 'motion_logic' | 'graphic_box' | 'clock' | 'linechart' | 'candlestick' | 'gauge' | 'portfolio';
+  layout: 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit' | 'equation' | 'stepflow' | 'calendar' | 'barchart' | 'usercloud' | 'motion_logic' | 'graphic_box' | 'clock' | 'linechart' | 'candlestick' | 'gauge' | 'portfolio' | 'numberedcards' | 'hubspoke' | 'piechart' | 'wordcarousel' | 'socialcard' | 'splitscreen';
   stats?: { value: string; label: string }[];
   comparisonData?: {
     leftTitle: string;
@@ -529,18 +529,13 @@ export async function splitScriptIntoSlides(
   script: string,
   llmModelId = 'gemini-2.5-flash',
   sceneCount = 1,
-  apiKey?: string
+  apiKey?: string,
+  qwenApiKey?: string
 ): Promise<SlideSplitResult> {
+  const isQwen = llmModelId.startsWith('qwen') || llmModelId.startsWith('deepseek');
   const model = llmModelId.startsWith('google/') ? llmModelId.slice('google/'.length) : llmModelId;
 
-  const response = await getAI(apiKey).models.generateContent({
-    model,
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `당신은 영상 연출 전문가입니다. 대본을 깊이 분석하고 각 장면의 내용·감정·구조에 가장 어울리는 레이아웃을 선택해 ${sceneCount}개 슬라이드로 만드세요.
+  const slidePromptText = `당신은 영상 연출 전문가입니다. 대본을 깊이 분석하고 각 장면의 내용·감정·구조에 가장 어울리는 레이아웃을 선택해 ${sceneCount}개 슬라이드로 만드세요.
 
 ⚠️ 핵심 규칙: 레이아웃 다양성 의무. 같은 레이아웃은 전체의 25% 초과 금지. boxlist+bullets 합산 35% 초과 금지.
 
@@ -617,6 +612,47 @@ export async function splitScriptIntoSlides(
   title: 취소선으로 표시될 문제 (15자 이내)
   bullets: ["✅ 해결책 제목", "보조 설명"]
 
+【계층·단계·구조 나열 신호】→ "numberedcards" ★새 레이아웃
+  감지 패턴: N층, N단계, N가지 구조, 레벨/계층/레이어, "첫째~둘째~셋째", 구성 요소 나열
+  예) "1층 Raw, 2층 Wiki, 3층 Schema로 구성", "3가지 원칙: 속도 / 정확도 / 비용"
+  bullets 포맷: ["제목 | 설명 한 줄", "제목2 | 설명2"] — 반드시 | 로 제목과 설명 분리
+  항목 수: 3~6개 권장
+  ★ boxlist와 유사한 내용이라면 슬라이드 순서에 따라 교대로 사용 (짝수 슬라이드 → boxlist, 홀수 슬라이드 → numberedcards)
+
+【허브-스포크·방사형 구조 신호】→ "hubspoke" ★중앙 원 + 우측 항목 리스트
+  감지 패턴: ~를 중심으로, ~가 핵심이고, 클러스터, 허브, 연결, 토픽 클러스터, 중심축, 핵심 노드
+  예) "워드프레스를 허브로 5가지 콘텐츠를 연결" → hubspoke
+  stats: [{value:"", label:"허브 중앙에 표시할 짧은 키워드 (2~4글자)"}]
+  bullets: ["스포크 항목1", "스포크 항목2", ...] (3~6개)
+  summary: 하단 요약 한 줄 (예: "한 주제 10~15개 글 → 주제 권위 구축")
+
+【파이/비율/구성 신호】→ "piechart" ★도넛 차트
+  감지 패턴: 비율, 구성, ~%를 차지, 점유율, 분포, 비중, 포트폴리오 구성
+  예) "전체 트래픽의 60%는 검색, 30%는 소셜, 10%는 직접"
+  stats: [{value:"60", label:"검색"}, {value:"30", label:"소셜"}, {value:"10", label:"직접"}]
+  summary: "검색 60%" (도넛 중앙에 표시할 핵심 수치)
+
+【키워드 강조·임팩트 신호】→ "wordcarousel" ★단어 순차 등장
+  감지 패턴: 핵심은 ~다, 3가지 키워드, 중요한 것은, 결론은, 요약하면 딱 ~가지
+  예) "속도, 정확성, 비용 — 세 가지가 핵심입니다"
+  title: "핵심 키워드" (상단 서브타이틀)
+  bullets: ["속도", "정확성", "비용"] (큰 글씨로 순차 등장)
+  summary: "세 가지가 핵심입니다" (하단 설명)
+
+【소셜·반응·댓글·조회 신호】→ "socialcard" ★소셜미디어 카드
+  감지 패턴: 조회수, 좋아요, 댓글, 팔로워, 구독자, 바이럴, 반응, 댓글에서는
+  예) "이 영상은 조회수 100만에 댓글 5천 개가 달렸습니다"
+  headerBadge: {text: "계정명 또는 플랫폼"}
+  summary: 카드에 표시할 핵심 문장
+  stats: [{value:"100만", label:"조회수"}, {value:"5천", label:"댓글"}]
+
+【좌우 대조·수치+설명 신호】→ "splitscreen" ★좌우 분할
+  감지 패턴: 왼쪽은 ~, 오른쪽은 ~, 반면에, 한편 ~가지 포인트, 수치와 함께 설명
+  예) "월 매출 3억, 그 비결은 세 가지입니다"
+  title: 왼쪽 큰 제목
+  stats: [{value:"3억", label:"월 매출"}] (왼쪽 수치)
+  bullets: ["비결1", "비결2", "비결3"] (오른쪽 리스트)
+
 【기타 목록】→ "bullets" (최대 15% 제한, 마지막 수단)
 
 ═══ STEP 2: 슬라이드 생성 규칙 ═══
@@ -625,7 +661,7 @@ export async function splitScriptIntoSlides(
 3. 같은 layout 연속 2개 금지
 4. bullets+boxlist 합산 35% 이하 (나머지는 다른 레이아웃)
 5. title: 딱 1개 / bigword: 최대 2개 — 절대 초과 금지
-6. equation, statcard, comparison, icongrid, progress, timeline, dialogsplit, chatwindow 적극 활용
+6. equation, statcard, comparison, icongrid, progress, timeline, numberedcards, dialogsplit, chatwindow 적극 활용
 7. JSON만 출력: {"slides": [...]}
 8. 대본 원문에 없는 **강조** 마크다운 추가 금지
 
@@ -658,24 +694,53 @@ export async function splitScriptIntoSlides(
   {"text":"...","title":"기존 vs AI","layout":"comparison","comparisonData":{"leftTitle":"기존 방식","rightTitle":"AI 방식","leftItems":["느린 처리","높은 비용"],"rightItems":["즉각 처리","비용 절감"]}},
   {"text":"...","title":"작동 원리","layout":"progress","bullets":["📝 대본 작성 · 내가 씀","🤖 AI 분석 · 자동화","🎬 영상 완성 · 20분 후"],"summary":"대본만 쓰면 영상이 나오는 구조"},
   {"text":"...","title":"핵심 기능","layout":"icongrid","bullets":["🚀 초고속","🔒 보안","💡 혁신","📊 분석"]},
-  {"text":"...","title":"꼭 지킬 규칙","layout":"boxlist","headerBadge":{"icon":"🔒","text":"꼭 지킬 규칙"},"bullets":["채널 스타일 | 색상·폰트 고정","Remotion 공식 | API 문법 준수"],"warningTag":"어기면 영상이 깨지거나 통일감 사라짐"}
+  {"text":"...","title":"꼭 지킬 규칙","layout":"boxlist","headerBadge":{"icon":"🔒","text":"꼭 지킬 규칙"},"bullets":["채널 스타일 | 색상·폰트 고정","Remotion 공식 | API 문법 준수"],"warningTag":"어기면 영상이 깨지거나 통일감 사라짐"},
+  {"text":"...","title":"3층 구조","layout":"numberedcards","bullets":["Raw (원본) | 기사·PDF·메모 — 원본 그대로 보관","Wiki (정리) | AI가 읽고 만든 구조화된 위키 페이지","Schema (규칙) | 어떻게 정리할지 규칙 정의"]}
 ]}
 
 대본:
-${script}`,
-          },
-        ],
-      },
-    ],
-    config: {
-      responseMimeType: 'application/json',
-      maxOutputTokens: 65536,
-      thinkingConfig: { thinkingBudget: 8000 },
-    },
-  });
+${script}`;
 
-  const content = response.text;
-  if (!content) throw new Error('Gemini 응답이 없습니다');
+  let content: string;
+  let promptTokens = 0;
+  let completionTokens = 0;
+
+  if (isQwen) {
+    const effectiveModel = model.startsWith('qwen') ? model : 'qwen-plus';
+    const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${qwenApiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: effectiveModel,
+        messages: [{ role: 'user', content: slidePromptText }],
+        temperature: 0.7,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Qwen PPT 슬라이드 생성 실패 (${res.status}): ${err}`);
+    }
+    const data = await res.json();
+    content = data.choices?.[0]?.message?.content ?? '';
+    if (!content) throw new Error('Qwen 응답이 없습니다');
+    promptTokens = data.usage?.prompt_tokens ?? 0;
+    completionTokens = data.usage?.completion_tokens ?? 0;
+  } else {
+    const response = await getAI(apiKey).models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: slidePromptText }] }],
+      config: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 65536,
+        thinkingConfig: { thinkingBudget: 8000 },
+      },
+    });
+    content = response.text ?? '';
+    if (!content) throw new Error('Gemini 응답이 없습니다');
+    const metaUsage = (response as any).usageMetadata ?? {};
+    promptTokens = metaUsage.promptTokenCount ?? 0;
+    completionTokens = metaUsage.candidatesTokenCount ?? 0;
+  }
 
   let jsonStr = content.trim()
     .replace(/```json\n?|```/g, '')
@@ -860,9 +925,54 @@ ${script}`,
       slide.bullets = ['직접 작업', '사람 손이 필요'];
       return 'graphic_box';
     }
-    // 일반 목록 → boxlist
+    // 계층/구조 목록 → numberedcards (boxlist와 교대로 사용)
+    if (!exclude.includes('numberedcards') && /(층|단계|레벨|구조|첫째|둘째|셋째|가지|단|순서|원칙|요소)/.test(t)) {
+      slide.bullets = autoGenerateBullets(slide).map(b => b.includes('|') ? b : `${b} | `);
+      return 'numberedcards';
+    }
+
+    // ── 신규 레이아웃 키워드 감지 ──────────────────────────────────────────────
+
+    // chartanimation: 월별/분기/추이/실적 → technical 데이터 시각화
+    if (!exclude.includes('chartanimation') &&
+      /(월별|분기|추이|성장률|실적|연간|매출|수익|증가|감소|데이터|통계|수치 변화)/.test(t)) {
+      slide.stats = slide.stats?.length
+        ? slide.stats
+        : autoGenerateBullets(slide).slice(0, 6).map((b, i) => ({
+            label: b.slice(0, 6),
+            value: String(Math.round(30 + Math.random() * 60)),
+          }));
+      return 'chartanimation';
+    }
+
+    // typewritertext: 코드/명령어/터미널 → social+technical
+    if (!exclude.includes('typewritertext') &&
+      /(명령어|커맨드|코드|입력|실행|설치|터미널|npm|git|bash|python|함수|변수|API|SDK)/.test(t)) {
+      slide.bullets = autoGenerateBullets(slide);
+      return 'typewritertext';
+    }
+
+    // cardflip: 반전/비밀/사실 → creative 임팩트
+    if (!exclude.includes('cardflip') &&
+      /(사실은|알고 보면|반전|정체|비밀|놀랍게도|실제로는|의외로|반대로 생각하면|뒤집으면)/.test(t)) {
+      return 'cardflip';
+    }
+
+    // animatedtext: 결론/핵심 한 마디 → creative 키 메시지
+    if (!exclude.includes('animatedtext') &&
+      /(결론은|핵심은|한 마디로|결국|요약하면|정리하면|가장 중요한|한 문장|슬로건)/.test(t) &&
+      slide.text.length < 80) {
+      return 'animatedtext';
+    }
+
+    // 일반 목록 → boxlist/numberedcards 교대
     if (!exclude.includes('boxlist') && slide.text.length > 60) {
       slide.bullets = autoGenerateBullets(slide);
+      const useNumbered = !exclude.includes('numberedcards') && (slides.indexOf(slide) % 2 === 1);
+      if (useNumbered) {
+        slide.bullets = slide.bullets.map(b => b.includes('|') ? b : `${b} | `);
+        return 'numberedcards';
+      }
       return 'boxlist';
     }
     return null;
@@ -870,24 +980,35 @@ ${script}`,
 
   // fallback 레이아웃 선택 (다양성 보장)
   const DIVERSE_POOL: SlideLayout[] = [
-    'quote', 'icongrid', 'progress', 'boxlist', 'timeline', 'equation', 'bullets', 
-    'stepflow', 'calendar', 'barchart', 'usercloud', 'motion_logic', 'graphic_box'
+    // presentation — 정보 전달
+    'quote', 'bullets', 'equation', 'numberedcards', 'boxlist', 'timeline', 'progress', 'stepflow', 'calendar',
+    // creative — 시각 연출
+    'icongrid', 'usercloud', 'motion_logic', 'graphic_box',
+    'staggered', 'floatcard', 'spinreveal',   // 신규 (범용 creative)
+    // technical — 데이터
+    'barchart',
   ];
 
   function pickFallback(slide: SlideSceneData, exclude: SlideLayout[], isTopicShift = false): SlideLayout {
     // 1. 텍스트 신호 감지 우선
     const detected = detectLayoutFromText(slide, exclude, isTopicShift);
     if (detected) return detected;
-    
+
     // 2. 가용한 풀 필터링 (exclude 제외)
     const available = DIVERSE_POOL.filter(l => !exclude.includes(l));
-    const target = available.length > 0 
-      ? available[Math.floor(Math.random() * available.length)] 
+    const target = available.length > 0
+      ? available[Math.floor(Math.random() * available.length)]
       : DIVERSE_POOL[Math.floor(Math.random() * DIVERSE_POOL.length)];
 
     if (target === 'icongrid') slide.bullets = ensureIconBullets(autoGenerateBullets(slide, true));
     else if (target === 'progress') slide.bullets = ensureProgressBullets(autoGenerateBullets(slide, true));
     else if (target === 'usercloud') slide.decorIcons = ['👤', '👥', '💬', '⭐', '❤️'];
+    else if (target === 'staggered' || target === 'floatcard') {
+      slide.bullets = ensureIconBullets(autoGenerateBullets(slide, true));
+    }
+    else if (target === 'spinreveal') {
+      slide.bullets = autoGenerateBullets(slide, true).slice(0, 4);
+    }
     else if (target !== 'quote' && target !== 'chatwindow' && target !== 'dialogsplit') {
       slide.bullets = autoGenerateBullets(slide, true);
     }
@@ -1071,13 +1192,9 @@ ${script}`,
     layoutCounts[slide.layout] = (layoutCounts[slide.layout] ?? 0) + 1;
   }
 
-  const metaUsage = (response as any).usageMetadata ?? {};
   return {
     slides: finalSlides,
-    usage: {
-      promptTokens: metaUsage.promptTokenCount ?? 0,
-      completionTokens: metaUsage.candidatesTokenCount ?? 0,
-    },
+    usage: { promptTokens, completionTokens },
   };
 }
 

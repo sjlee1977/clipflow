@@ -183,8 +183,17 @@ export async function POST(req: NextRequest) {
       // 음성 없음: 모든 씬 병렬 처리 (API 호출 없음)
       scenes = await Promise.all(inputScenes.map((s: SceneInput, i: number) => processTTS(s, i)));
     } else if (ttsProvider === 'google') {
-      for (let i = 0; i < inputScenes.length; i++) {
-        scenes.push(await processTTS(inputScenes[i], i));
+      // Google TTS: 3개씩 병렬 처리 (rate limit 고려)
+      const GOOGLE_CHUNK_SIZE = 3;
+      for (let i = 0; i < inputScenes.length; i += GOOGLE_CHUNK_SIZE) {
+        const chunk = inputScenes.slice(i, i + GOOGLE_CHUNK_SIZE);
+        const results = await Promise.all(
+          chunk.map((s: SceneInput, j: number) => processTTS(s, i + j))
+        );
+        scenes.push(...results);
+        if (i + GOOGLE_CHUNK_SIZE < inputScenes.length) {
+          await new Promise((r) => setTimeout(r, 1000)); // 배치 간 1초 간격
+        }
       }
     } else {
       const CHUNK_SIZE = 5;
@@ -218,9 +227,14 @@ export async function POST(req: NextRequest) {
       compositionId += 'Landscape';
     }
     
+    const totalFrames = scenes.reduce((sum: number, s: { durationInFrames?: number }) => sum + (s.durationInFrames ?? 0), 0);
+    const framesPerLambda = Math.max(100, Math.ceil(totalFrames / 180));
+    console.log(`[generate-video] totalFrames=${totalFrames} framesPerLambda=${framesPerLambda}`);
+
     const { renderId, bucketName } = await startRender({
       compositionId,
       inputProps: { scenes, fps: FPS, fontFamily, templateId, codeSnippet },
+      framesPerLambda,
     });
 
     return NextResponse.json({ renderId, bucketName });

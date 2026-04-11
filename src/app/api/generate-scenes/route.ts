@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
     allowedAnimations,
     pptMode = false,
     pptTheme = 'dark',
+    skipImages = false, // 이미지 생성 건너뛰기 (사용자 직접 업로드 모드)
   } = await req.json();
 
   // 유저 API 키 조회
@@ -99,12 +100,15 @@ export async function POST(req: NextRequest) {
   const meta = user?.user_metadata ?? {};
   const geminiApiKey = meta.gemini_api_key as string | undefined;
   const falApiKey = meta.fal_api_key as string | undefined;
+  const qwenApiKey = meta.qwen_api_key as string | undefined;
+  const isQwenLlm = llmModelId.startsWith('qwen') || llmModelId.startsWith('deepseek');
 
   // 캐릭터 참조 이미지 여부 확인
   const hasCharacterImages = !!characterImageBase64 || (Array.isArray(subCharacters) && subCharacters.length > 0);
 
   // 캐릭터 이미지가 있으면 Gemini 강제 사용 (멀티모달 참조 이미지 지원 필요)
-  if (hasCharacterImages && !imageModelId.startsWith('google/')) {
+  // fal/qwen 모델은 참조 이미지를 지원하지 않으므로 그대로 사용
+  if (hasCharacterImages && !imageModelId.startsWith('google/') && !imageModelId.startsWith('fal/') && !imageModelId.startsWith('qwen/')) {
     imageModelId = 'google/gemini-2.5-flash-image';
   }
   // 그 외에는 사용자가 선택한 모델 그대로 사용
@@ -125,12 +129,17 @@ export async function POST(req: NextRequest) {
   };
   const isKineticMode = imageStyle === 'kinetic';
   const isLottieMode = imageStyle === 'lottie';
+  const isManualImageMode = skipImages === true; // 이미지 직접 업로드 모드
   const stylePrompt = imageStyle && imageStyle !== 'none' && !isKineticMode && !isLottieMode ? (stylePrompts[imageStyle] ?? '') : (stylePrompts.none ?? '');
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (data: object) => {
-        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
+        try {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          // 클라이언트 연결 종료 또는 스트림 이미 닫힘 — 무시
+        }
       };
 
       try {
@@ -142,14 +151,19 @@ export async function POST(req: NextRequest) {
 
         // PPT 모드 처리
         if (pptMode) {
-          if (!geminiApiKey) {
-            send({ type: 'error', message: 'PPT 모드는 Gemini API 키가 필요합니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
+          if (isQwenLlm && !qwenApiKey) {
+            send({ type: 'error', message: 'DashScope API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
+            controller.close();
+            return;
+          }
+          if (!isQwenLlm && !geminiApiKey) {
+            send({ type: 'error', message: 'Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
             controller.close();
             return;
           }
           const targetCharsPerScene = 125;
           const sceneCount = Math.min(50, Math.max(1, Math.round(script.length / targetCharsPerScene)));
-          const { slides, usage: llmUsage } = await splitScriptIntoSlides(script, llmModelId, sceneCount, geminiApiKey);
+          const { slides, usage: llmUsage } = await splitScriptIntoSlides(script, llmModelId, sceneCount, geminiApiKey, qwenApiKey);
           send({ type: 'total', count: slides.length });
           slides.forEach((s, index) => {
             // 레이아웃 데이터 안정성 확보 (최소 bullets 보장)
@@ -202,16 +216,27 @@ export async function POST(req: NextRequest) {
         }
 
         const isFalImage = imageModelId.startsWith('fal/');
+        const isQwenImage = imageModelId.startsWith('qwen/');
         if (isFalImage && !falApiKey) {
           send({ type: 'error', message: 'fal.ai API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
           controller.close();
           return;
         }
-        if (!isFalImage && !geminiApiKey) {
+        if (isQwenImage && !qwenApiKey) {
+          send({ type: 'error', message: 'DashScope API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
+          controller.close();
+          return;
+        }
+        if (!isFalImage && !isQwenImage && !isQwenLlm && !geminiApiKey) {
           const msg = hasCharacterImages
             ? '캐릭터 참조 이미지 사용 시 Gemini로 자동 전환됩니다. 설정 페이지에서 Gemini API 키를 등록해주세요.'
             : 'Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.';
           send({ type: 'error', message: msg, needsKey: true });
+          controller.close();
+          return;
+        }
+        if (isQwenLlm && !qwenApiKey) {
+          send({ type: 'error', message: 'DashScope(Qwen/DeepSeek) API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true });
           controller.close();
           return;
         }
@@ -222,15 +247,18 @@ export async function POST(req: NextRequest) {
         console.log(`[generate-scenes] script.length=${script.length}, sceneCount=${sceneCount}`);
         const hasCharacter = !!characterImageBase64;
         const subCharacterNames = Array.isArray(subCharacters) ? subCharacters.map((c: { name: string }) => c.name) : [];
-        const { scenes: scriptScenes, usage: llmUsage } = await splitViaGemini(script, llmModelId, sceneCount, hasCharacter, geminiApiKey, subCharacterNames, allowedAnimations, imageStyle);
+        const { scenes: scriptScenes, usage: llmUsage } = isQwenLlm
+          ? await (async () => { const { splitScriptViaQwen } = await import('@/lib/qwen-llm'); return splitScriptViaQwen(script, llmModelId, sceneCount, hasCharacter, qwenApiKey!, subCharacterNames, allowedAnimations, imageStyle); })()
+          : await splitViaGemini(script, llmModelId, sceneCount, hasCharacter, geminiApiKey, subCharacterNames, allowedAnimations, imageStyle);
         console.log(`[generate-scenes] Split into ${scriptScenes.length} scenes. LLM tokens: ${llmUsage.promptTokens}+${llmUsage.completionTokens}`);
+        console.log(`[generate-scenes] imageModelId="${imageModelId}" isFalImage=${isFalImage} isQwenImage=${isQwenImage} hasCharacterImages=${hasCharacterImages}`);
         send({ type: 'total', count: scriptScenes.length });
 
         // 2. 이미지 생성 (모델별 최적 동시 호출 수 적용)
         const results: { index: number; text: string; imagePrompt: string; imageUrl: string }[] = [];
 
-        // 키네틱/Lottie 모드: 이미지 생성 없이 바로 씬 전송
-        if (isKineticMode || isLottieMode) {
+        // 키네틱/Lottie/수동 이미지 모드: 이미지 생성 없이 바로 씬 전송
+        if (isKineticMode || isLottieMode || isManualImageMode) {
           scriptScenes.forEach((s, index) => {
             const scene = {
               index,
@@ -250,14 +278,34 @@ export async function POST(req: NextRequest) {
           // fal.ai 직접 엔드포인트는 동시 3개, Gemini는 순차 처리 (rate limit)
           const CONCURRENCY = isFalImage ? 3 : 1;
 
+          // 슬라이딩 윈도우: 이전 씬의 핵심 시각 정보를 다음 씬에 전달해 일관성 유지
+          let prevSceneContext = '';
+
           for (let i = 0; i < scriptScenes.length; i += CONCURRENCY) {
             const batch = scriptScenes.slice(i, i + CONCURRENCY).map((s, j) => ({ s, index: i + j }));
+            const batchContext = prevSceneContext; // 배치 내 모든 씬에 동일 컨텍스트 적용
+
             await Promise.all(
               batch.map(async ({ s, index }) => {
-                const styledPrompt = stylePrompt ? `${s.imagePrompt}, ${stylePrompt}` : s.imagePrompt;
+                // 이전 씬 컨텍스트를 앞에 붙여 캐릭터·배경 일관성 유지
+                const contextPrefix = batchContext && !hasCharacterImages
+                  ? `Maintain visual continuity with previous scene (${batchContext}). `
+                  : '';
+                const basePrompt = `${contextPrefix}${s.imagePrompt}`;
+                const styledPrompt = stylePrompt ? `${basePrompt}, ${stylePrompt}` : basePrompt;
                 let imageUrl: string;
                 if (isFalImage) {
                   imageUrl = await generateFalImage(styledPrompt, imageModelId, format, falApiKey);
+                } else if (isQwenImage) {
+                  const { generateDashscopeImage } = await import('@/lib/dashscope-image');
+                  imageUrl = await generateDashscopeImage(
+                    styledPrompt,
+                    imageModelId,
+                    format,
+                    qwenApiKey!,
+                    characterImageBase64 ?? undefined,
+                    subCharacters ?? undefined
+                  );
                 } else {
                   imageUrl = await generateImageViaGoogle(
                     styledPrompt,
@@ -280,6 +328,13 @@ export async function POST(req: NextRequest) {
                 send({ type: 'scene', ...scene });
               })
             );
+
+            // 배치 완료 후 마지막 씬의 핵심 시각 묘사를 다음 배치 컨텍스트로 저장 (최대 120자)
+            const lastInBatch = batch[batch.length - 1];
+            if (lastInBatch) {
+              prevSceneContext = lastInBatch.s.imagePrompt.slice(0, 120);
+            }
+
             if (i + CONCURRENCY < scriptScenes.length) {
               await new Promise(r => setTimeout(r, isFalImage ? 500 : 3000));
             }
@@ -310,9 +365,9 @@ export async function POST(req: NextRequest) {
         }
         
         send({ type: 'error', message: errMsg });
+      } finally {
+        try { controller.close(); } catch { /* 이미 닫힌 경우 무시 */ }
       }
-
-      controller.close();
     },
   });
 

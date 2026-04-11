@@ -182,7 +182,7 @@ export async function runTrendsCollection(
   // 3. 조회수 스냅샷 수집
   let activeVideoQuery = supabase
     .from('trend_videos')
-    .select('video_id, channel_id')
+    .select('video_id, channel_id, published_at')
     .eq('is_active', true);
   if (allCategories.length > 0) activeVideoQuery = activeVideoQuery.in('category', allCategories);
   if (targetRegions.length > 0) activeVideoQuery = activeVideoQuery.in('region', targetRegions);
@@ -191,6 +191,7 @@ export async function runTrendsCollection(
 
   const videoIds = (activeVideos ?? []).map((v) => v.video_id);
   const videoChannelMap = new Map((activeVideos ?? []).map((v) => [v.video_id, v.channel_id]));
+  const videoPublishedMap = new Map((activeVideos ?? []).map((v) => [v.video_id, v.published_at as string | null]));
 
   if (videoIds.length > 0) {
     const stats = await fetchVideoStats(videoIds);
@@ -227,7 +228,8 @@ export async function runTrendsCollection(
           .order('captured_at', { ascending: false })
           .limit(2);
 
-        if (snaps && snaps.length === 2) {
+        if (snaps && snaps.length >= 2) {
+          // 스냅샷 델타 방식 (가장 정확)
           const deltaViews = snaps[0].views - snaps[1].views;
           const deltaHours =
             (new Date(snaps[0].captured_at).getTime() - new Date(snaps[1].captured_at).getTime()) / 3600000;
@@ -247,6 +249,29 @@ export async function runTrendsCollection(
               { onConflict: 'video_id,signal_type' }
             );
             summary.viral++;
+          }
+        } else if (snaps && snaps.length === 1) {
+          // 발행일 기준 시간당 조회수 방식 (첫 번째 수집 직후 즉시 감지)
+          const publishedAt = videoPublishedMap.get(s.videoId);
+          if (publishedAt) {
+            const hoursSincePublished = (now.getTime() - new Date(publishedAt).getTime()) / 3600000;
+            const hourlyRate = hoursSincePublished > 0 ? s.views / hoursSincePublished : 0;
+
+            if (hourlyRate >= avgViralThreshold) {
+              await supabase.from('trend_signals').upsert(
+                {
+                  video_id: s.videoId,
+                  signal_type: 'viral',
+                  current_views: s.views,
+                  growth_rate_hourly: hourlyRate,
+                  score: hourlyRate,
+                  detected_at: now.toISOString(),
+                  updated_at: now.toISOString(),
+                },
+                { onConflict: 'video_id,signal_type' }
+              );
+              summary.viral++;
+            }
           }
         }
 

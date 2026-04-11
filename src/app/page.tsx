@@ -40,7 +40,7 @@ export default function HomePage() {
               로그인
             </Link>
           )}
-          <Link href="/dashboard" className="bg-green-500 hover:bg-green-400 text-black text-[12px] font-black tracking-tight uppercase px-5 py-2 transition-colors">
+          <Link href="/dashboard" className="bg-green-500 hover:bg-green-400 text-black text-[12px] font-black tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors">
             {user ? '대시보드' : '무료 시작'}
           </Link>
         </div>
@@ -63,8 +63,8 @@ export default function HomePage() {
           <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
           TTS_ON
         </div>
-        <div className="absolute top-1/2 right-20 hidden lg:flex items-center gap-1.5 bg-orange-400 text-black text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
+        <div className="absolute top-1/2 right-20 hidden lg:flex items-center gap-1.5 bg-purple-500 text-white text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
+          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-white -rotate-45" />
           VIDEO_OUT
         </div>
         <div className="absolute top-2/3 right-32 hidden lg:flex items-center gap-1.5 bg-pink-400 text-black text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }}>
@@ -92,8 +92,8 @@ export default function HomePage() {
 
           <div className="flex items-center justify-center gap-3">
             <Link href="/dashboard"
-              className="bg-green-500 hover:bg-green-400 text-black font-black text-[13px] tracking-tight uppercase px-6 py-2.5 transition-colors">
-              시작하기 — 무료
+              className="bg-green-500 hover:bg-green-400 text-white font-black text-[13px] tracking-tight uppercase px-5 py-2 rounded-md transition-colors">
+              무료로 시작하기
             </Link>
           </div>
         </div>

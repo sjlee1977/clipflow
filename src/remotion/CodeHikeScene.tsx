@@ -2,9 +2,11 @@ import React from 'react';
 import {
   AbsoluteFill,
   Audio,
+  Img,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
+  Video,
 } from 'remotion';
 import { Scene as SceneType } from './types';
 import { SubtitleOverlay } from './SubtitleOverlay';
@@ -26,6 +28,17 @@ export const CodeHikeSceneComponent: React.FC<CodeHikeSceneProps> = ({
   // 코드 하이킹 효과를 위한 간단한 가공 (나중에 @code-hike/mdx와 연동)
   return (
     <AbsoluteFill style={{ backgroundColor: '#0d1117' }}>
+      {/* 배경 이미지 (블러 + 어둡게) */}
+      {scene.videoUrl ? (
+        <AbsoluteFill style={{ filter: 'blur(8px) brightness(0.25)', transform: 'scale(1.05)' }}>
+          <Video src={scene.videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </AbsoluteFill>
+      ) : scene.imageUrl ? (
+        <AbsoluteFill style={{ filter: 'blur(8px) brightness(0.25)', transform: 'scale(1.05)' }}>
+          <Img src={scene.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </AbsoluteFill>
+      ) : null}
+
       {/* 백그라운드 그리드 느낌 */}
       <AbsoluteFill style={{ opacity: 0.1, backgroundImage: 'radial-gradient(#30363d 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 

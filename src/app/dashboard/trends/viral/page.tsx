@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Video, Zap } from 'lucide-react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Video, Zap, ArrowUpDown } from 'lucide-react';
+
+type ViralSort = 'hourly' | 'views' | 'publishedAt';
+const VIRAL_SORTS: { key: ViralSort; label: string }[] = [
+  { key: 'hourly',     label: '시간당 증가순' },
+  { key: 'views',      label: '조회수순' },
+  { key: 'publishedAt', label: '최신순' },
+];
 import { TREND_CATEGORIES, SEARCH_REGIONS } from '@/lib/youtube-trends';
 import DateRangePicker from '@/components/DateRangePicker';
 import { createClient } from '@/lib/supabase-browser';
@@ -40,6 +47,15 @@ export default function ViralPage() {
   const [collectStatus, setCollectStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [sortKey, setSortKey] = useState<ViralSort>('hourly');
+
+  const sortedSignals = useMemo(() => {
+    const arr = [...signals];
+    if (sortKey === 'views') return arr.sort((a, b) => b.current_views - a.current_views);
+    if (sortKey === 'publishedAt') return arr.sort((a, b) => new Date(b.trend_videos.published_at).getTime() - new Date(a.trend_videos.published_at).getTime());
+    return arr.sort((a, b) => b.growth_rate_hourly - a.growth_rate_hourly);
+  }, [signals, sortKey]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -76,6 +92,17 @@ export default function ViralPage() {
     fetchSignals();
   }, [fetchSignals]);
 
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) { clearInterval(timer); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
   function stripHtml(str: string): string {
     return str.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'");
   }
@@ -104,6 +131,7 @@ export default function ViralPage() {
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         setCollectStatus({ ok: true, msg: '수집을 시작했습니다. 30초 후 자동으로 갱신됩니다.' });
+        setCountdown(30);
         setTimeout(() => fetchSignals(), 30000);
       } else {
         setCollectStatus({ ok: false, msg: friendlyError(body.error ?? `오류 (${res.status})`) });
@@ -156,16 +184,84 @@ export default function ViralPage() {
       {/* 수집 결과 메시지 */}
       {collectStatus && (
         <div
-          className="px-4 py-2.5 rounded-lg text-sm"
+          className="rounded-xl overflow-hidden text-sm"
           style={{
-            background: collectStatus.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-            border: `1px solid ${collectStatus.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            color: collectStatus.ok ? '#22c55e' : '#ef4444',
+            background: collectStatus.ok ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
+            border: `1px solid ${collectStatus.ok ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
           }}
         >
-          {collectStatus.ok ? '✓ ' : '✗ '}{collectStatus.msg}
-          {collectStatus.ok && !collectStatus.msg.includes('바이럴 0개') === false && (
-            <span className="ml-2 opacity-70 text-xs">— 바이럴 감지는 2번째 수집부터 동작합니다</span>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                className="flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold shrink-0"
+                style={{
+                  background: collectStatus.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                  color: collectStatus.ok ? '#22c55e' : '#ef4444',
+                }}
+              >
+                {collectStatus.ok ? '✓' : '✗'}
+              </span>
+              <span style={{ color: collectStatus.ok ? '#22c55e' : '#ef4444' }}>{collectStatus.msg}</span>
+            </div>
+
+            {/* 카운트다운 프로그레스 */}
+            {collectStatus.ok && countdown > 0 && (
+              <div className="flex items-center gap-3 shrink-0 ml-6">
+                {/* 원형 카운트다운 */}
+                <div className="relative w-9 h-9">
+                  <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(34,197,94,0.12)" strokeWidth="2.5" />
+                    <circle
+                      cx="18" cy="18" r="15" fill="none"
+                      stroke="#22c55e" strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 15}`}
+                      strokeDashoffset={`${2 * Math.PI * 15 * (1 - countdown / 30)}`}
+                      style={{ transition: 'stroke-dashoffset 1s linear', filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.6))' }}
+                    />
+                  </svg>
+                  <span
+                    className="absolute inset-0 flex items-center justify-center text-[11px] font-bold"
+                    style={{ color: '#22c55e' }}
+                  >
+                    {countdown}
+                  </span>
+                </div>
+
+                {/* 세그먼트 바 */}
+                <div className="flex items-center gap-[3px]">
+                  {Array.from({ length: 10 }).map((_, i) => {
+                    const filled = Math.ceil(countdown / 3) > (9 - i);
+                    return (
+                      <div
+                        key={i}
+                        className="w-1.5 rounded-full transition-all duration-500"
+                        style={{
+                          height: i % 3 === 1 ? '14px' : '10px',
+                          background: filled ? '#22c55e' : 'rgba(34,197,94,0.15)',
+                          boxShadow: filled ? '0 0 5px rgba(34,197,94,0.5)' : 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 하단 씬 프로그레스 라인 */}
+          {collectStatus.ok && countdown > 0 && (
+            <div className="h-[2px] w-full" style={{ background: 'rgba(34,197,94,0.1)' }}>
+              <div
+                className="h-full"
+                style={{
+                  width: `${(countdown / 30) * 100}%`,
+                  background: 'linear-gradient(90deg, #16a34a, #22c55e)',
+                  boxShadow: '0 0 8px rgba(34,197,94,0.6)',
+                  transition: 'width 1s linear',
+                }}
+              />
+            </div>
           )}
         </div>
       )}
@@ -211,6 +307,17 @@ export default function ViralPage() {
           }}
         />
 
+        {/* 지금 수집 버튼 */}
+        {isAdmin && (
+          <button
+            onClick={triggerCollect}
+            disabled={collecting || loading}
+            className="px-3 py-1.5 rounded-lg text-xs transition-colors ml-2"
+            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
+          >
+            {collecting ? '수집 중...' : '지금 수집'}
+          </button>
+        )}
       </div>
 
       {/* 일반/쇼츠 탭 */}
@@ -292,121 +399,141 @@ export default function ViralPage() {
             {cat.label}
           </button>
         ))}
-        {isAdmin && (
-          <button
-            onClick={triggerCollect}
-            disabled={collecting || loading}
-            className="px-2.5 py-1.5 rounded-lg text-xs transition-colors ml-1"
-            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
-          >
-            {collecting ? '수집 중...' : '지금 수집'}
-          </button>
-        )}
       </div>
 
       {/* 영상 목록 */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[88px] rounded-xl animate-pulse"
-              style={{ background: 'var(--hover-bg)' }}
-            />
+            <div key={i} className="h-[72px] animate-pulse" style={{ background: i % 2 === 0 ? 'var(--hover-bg)' : 'var(--sidebar)', borderBottom: '1px solid var(--border)' }} />
           ))}
         </div>
+      ) : signals.length === 0 && (collecting || countdown > 0) ? (
+        /* 수집 중 모던 UI */
+        <div className="relative rounded-xl overflow-hidden py-16 flex flex-col items-center gap-6" style={{ border: '1px solid rgba(34,197,94,0.2)', background: 'radial-gradient(ellipse at 50% 0%, rgba(34,197,94,0.06) 0%, transparent 70%)' }}>
+          {/* 오비트 애니메이션 */}
+          <div className="relative w-16 h-16">
+            <style>{`
+              @keyframes orbit { from { transform: rotate(0deg) translateX(28px) rotate(0deg); } to { transform: rotate(360deg) translateX(28px) rotate(-360deg); } }
+              @keyframes orbit2 { from { transform: rotate(120deg) translateX(28px) rotate(-120deg); } to { transform: rotate(480deg) translateX(28px) rotate(-480deg); } }
+              @keyframes orbit3 { from { transform: rotate(240deg) translateX(28px) rotate(-240deg); } to { transform: rotate(600deg) translateX(28px) rotate(-600deg); } }
+              @keyframes pulse-ring { 0%,100% { opacity:0.15; transform:scale(1); } 50% { opacity:0.4; transform:scale(1.15); } }
+            `}</style>
+            {/* 중심 원 */}
+            <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', animation: 'pulse-ring 2s ease-in-out infinite' }} />
+            <div className="absolute inset-[6px] rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.18)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }}>
+              <div className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ boxShadow: '0 0 8px #22c55e' }} />
+            </div>
+            {/* 오비트 점들 */}
+            {[
+              { anim: 'orbit 1.8s linear infinite', color: '#22c55e' },
+              { anim: 'orbit2 1.8s linear infinite', color: '#86efac' },
+              { anim: 'orbit3 1.8s linear infinite', color: '#4ade80' },
+            ].map((o, i) => (
+              <div key={i} className="absolute inset-0 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full" style={{ background: o.color, animation: o.anim, boxShadow: `0 0 6px ${o.color}` }} />
+              </div>
+            ))}
+          </div>
+          {/* 텍스트 */}
+          <div className="text-center space-y-1.5">
+            <p className="text-sm font-medium tracking-wide" style={{ color: '#22c55e' }}>YouTube 데이터 수집 중</p>
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>급상승 영상을 분석하고 있습니다. 잠시만 기다려주세요.</p>
+          </div>
+          {/* 스캔 라인 */}
+          <div className="w-48 h-[1px] relative overflow-hidden rounded-full" style={{ background: 'rgba(34,197,94,0.12)' }}>
+            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #22c55e, transparent)', animation: 'orbit 1.5s linear infinite', animationName: 'scanline' }} />
+            <style>{`@keyframes scanline { 0% { left: -4rem; } 100% { left: 100%; } }`}</style>
+            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #22c55e, transparent)', animation: 'scanline 1.5s linear infinite' }} />
+          </div>
+        </div>
       ) : signals.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-20 rounded-xl"
-          style={{ border: '1px dashed var(--border)' }}
-        >
+        <div className="flex flex-col items-center justify-center py-20 rounded-xl" style={{ border: '1px dashed var(--border)' }}>
           <p className="text-2xl mb-2">📭</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            아직 수집된 바이럴 영상이 없습니다
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
-            설정에서 카테고리를 선택하면 자동으로 수집됩니다
-          </p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>아직 수집된 바이럴 영상이 없습니다</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>설정에서 카테고리를 선택하면 자동으로 수집됩니다</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {signals.map((signal, idx) => {
-            const video = signal.trend_videos;
-            const channel = video.trend_channels;
-            return (
-              <a
-                key={signal.id}
-                href={`https://www.youtube.com/watch?v=${video.video_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl transition-colors group"
-                style={{
-                  border: '1px solid var(--border)',
-                  background: 'var(--sidebar)',
-                }}
-              >
-                {/* 순위 */}
-                <span
-                  className="text-sm font-bold shrink-0 w-6 text-center"
-                  style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          {/* 정렬 바 */}
+          <div className="px-5 py-2 flex items-center justify-end gap-1.5" style={{ background: 'var(--sidebar)', borderBottom: '1px solid var(--border)' }}>
+            <ArrowUpDown size={11} style={{ color: 'var(--text-faint)' }} />
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
+              {VIRAL_SORTS.map((s) => (
+                <button key={s.key} onClick={() => setSortKey(s.key)}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+                  style={sortKey === s.key
+                    ? { background: 'var(--sidebar)', color: '#22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
+                    : { color: 'var(--text-faint)' }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* 컬럼 헤더 */}
+          <div
+            className="grid text-[11px] font-semibold tracking-wider uppercase px-5 py-2.5"
+            style={{ gridTemplateColumns: '40px 1fr 130px 100px 100px 80px', color: 'var(--text-faint)', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)' }}
+          >
+            <span>순위</span>
+            <span>영상 정보</span>
+            <span className="text-right">채널</span>
+            <span className="text-right">시간당 증가</span>
+            <span className="text-right">총 조회수</span>
+            <span className="text-right">게시일</span>
+          </div>
+          {/* 테이블 바디 */}
+          <div style={{ background: 'var(--sidebar)' }}>
+            {sortedSignals.map((signal, idx) => {
+              const video = signal.trend_videos;
+              const channel = video.trend_channels;
+              return (
+                <a
+                  key={signal.id}
+                  href={`https://www.youtube.com/watch?v=${video.video_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid items-center px-5 py-3 group"
+                  style={{
+                    gridTemplateColumns: '40px 1fr 130px 100px 100px 80px',
+                    borderBottom: idx < sortedSignals.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  {idx + 1}
-                </span>
-
-                {/* 썸네일 */}
-                {video.thumbnail ? (
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title ?? ''}
-                    className="w-[100px] h-[56px] rounded-lg object-cover shrink-0"
-                  />
-                ) : (
-                  <div
-                    className="w-[100px] h-[56px] rounded-lg shrink-0"
-                    style={{ background: 'var(--hover-bg)' }}
-                  />
-                )}
-
-                {/* 정보 */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-sm font-medium truncate group-hover:text-[#22c55e] transition-colors"
-                    style={{ color: 'var(--text)' }}
-                  >
-                    {video.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {channel?.channel_name && (
-                      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                        {channel.channel_name}
-                      </span>
+                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>
+                    #{idx + 1}
+                  </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {video.thumbnail ? (
+                      <img src={video.thumbnail} alt={video.title ?? ''} className="w-[72px] h-[40px] rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-[72px] h-[40px] rounded-lg shrink-0" style={{ background: 'var(--hover-bg)' }} />
                     )}
-                    <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                      · {timeAgo(video.published_at)}
-                    </span>
-                    {video.category && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded"
-                        style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}
-                      >
-                        {TREND_CATEGORIES[video.category]?.label ?? video.category}
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate group-hover:text-[#22c55e] transition-colors" style={{ color: 'var(--text)' }}>
+                        {video.title}
+                      </p>
+                      {video.category && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}>
+                          {TREND_CATEGORIES[video.category]?.label ?? video.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-
-                {/* 지표 */}
-                <div className="shrink-0 text-right space-y-1">
-                  <p className="text-sm font-bold text-[#22c55e]">
-                    {formatHourlyRate(signal.growth_rate_hourly)}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    총 {formatViews(signal.current_views)}회
-                  </p>
-                </div>
-              </a>
-            );
-          })}
+                  <div className="text-right min-w-0">
+                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{channel?.channel_name ?? '—'}</p>
+                    {channel?.avg_views ? (
+                      <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>평균 {formatViews(channel.avg_views)}회</p>
+                    ) : null}
+                  </div>
+                  <p className="text-xs font-bold text-right text-[#22c55e]">{formatHourlyRate(signal.growth_rate_hourly)}</p>
+                  <p className="text-xs text-right font-medium" style={{ color: 'var(--text)' }}>{formatViews(signal.current_views)}회</p>
+                  <p className="text-xs text-right" style={{ color: 'var(--text-faint)' }}>{timeAgo(video.published_at)}</p>
+                </a>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

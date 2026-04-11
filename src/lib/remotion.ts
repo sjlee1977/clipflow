@@ -6,7 +6,7 @@ import {
 
 const REGION = (process.env.AWS_REGION ?? 'ap-northeast-2') as Parameters<typeof renderMediaOnLambda>[0]['region'];
 const SERVE_URL = process.env.REMOTION_SERVE_URL ?? 'https://remotionlambda-apnortheast2-17lxfxukvf.s3.ap-northeast-2.amazonaws.com/sites/clipflow/index.html';
-const FUNCTION_NAME = process.env.REMOTION_FUNCTION_NAME || speculateFunctionName({ memorySizeInMb: 3008, diskSizeInMb: 2048, timeoutInSeconds: 900 });
+const FUNCTION_NAME = process.env.REMOTION_FUNCTION_NAME || speculateFunctionName({ memorySizeInMb: 2048, diskSizeInMb: 2048, timeoutInSeconds: 300 });
 
 const ASSETS_BUCKET = process.env.S3_BUCKET || 'remotionlambda-apnortheast2-17lxfxukvf';
 
@@ -18,12 +18,18 @@ const credentials = {
 export type RenderInput = {
   compositionId: string;
   inputProps: Record<string, unknown>;
+  framesPerLambda?: number;
 };
 
 /**
  * Lambda에 렌더링을 요청합니다.
  */
-export async function startRender({ compositionId, inputProps }: RenderInput) {
+const MAX_LAMBDA_FUNCTIONS = 180; // 200 한도에서 안전 마진 확보
+const MIN_FRAMES_PER_LAMBDA = 50;
+
+export async function startRender({ compositionId, inputProps, framesPerLambda: overrideFramesPerLambda }: RenderInput) {
+  const framesPerLambda = overrideFramesPerLambda ?? MIN_FRAMES_PER_LAMBDA;
+
   const { renderId, bucketName } = await renderMediaOnLambda({
     region: REGION,
     functionName: FUNCTION_NAME,
@@ -32,8 +38,8 @@ export async function startRender({ compositionId, inputProps }: RenderInput) {
     inputProps,
     codec: 'h264',
     outName: `${compositionId}-${Date.now()}.mp4`,
-    concurrencyPerLambda: 2,  // CPU 코어 수(2)에 맞게 설정
-    framesPerLambda: 150,    // 15분(27,000프레임) 기준 최적값 — Lambda 180개로 200개 한도 이내 안전
+    concurrencyPerLambda: 2,
+    framesPerLambda,
     ...credentials,
   });
 

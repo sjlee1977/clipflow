@@ -1,7 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { ArrowUpDown } from 'lucide-react';
 import { TREND_CATEGORIES, SEARCH_REGIONS } from '@/lib/youtube-trends';
+
+type OutlierSort = 'multiplier' | 'views' | 'publishedAt';
+const OUTLIER_SORTS: { key: OutlierSort; label: string }[] = [
+  { key: 'multiplier',  label: '배율순' },
+  { key: 'views',       label: '조회수순' },
+  { key: 'publishedAt', label: '최신순' },
+];
 import DateRangePicker from '@/components/DateRangePicker';
 
 interface OutlierSignal {
@@ -38,6 +46,14 @@ export default function OutliersPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<OutlierSort>('multiplier');
+
+  const sortedSignals = useMemo(() => {
+    const arr = [...signals];
+    if (sortKey === 'views') return arr.sort((a, b) => b.current_views - a.current_views);
+    if (sortKey === 'publishedAt') return arr.sort((a, b) => new Date(b.trend_videos.published_at).getTime() - new Date(a.trend_videos.published_at).getTime());
+    return arr.sort((a, b) => b.multiplier - a.multiplier);
+  }, [signals, sortKey]);
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
@@ -258,119 +274,97 @@ export default function OutliersPage() {
 
       {/* 영상 목록 */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[100px] rounded-xl animate-pulse"
-              style={{ background: 'var(--hover-bg)' }}
-            />
+            <div key={i} className="h-[72px] animate-pulse" style={{ background: i % 2 === 0 ? 'var(--hover-bg)' : 'var(--sidebar)', borderBottom: '1px solid var(--border)' }} />
           ))}
         </div>
       ) : signals.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-20 rounded-xl"
-          style={{ border: '1px dashed var(--border)' }}
-        >
+        <div className="flex flex-col items-center justify-center py-20 rounded-xl" style={{ border: '1px dashed var(--border)' }}>
           <p className="text-2xl mb-2">📭</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            아직 수집된 이상치 영상이 없습니다
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
-            설정에서 카테고리를 선택하면 자동으로 수집됩니다
-          </p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>아직 수집된 이상치 영상이 없습니다</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>설정에서 카테고리를 선택하면 자동으로 수집됩니다</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {signals.map((signal, idx) => {
-            const video = signal.trend_videos;
-            const channel = video.trend_channels;
-            const mult = signal.multiplier;
-            return (
-              <a
-                key={signal.id}
-                href={`https://www.youtube.com/watch?v=${video.video_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl transition-colors group"
-                style={{
-                  border: '1px solid var(--border)',
-                  background: 'var(--sidebar)',
-                }}
-              >
-                {/* 순위 */}
-                <span
-                  className="text-sm font-bold shrink-0 w-6 text-center"
-                  style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          {/* 정렬 바 */}
+          <div className="px-5 py-2 flex items-center justify-end gap-1.5" style={{ background: 'var(--sidebar)', borderBottom: '1px solid var(--border)' }}>
+            <ArrowUpDown size={11} style={{ color: 'var(--text-faint)' }} />
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
+              {OUTLIER_SORTS.map((s) => (
+                <button key={s.key} onClick={() => setSortKey(s.key)}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+                  style={sortKey === s.key
+                    ? { background: 'var(--sidebar)', color: '#22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
+                    : { color: 'var(--text-faint)' }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* 컬럼 헤더 */}
+          <div
+            className="grid text-[11px] font-semibold tracking-wider uppercase px-5 py-2.5"
+            style={{ gridTemplateColumns: '40px 1fr 130px 100px 100px 70px 80px', color: 'var(--text-faint)', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)' }}
+          >
+            <span>순위</span>
+            <span>영상 정보</span>
+            <span className="text-right">채널</span>
+            <span className="text-right">채널 평균</span>
+            <span className="text-right">현재 조회수</span>
+            <span className="text-right">배율</span>
+            <span className="text-right">게시일</span>
+          </div>
+          {/* 테이블 바디 */}
+          <div style={{ background: 'var(--sidebar)' }}>
+            {sortedSignals.map((signal, idx) => {
+              const video = signal.trend_videos;
+              const channel = video.trend_channels;
+              const mult = signal.multiplier;
+              return (
+                <a
+                  key={signal.id}
+                  href={`https://www.youtube.com/watch?v=${video.video_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid items-center px-5 py-3 group"
+                  style={{
+                    gridTemplateColumns: '40px 1fr 130px 100px 100px 70px 80px',
+                    borderBottom: idx < sortedSignals.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  {idx + 1}
-                </span>
-
-                {/* 썸네일 */}
-                {video.thumbnail ? (
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title ?? ''}
-                    className="w-[100px] h-[56px] rounded-lg object-cover shrink-0"
-                  />
-                ) : (
-                  <div
-                    className="w-[100px] h-[56px] rounded-lg shrink-0"
-                    style={{ background: 'var(--hover-bg)' }}
-                  />
-                )}
-
-                {/* 정보 */}
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p
-                    className="text-sm font-medium truncate group-hover:text-[#22c55e] transition-colors"
-                    style={{ color: 'var(--text)' }}
-                  >
-                    {video.title}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {channel?.channel_name && (
-                      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                        {channel.channel_name}
-                      </span>
+                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>#{idx + 1}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {video.thumbnail ? (
+                      <img src={video.thumbnail} alt={video.title ?? ''} className="w-[72px] h-[40px] rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-[72px] h-[40px] rounded-lg shrink-0" style={{ background: 'var(--hover-bg)' }} />
                     )}
-                    <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                      · {timeAgo(video.published_at)}
-                    </span>
-                    {video.category && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded"
-                        style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}
-                      >
-                        {TREND_CATEGORIES[video.category]?.label ?? video.category}
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate group-hover:text-[#22c55e] transition-colors" style={{ color: 'var(--text)' }}>{video.title}</p>
+                      {video.category && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}>
+                          {TREND_CATEGORIES[video.category]?.label ?? video.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {/* 채널 평균 vs 현재 */}
-                  <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-faint)' }}>
-                    <span>채널 평균 {formatViews(signal.channel_avg_views)}회</span>
-                    <span>→</span>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      이 영상 {formatViews(signal.current_views)}회
-                    </span>
+                  <div className="text-right min-w-0">
+                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{channel?.channel_name ?? '—'}</p>
+                    {channel?.subscriber_count ? (
+                      <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>구독 {formatViews(channel.subscriber_count)}</p>
+                    ) : null}
                   </div>
-                </div>
-
-                {/* 이상치 배율 */}
-                <div className="shrink-0 text-right">
-                  <p
-                    className="text-lg font-bold"
-                    style={{ color: multiplierColor(mult) }}
-                  >
-                    {mult.toFixed(1)}x
-                  </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                    채널 평균 대비
-                  </p>
-                </div>
-              </a>
-            );
-          })}
+                  <p className="text-xs text-right" style={{ color: 'var(--text-muted)' }}>{formatViews(signal.channel_avg_views)}회</p>
+                  <p className="text-xs text-right font-medium" style={{ color: 'var(--text)' }}>{formatViews(signal.current_views)}회</p>
+                  <p className="text-sm font-bold text-right" style={{ color: multiplierColor(mult) }}>{mult.toFixed(1)}x</p>
+                  <p className="text-xs text-right" style={{ color: 'var(--text-faint)' }}>{timeAgo(video.published_at)}</p>
+                </a>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

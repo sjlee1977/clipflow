@@ -4,12 +4,16 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 const LLM_MODELS = [
   { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', price: '균형' },
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', price: '고품질' },
+  { id: 'qwen-plus', name: 'Qwen Plus', price: '가성비' },
+  { id: 'qwen-max', name: 'Qwen Max', price: '고품질' },
 ];
 
 const IMAGE_MODELS = [
   { id: 'google/gemini-2.5-flash-image', name: 'Gemini 2.5 Flash (이미지)', price: '균형' },
   { id: 'fal/z-image-turbo', name: 'Z-Image Turbo (fal.ai)', price: '빠름' },
   { id: 'fal/z-image-base', name: 'Z-Image Base (fal.ai)', price: '고품질' },
+  { id: 'qwen/qwen-image-2.0', name: 'Qwen Image 2.0 (Qwen)', price: '가성비' },
+  { id: 'qwen/qwen-image-edit-max', name: 'Qwen Image Edit Max (Qwen)', price: '고품질' },
 ];
 
 const VIDEO_MODELS = [
@@ -287,6 +291,19 @@ export default function DashboardPage() {
   const [pptMode, setPptMode] = useState(false);
   const [pptTheme, setPptTheme] = useState<'simple-modern' | 'dark' | 'colorful'>('dark');
 
+  // B-roll pre-generation 상태
+  const [prefetchedScenes, setPrefetchedScenes] = useState<PreviewScene[] | null>(null);
+  const [prefetchSettingsKey, setPrefetchSettingsKey] = useState('');
+  const [prefetchStatus, setPrefetchStatus] = useState<'idle' | 'running' | 'ready'>('idle');
+  const prefetchAbortRef = useRef<AbortController | null>(null);
+
+  // 캐러셀 상태
+  type CarouselCard = { index: number; cardType: 'title' | 'keypoint' | 'quote' | 'cta'; title: string; subtitle?: string; bullets?: string[]; emoji?: string; bgColor: string };
+  const [carouselCards, setCarouselCards] = useState<CarouselCard[] | null>(null);
+  const [carouselTopic, setCarouselTopic] = useState('');
+  const [carouselStatus, setCarouselStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [showCarousel, setShowCarousel] = useState(false);
+
   // [장면 보존 및 복구]
   useEffect(() => {
     const savedScript = sessionStorage.getItem('clipflow_script');
@@ -382,6 +399,91 @@ export default function DashboardPage() {
     };
   }, []);
 
+  // [B-roll Pre-generation] 스크립트 로드 + idle 상태일 때 배경에서 이미지 미리 생성
+  useEffect(() => {
+    if (!script.trim() || status !== 'idle' || pptMode || imageStyle === 'lottie') return;
+
+    const settingsKey = `${script.slice(0, 80)}|${imageModelId}|${imageStyle}|${format}|${llmModelId}`;
+    if (settingsKey === prefetchSettingsKey && prefetchStatus !== 'idle') return;
+
+    // 이전 prefetch 취소
+    prefetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    prefetchAbortRef.current = controller;
+
+    setPrefetchedScenes(null);
+    setPrefetchSettingsKey(settingsKey);
+    setPrefetchStatus('running');
+
+    const run = async () => {
+      try {
+        const res = await fetch('/api/generate-scenes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            script,
+            imageModelId,
+            llmModelId,
+            format,
+            imageStyle,
+            subCharacters: subCharacters.map(c => ({ base64: c.base64, name: c.name })),
+            allowedAnimations: selectedTextAnims,
+            pptMode: false,
+          }),
+        });
+        if (!res.ok || !res.body || controller.signal.aborted) return;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        const collected: PreviewScene[] = [];
+        let total = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || controller.signal.aborted) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'total') { total = event.count; collected.length = total; }
+            if (event.type === 'scene') {
+              collected[event.index] = {
+                text: event.text,
+                displayText: event.displayText,
+                imagePrompt: event.imagePrompt,
+                imageUrl: event.imageUrl,
+                motionPrompt: event.motionPrompt,
+                shouldAnimate: event.shouldAnimate,
+                textAnimationStyle: event.textAnimationStyle,
+                textPosition: event.textPosition,
+                subtitles: [],
+              };
+            }
+          }
+        }
+
+        if (!controller.signal.aborted) {
+          setPrefetchedScenes(collected.filter(Boolean));
+          setPrefetchStatus('ready');
+        }
+      } catch {
+        if (!controller.signal.aborted) setPrefetchStatus('idle');
+      }
+    };
+
+    // 2초 debounce: 사용자가 설정을 바꾸는 중일 수 있으므로 잠시 대기
+    const timer = setTimeout(run, 2000);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [script, imageModelId, imageStyle, format, llmModelId, status, pptMode]);
+
   // [상태 자동 저장] 장면이나 설정이 바뀌면 실시간 보존 (새로고침 사고 대비)
   useEffect(() => {
     if (scenes.length > 0) {
@@ -408,8 +510,22 @@ export default function DashboardPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      setCharacterPreview(dataUrl);
-      setCharacterImageBase64(dataUrl.split(',')[1]);
+      const img = new Image();
+      img.onload = () => {
+        // 최대 1024px로 리사이즈 (DashScope 10MB 제한 대응)
+        const MAX = 1024;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const resized = canvas.toDataURL('image/jpeg', 0.85);
+        setCharacterPreview(resized);
+        setCharacterImageBase64(resized.split(',')[1]);
+      };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -422,7 +538,20 @@ export default function DashboardPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      setSubCharacters(prev => [...prev, { preview: dataUrl, base64: dataUrl.split(',')[1], name: `캐릭터 ${prev.length + 2}` }]);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1024;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const resized = canvas.toDataURL('image/jpeg', 0.85);
+        setSubCharacters(prev => [...prev, { preview: resized, base64: resized.split(',')[1], name: `캐릭터 ${prev.length + 2}` }]);
+      };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -437,14 +566,143 @@ export default function DashboardPage() {
     setSubCharacters(prev => prev.map((c, i) => i === index ? { ...c, name } : c));
   }
 
-  async function handlePreview() {
+  async function handleGenerateCarousel() {
+    // script가 없으면 scenes의 텍스트를 대본 대용으로 사용
+    const scriptText = script.trim() || scenes.map(s => s.text).filter(Boolean).join('\n');
+    if (!scriptText) return;
+    setCarouselStatus('loading');
+    setShowCarousel(true);
+    try {
+      const res = await fetch('/api/generate-carousel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: scriptText, llmModelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '캐러셀 생성 실패');
+      setCarouselCards(data.cards);
+      setCarouselTopic(data.topic);
+      setCarouselStatus('done');
+
+      // 자동 저장 (백그라운드, 실패해도 무시)
+      fetch('/api/carousels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: data.topic, cards: data.cards }),
+      }).catch(() => {});
+    } catch (e) {
+      setCarouselStatus('error');
+      setError(e instanceof Error ? e.message : '캐러셀 생성 중 오류가 발생했습니다');
+      console.error(e);
+    }
+  }
+
+  async function svgToPng(svgText: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = 1080; cv.height = 1080;
+        cv.getContext('2d')!.drawImage(img, 0, 0, 1080, 1080);
+        URL.revokeObjectURL(img.src);
+        resolve(cv.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+    });
+  }
+
+  async function handleDownloadCarousel() {
+    if (!carouselCards) return;
+    for (const card of carouselCards) {
+      const res = await fetch('/api/carousel/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card, total: carouselCards.length }),
+      });
+      if (!res.ok) { console.error(await res.text()); continue; }
+      const svg = await res.text();
+      const png = await svgToPng(svg);
+      const link = document.createElement('a');
+      link.download = `${carouselTopic || 'carousel'}_card${card.index + 1}.png`;
+      link.href = png;
+      link.click();
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+
+  async function handlePreview(skipImages = false) {
     if (!script.trim()) return;
+
+    // 직접 편집 모드: API 호출 없이 클라이언트에서 대본 파싱 → 즉시 편집 화면
+    if (skipImages) {
+      // 줄바꿈 기준으로 씬 분리 (빈 줄로 단락 구분, 없으면 각 줄 = 1씬)
+      const rawLines = script.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      // 연속된 줄을 빈 줄 기준으로 단락으로 묶기
+      const paragraphs: string[] = [];
+      let current = '';
+      for (const line of rawLines) {
+        if (line === '') {
+          if (current) { paragraphs.push(current.trim()); current = ''; }
+        } else {
+          current += (current ? ' ' : '') + line;
+        }
+      }
+      if (current) paragraphs.push(current.trim());
+      // 단락이 없으면 줄 단위 그대로
+      const chunks = paragraphs.length > 0 ? paragraphs : rawLines;
+
+      const newScenes: PreviewScene[] = chunks.map((text) => ({
+        text,
+        displayText: '',
+        imagePrompt: '',
+        imageUrl: '',
+        motionPrompt: '',
+        shouldAnimate: false,
+        textAnimationStyle: 'fly-in' as const,
+        textPosition: 'bottom' as const,
+        subtitles: splitTextToSubtitles(text, 30),
+      }));
+
+      prefetchAbortRef.current?.abort();
+      setPrefetchStatus('idle');
+      setError('');
+      setUsageInfo(null);
+      setScenes(newScenes);
+      setGenTotal(newScenes.length);
+      setGenCompleted(newScenes.length);
+      setStatus('preview');
+      return;
+    }
+
+    // B-roll pre-generation 캐시 히트: 설정이 일치하면 즉시 사용
+    const currentKey = `${script.slice(0, 80)}|${imageModelId}|${imageStyle}|${format}|${llmModelId}`;
+    if (prefetchStatus === 'ready' && prefetchedScenes && prefetchSettingsKey === currentKey && !pptMode) {
+      prefetchAbortRef.current?.abort();
+      const filled = prefetchedScenes.map(s => ({
+        ...s,
+        subtitles: s.text ? splitTextToSubtitles(s.text, 30) : [],
+        lottieData: imageStyle === 'lottie' && lottieFiles.length > 0
+          ? lottieFiles[0]?.data : undefined,
+      }));
+      setScenes(filled);
+      setGenTotal(filled.length);
+      setGenCompleted(filled.length);
+      setPrefetchedScenes(null);
+      setPrefetchStatus('idle');
+      setStatus('preview');
+      return;
+    }
+
     setStatus('previewing');
     setError('');
     setScenes([]);
     setUsageInfo(null);
     setGenTotal(0);
     setGenCompleted(0);
+    // prefetch 취소 (미리보기 시작하면 foreground가 우선)
+    prefetchAbortRef.current?.abort();
+    setPrefetchStatus('idle');
     try {
       const res = await fetch('/api/generate-scenes', {
         method: 'POST',
@@ -522,6 +780,8 @@ export default function DashboardPage() {
       }
     } catch (err: unknown) {
       setStatus('error');
+      setGenTotal(0);
+      setScenes([]);
       setError(err instanceof Error ? err.message : '알 수 없는 오류');
     }
   }
@@ -661,6 +921,7 @@ export default function DashboardPage() {
               voice_id: voiceId,
               image_style: imageStyle,
               image_model: imageModelId,
+              template_id: templateId,
               tts_provider: ttsProvider,
               file_name: fileName,
               scenes: scenes.map(s => ({ text: s.text, displayText: s.displayText, imageUrl: s.imageUrl, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, shouldAnimate: s.shouldAnimate, videoUrl: s.videoUrl, textAnimationStyle: s.textAnimationStyle, textPosition: s.textPosition })),
@@ -819,7 +1080,7 @@ export default function DashboardPage() {
 
   return (
     /* 전체: 왼쪽 콘텐츠 + 오른쪽 패널 (w-56) */
-    <div className="flex gap-0 -m-6 min-h-full">
+    <div className="flex gap-0 -m-6 min-h-screen">
 
       {/* 라이트박스 */}
       {lightboxUrl && (
@@ -841,11 +1102,11 @@ export default function DashboardPage() {
       )}
 
       {/* ─── 왼쪽: 메인 콘텐츠 ─── */}
-      <div className="flex-1 min-w-0 p-6 border-r border-white/5">
+      <div className="flex-1 min-w-0 p-6 border-r border-white/5" style={{ background: 'var(--bg)' }}>
 
         {/* ── 입력 단계 ── */}
-        {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
-          <div className="flex flex-col h-full">
+        {(status === 'idle' || (status === 'previewing' && genTotal === 0) || status === 'error') && (
+          <div className="flex flex-col">
             {/* 입력 카드 */}
           <div className="relative mt-6 flex flex-col">
               {/* 카드 헤더 */}
@@ -881,23 +1142,50 @@ export default function DashboardPage() {
               {/* 하단: TIP + 버튼 */}
               <div className="px-4 pb-3 flex items-center justify-between border-t border-white/5 pt-3">
                 <span className="text-xs text-white/25">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
-                <button
-                  onClick={handlePreview}
-                  disabled={!script.trim() || isProcessing}
-                  className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-sm rounded-lg px-4 py-1.5 transition-colors"
-                >
-                  {status === 'previewing' ? (
-                    <>
-                      <span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin inline-block" />
-                      생성 중...
-                    </>
-                  ) : (
-                    <>
-                      장면 미리보기
-                      <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
-                    </>
+                <div className="flex items-center gap-2">
+                  {/* B-roll 준비 상태 표시 */}
+                  {prefetchStatus === 'running' && (
+                    <span className="flex items-center gap-1.5 text-xs text-white/40">
+                      <span className="w-2 h-2 border border-white/40 border-t-transparent rounded-full animate-spin inline-block" />
+                      이미지 준비 중
+                    </span>
                   )}
-                </button>
+                  {prefetchStatus === 'ready' && (
+                    <span className="flex items-center gap-1.5 text-xs text-[#22c55e]/70">
+                      <span className="w-2 h-2 rounded-full bg-[#22c55e]/70 inline-block" />
+                      이미지 준비 완료
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handlePreview(true)}
+                    disabled={!script.trim() || isProcessing}
+                    title="이미지 생성 없이 편집 화면으로 이동 후 직접 이미지 업로드"
+                    className="flex items-center gap-1.5 bg-white/8 hover:bg-white/14 disabled:bg-white/3 disabled:cursor-not-allowed text-white/60 disabled:text-white/20 font-medium text-[13px] rounded-lg px-3 py-1.5 border border-white/15 hover:border-white/30 transition-colors"
+                  >
+                    ↑ 직접 편집
+                  </button>
+                  <button
+                    onClick={() => handlePreview(false)}
+                    disabled={!script.trim() || isProcessing}
+                    className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-[13px] rounded-lg px-4 py-1.5 transition-colors"
+                  >
+                    {status === 'previewing' ? (
+                      <>
+                        <span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin inline-block" />
+                        생성 중...
+                      </>
+                    ) : prefetchStatus === 'ready' ? (
+                      <>
+                        즉시 미리보기
+                      </>
+                    ) : (
+                      <>
+                        장면 미리보기
+                        <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
             </div>
@@ -995,16 +1283,33 @@ export default function DashboardPage() {
                     className="text-[white]/40 hover:text-[white]/80 text-xs font-mono transition-colors"
                   >완성 영상 →</button>
                 )}
+                {status === 'preview' && script.trim() && (
+                  <button
+                    onClick={handleGenerateCarousel}
+                    disabled={carouselStatus === 'loading'}
+                    className="text-[#22c55e]/40 hover:text-[#22c55e]/80 text-xs font-mono transition-colors disabled:opacity-40"
+                  >
+                    {carouselStatus === 'loading' ? '⊞ 생성 중...' : '⊞ 캐러셀'}
+                  </button>
+                )}
                 {status === 'preview' && (
                   <button
-                    onClick={() => { 
-                      setStatus('idle'); 
-                      setScenes([]); 
-                      setVideoUrl(''); 
+                    onClick={() => {
+                      setStatus('idle');
+                      setScenes([]);
+                      setVideoUrl('');
                       sessionStorage.removeItem('clipflow_active_scenes');
                     }}
                     className="text-white/20 hover:text-white/50 text-xs font-mono transition-colors"
                   >← 처음으로</button>
+                )}
+                {status === 'preview' && (
+                  <button
+                    onClick={handleRender}
+                    className="bg-green-500 hover:bg-green-400 text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
+                  >
+                    영상 생성 →
+                  </button>
                 )}
               </div>
             </div>
@@ -1248,13 +1553,17 @@ export default function DashboardPage() {
                         <img
                           src={scene.imageUrl}
                           alt={`장면 ${i + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-black p-1.5">
-                          <span className="text-[9px] text-white/70 font-bold text-center leading-tight" style={{ wordBreak: 'keep-all' }}>
-                            {scene.displayText?.slice(0, 16) || '키네틱'}
-                          </span>
+                        // 이미지 없음 — 클릭하면 바로 업로드
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer bg-black/60 border border-dashed border-white/20 hover:border-white/50 hover:bg-white/5 transition-colors rounded-md"
+                          onClick={() => replaceInputRefs.current[i]?.click()}
+                          title="클릭하여 이미지 업로드"
+                        >
+                          <span className="text-white/30 text-[18px] leading-none">+</span>
+                          <span className="text-[8px] text-white/35 font-medium tracking-wide">이미지 추가</span>
                         </div>
                       )}
                       {/* 비디오 뱃지 */}
@@ -1295,15 +1604,6 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* 영상 생성 버튼 */}
-            {status === 'preview' && (
-              <button
-                onClick={handleRender}
-                className="w-full mt-8 bg-green-500 hover:bg-green-400 text-black font-black py-3.5 transition-colors text-[13px] tracking-widest uppercase font-mono"
-              >
-                영상 생성 →
-              </button>
-            )}
 
             {(status === 'error' || status === 'preview') && error && (
               <div className="mt-8 border-l-2 border-red-500 pl-4 py-1.5 bg-red-500/5">
@@ -1375,6 +1675,60 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* 캐러셀 패널 (preview 단계) */}
+            {showCarousel && status === 'preview' && (
+              <div className="mt-6 border-t border-white/5 pt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
+                    <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
+                      캐러셀 {carouselTopic && `— ${carouselTopic}`}
+                    </span>
+                  </div>
+                  <button onClick={() => setShowCarousel(false)} className="text-white/20 hover:text-white/50 text-xs">✕</button>
+                </div>
+                {carouselStatus === 'loading' && (
+                  <div className="flex items-center justify-center py-10 text-white/30 text-sm gap-3">
+                    <span className="w-4 h-4 border border-white/30 border-t-transparent rounded-full animate-spin" />
+                    카드 생성 중...
+                  </div>
+                )}
+                {carouselStatus === 'done' && carouselCards && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {carouselCards.map((card) => (
+                      <div
+                        key={card.index}
+                        style={{ backgroundColor: card.bgColor }}
+                        className="relative aspect-square rounded-lg p-3 flex flex-col justify-between border border-white/8 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/20 text-[10px] font-mono">{card.index + 1}</span>
+                          {card.emoji && <span className="text-lg">{card.emoji}</span>}
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center items-center gap-1 py-1 text-center">
+                          <p className="font-bold text-white text-xs leading-tight">{card.title}</p>
+                          {card.subtitle && <p className="text-white/40 text-[10px] leading-snug">{card.subtitle}</p>}
+                          {card.bullets && (
+                            <ul className="space-y-0.5 mt-0.5 w-fit text-left">
+                              {card.bullets.slice(0, 2).map((b, bi) => (
+                                <li key={bi} className="text-white/60 text-[10px] flex items-start gap-1">
+                                  <span className="text-[#22c55e]">▸</span>{b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-[#22c55e]" />
+                          <span className="text-white/15 text-[9px] font-mono">Clipflow</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -1429,12 +1783,109 @@ export default function DashboardPage() {
                 ↓ 다운로드
               </button>
               <button
+                onClick={handleGenerateCarousel}
+                disabled={carouselStatus === 'loading'}
+                className="flex items-center gap-2 border border-[#22c55e]/40 hover:border-[#22c55e]/80 text-[#22c55e]/70 hover:text-[#22c55e] text-[13px] font-mono tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
+              >
+                {carouselStatus === 'loading' ? (
+                  <><span className="w-2.5 h-2.5 border border-[#22c55e] border-t-transparent rounded-full animate-spin inline-block" /> 캐러셀 생성 중</>
+                ) : '⊞ 캐러셀'}
+              </button>
+              <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
                 className="flex items-center gap-2 border border-white/15 hover:border-white/30 text-white/40 hover:text-white/70 text-[13px] font-mono tracking-widest uppercase px-4 py-1.5 transition-colors"
               >
                 ↺ 새 영상
               </button>
             </div>
+
+            {/* 캐러셀 미리보기 */}
+            {showCarousel && (
+              <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : format === 'square' ? 'max-w-sm' : 'max-w-2xl'} mt-6`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
+                    <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
+                      캐러셀 — {carouselTopic}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {carouselStatus === 'done' && (
+                      <button onClick={handleDownloadCarousel} className="text-white/40 hover:text-white/70 text-xs flex items-center gap-1">
+                        ↓ 다운로드
+                      </button>
+                    )}
+                    <button onClick={() => setShowCarousel(false)} className="text-white/20 hover:text-white/50 text-xs">✕ 닫기</button>
+                  </div>
+                </div>
+
+                {carouselStatus === 'loading' && (
+                  <div className="flex items-center justify-center py-12 text-white/30 text-sm gap-3">
+                    <span className="w-4 h-4 border border-white/30 border-t-transparent rounded-full animate-spin" />
+                    카드 생성 중...
+                  </div>
+                )}
+
+                {carouselStatus === 'done' && carouselCards && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {carouselCards.map((card) => (
+                      <div
+                        id={`carousel-card-${card.index}`}
+                        key={card.index}
+                        style={{
+                          backgroundColor: card.bgColor,
+                          position: 'relative',
+                          aspectRatio: '1 / 1',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* 카드 번호 */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', fontFamily: 'monospace' }}>{card.index + 1}/{carouselCards.length}</span>
+                          {card.emoji && <span style={{ fontSize: '24px' }}>{card.emoji}</span>}
+                        </div>
+
+                        {/* 콘텐츠 */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '8px 0', textAlign: 'center' }}>
+                          <p style={{ fontWeight: 700, lineHeight: 1.3, color: 'white', fontSize: card.cardType === 'title' ? '16px' : '13px', margin: 0 }}>
+                            {card.title}
+                          </p>
+                          {card.subtitle && (
+                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', lineHeight: 1.6, margin: 0 }}>{card.subtitle}</p>
+                          )}
+                          {card.bullets && (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                              {card.bullets.map((b, bi) => (
+                                <li key={bi} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                  <span style={{ color: '#22c55e', marginTop: '1px' }}>▸</span>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {/* 하단 브랜드 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+                          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'monospace' }}>Clipflow</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {carouselStatus === 'error' && (
+                  <div className="text-red-400/70 text-sm text-center py-8">캐러셀 생성에 실패했습니다.</div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1444,7 +1895,7 @@ export default function DashboardPage() {
         <div className="flex-1 px-4 py-5 space-y-0">
 
           {/* 입력 단계 설정 */}
-          {(status === 'idle' || (status === 'previewing' && genTotal === 0) || (status === 'error' && scenes.length === 0)) && (
+          {(status === 'idle' || (status === 'previewing' && genTotal === 0) || status === 'error') && (
             <>
               <PanelSection label="스타일">
                 <div className={`flex flex-wrap gap-1 mb-4 ${pptMode ? 'opacity-40' : ''}`}>
@@ -1483,7 +1934,7 @@ export default function DashboardPage() {
                     closeOnSelect
                   >
                     <div className="space-y-0.5">
-                      {TEMPLATES.map(t => (
+                      {TEMPLATES.filter(t => !['captions', 'kinetic', '3d', 'split', 'map'].includes(t.id)).map(t => (
                         <OptionItem
                           key={t.id}
                           active={templateId === t.id}
@@ -1492,7 +1943,6 @@ export default function DashboardPage() {
                             const isPpt = t.id === 'slides';
                             setPptMode(isPpt);
                             if (isPpt) setImageStyle('none');
-                            if (t.id === 'kinetic') setImageStyle('none');
                           }}
                         >
                           <div className="flex flex-col items-start gap-0.5 text-left">

@@ -527,30 +527,30 @@ function SubtitleBar({ subtitles, frame, fontFamily, dark }: {
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export const KineticSceneComponent: React.FC<Props> = ({ scene, sceneIndex, fontFamily = 'Noto Sans KR' }) => {
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
-  const animStyle = scene.textAnimationStyle ?? 'stagger-words';
+  const { fps } = useVideoConfig();
+  const animStyle = scene.textAnimationStyle ?? 'kinetic-bounce';
   const p = pal(sceneIndex);
 
-  // displayText: LLM이 생성한 핵심 포인트.
-  // 없으면 scene.text 앞부분을 슬로건으로 사용 (최대 25자, 문장 경계 우선)
-  const rawFallback = scene.subtitles[0]?.text || scene.subtitles[0]?.text || '';
-  const fallback = (() => {
-    const src = scene.displayText?.trim() || rawFallback;
-    if (!src) return '';
-    // 첫 문장 끝(. ! ?)까지만, 없으면 25자 자름
-    const m = src.match(/^[^.!?]{1,25}[.!?]?/);
-    return m ? m[0].trim() : src.slice(0, 25).trim();
-  })();
-  const headline = fallback;
+  // 현재 프레임에서 발화 중인 자막 단어 찾기
+  const currentSub = scene.subtitles.find(s => frame >= s.startFrame && frame < s.endFrame);
+  // 자막 사이 공백 구간에서는 직전 단어를 fade-out 중으로 유지
+  const lastPassedSub = [...scene.subtitles].reverse().find(s => frame >= s.startFrame);
+  const activeSub = currentSub ?? lastPassedSub ?? null;
 
-  // 중앙 spotlight radial gradient (모든 스타일 공통)
+  const localFrame = activeSub ? frame - activeSub.startFrame : 0;
+  const subDuration = activeSub ? activeSub.endFrame - activeSub.startFrame : 1;
+
+  // displayText가 있으면 씬 상단에 작은 뱃지로 표시
+  const badge = scene.displayText?.trim();
+
+  // 중앙 spotlight
   const spotOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: 'clamp' });
 
   return (
     <AbsoluteFill style={{ background: `linear-gradient(145deg, ${p.bg1} 0%, ${p.bg2} 100%)`, overflow: 'hidden' }}>
       {scene.audioUrl && <Audio src={scene.audioUrl} />}
 
-      {/* 중앙 spotlight — 공통 배경 효과 */}
+      {/* 중앙 spotlight */}
       <AbsoluteFill style={{ opacity: spotOpacity, pointerEvents: 'none' }}>
         <div style={{
           position: 'absolute', inset: 0,
@@ -582,19 +582,35 @@ export const KineticSceneComponent: React.FC<Props> = ({ scene, sceneIndex, font
         opacity: 0.7,
       }} />
 
-      {/* 화면 중앙: 핵심 포인트 — headline이 없어도 항상 렌더링 */}
-      <MainDisplay
-        text={headline}
-        animStyle={animStyle}
-        sceneFrame={frame}
-        sceneDuration={durationInFrames}
-        fps={fps}
-        p={p}
-        fontFamily={fontFamily}
-      />
+      {/* 상단 배지: displayText가 있을 때만 표시 */}
+      {badge && (
+        <div style={{
+          position: 'absolute', top: 48, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+        }}>
+          <span style={{
+            fontSize: 30, fontWeight: 700,
+            color: p.dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)',
+            background: p.dark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)',
+            padding: '6px 20px', borderRadius: 20,
+            fontFamily: `"${fontFamily}", "Noto Sans KR", sans-serif`,
+            letterSpacing: '0.06em',
+          }}>{badge}</span>
+        </div>
+      )}
 
-      {/* 하단: 나레이션 전체 자막 (타이밍에 맞춰) */}
-      <SubtitleBar subtitles={scene.subtitles} frame={frame} fontFamily={fontFamily} dark={p.dark} />
+      {/* 화면 중앙: 현재 발화 단어를 키네틱 애니메이션으로 표시 */}
+      {activeSub && (
+        <MainDisplay
+          text={activeSub.text}
+          animStyle={animStyle}
+          sceneFrame={localFrame}
+          sceneDuration={subDuration}
+          fps={fps}
+          p={p}
+          fontFamily={fontFamily}
+        />
+      )}
     </AbsoluteFill>
   );
 };

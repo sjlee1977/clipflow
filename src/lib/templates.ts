@@ -1,14 +1,17 @@
-export type TemplateId = 
-  | 'classic' 
-  | 'audiogram' 
-  | 'captions' 
-  | 'cinematic' 
-  | 'split' 
-  | 'map' 
-  | '3d' 
-  | 'slides' 
-  | 'kinetic' 
-  | 'codehike';
+export type TemplateId =
+  | 'classic'
+  | 'audiogram'
+  | 'captions'
+  | 'cinematic'
+  | 'split'
+  | 'map'
+  | '3d'
+  | 'slides'
+  | 'kinetic'
+  | 'codehike'
+  | 'lightleak'
+  | 'matrix'
+  | 'particle';
 
 export interface TemplateMetadata {
   id: TemplateId;
@@ -100,7 +103,31 @@ export const TEMPLATES: TemplateMetadata[] = [
     icon: 'Box',
     category: 'creative',
     aspectRatio: '16:9',
-  }
+  },
+  {
+    id: 'lightleak',
+    label: '라이트 릭 (Light Leak)',
+    description: '빛번짐 렌즈 플레어 효과가 더해진 시네마틱 스타일입니다.',
+    icon: 'Sun',
+    category: 'creative',
+    aspectRatio: 'any',
+  },
+  {
+    id: 'matrix',
+    label: '매트릭스 레인',
+    description: '녹색 코드 빗줄기가 흐르는 사이버 스타일 배경입니다.',
+    icon: 'Terminal',
+    category: 'technical',
+    aspectRatio: 'any',
+  },
+  {
+    id: 'particle',
+    label: '파티클 (Particle)',
+    description: '반짝이는 파티클 이펙트가 떠오르는 몽환적인 스타일입니다.',
+    icon: 'Sparkles',
+    category: 'creative',
+    aspectRatio: 'any',
+  },
 ];
 
 export const DEFAULT_TEMPLATE_ID: TemplateId = 'classic';

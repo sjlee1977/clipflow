@@ -6,10 +6,14 @@ import { z } from 'zod';
 import { SceneComponent } from './Scene';
 import { SlideSceneComponent } from './SlideScene';
 import { KineticSceneComponent } from './KineticScene';
+import { ThreeDSceneComponent } from './ThreeDScene';
 import { AudiogramSceneComponent } from './AudiogramScene';
 import { CaptionsSceneComponent } from './CaptionsScene';
 import { CinematicSceneComponent } from './CinematicScene';
 import { CodeHikeSceneComponent } from './CodeHikeScene';
+import { LightLeakSceneComponent } from './LightLeakScene';
+import { MatrixSceneComponent } from './MatrixScene';
+import { ParticleSceneComponent } from './ParticleScene';
 import { VideoProps } from './types';
 import { KOREAN_FONTS, DEFAULT_FONT_ID } from '../lib/fonts';
 
@@ -147,10 +151,18 @@ export const VideoComposition: React.FC<VideoProps> = ({
                 <CinematicSceneComponent scene={scene} fontFamily={fontFamily} />
               ) : templateId === 'codehike' ? (
                 <CodeHikeSceneComponent scene={scene} fontFamily={fontFamily} codeSnippet={codeSnippet} />
+              ) : templateId === 'kinetic' ? (
+                <KineticSceneComponent scene={scene} sceneIndex={i} fontFamily={fontFamily} />
+              ) : templateId === '3d' ? (
+                <ThreeDSceneComponent scene={scene} sceneIndex={i} fontFamily={fontFamily} />
+              ) : templateId === 'lightleak' ? (
+                <LightLeakSceneComponent scene={scene} fontFamily={fontFamily} />
+              ) : templateId === 'matrix' ? (
+                <MatrixSceneComponent scene={scene} fontFamily={fontFamily} />
+              ) : templateId === 'particle' ? (
+                <ParticleSceneComponent scene={scene} fontFamily={fontFamily} />
               ) : scene.slideData ? (
                 <SlideSceneComponent scene={scene} slideIndex={i} fontFamily={fontFamily} />
-              ) : !scene.imageUrl ? (
-                <KineticSceneComponent scene={scene} sceneIndex={i} fontFamily={fontFamily} />
               ) : (
                 <SceneComponent scene={scene} globalOffset={0} fontFamily={fontFamily} />
               )}

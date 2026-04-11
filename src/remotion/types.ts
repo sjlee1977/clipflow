@@ -4,7 +4,7 @@ export type SubtitleWord = {
   endFrame: number;
 };
 
-export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit' | 'equation' | 'stepflow' | 'calendar' | 'barchart' | 'usercloud' | 'motion_logic' | 'graphic_box' | 'clock' | 'linechart' | 'candlestick' | 'gauge' | 'portfolio';
+export type SlideLayout = 'title' | 'bullets' | 'quote' | 'comparison' | 'bigword' | 'boxlist' | 'statcard' | 'timeline' | 'icongrid' | 'progress' | 'chatwindow' | 'dialogsplit' | 'equation' | 'stepflow' | 'calendar' | 'barchart' | 'usercloud' | 'motion_logic' | 'graphic_box' | 'clock' | 'linechart' | 'candlestick' | 'gauge' | 'portfolio' | 'numberedcards' | 'hubspoke' | 'piechart' | 'wordcarousel' | 'socialcard' | 'splitscreen' | 'cardflip' | 'animatedtext' | 'typewritertext' | 'chartanimation' | 'staggered' | 'floatcard' | 'spinreveal';
 export type BulletStyle = 'dot' | 'typewriter' | 'multicolor' | 'cascade';
 export type PptTheme = 'simple-modern' | 'dark' | 'colorful';
 export type SlideData = {

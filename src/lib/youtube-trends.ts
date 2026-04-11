@@ -9,20 +9,25 @@ export const SEARCH_REGIONS: Record<string, { label: string; language: string }>
 };
 
 // 카테고리 정의 (YouTube categoryId 또는 키워드 검색)
-export const TREND_CATEGORIES: Record<string, { label: string; youtubeId?: string; keyword?: string }> = {
-  gaming:        { label: '게임',       youtubeId: '20' },
-  music:         { label: '음악',       youtubeId: '10' },
+export const TREND_CATEGORIES: Record<string, { label: string; youtubeId?: string; keyword?: string; keywords?: Record<string, string> }> = {
+  gaming:        { label: '게임',         youtubeId: '20' },
+  music:         { label: '음악',         youtubeId: '10' },
   entertainment: { label: '엔터테인먼트', youtubeId: '24' },
-  education:     { label: '교육',       youtubeId: '27' },
-  beauty:        { label: '뷰티/패션',  youtubeId: '26' },
-  sports:        { label: '스포츠',     youtubeId: '17' },
-  tech:          { label: 'IT/테크',    youtubeId: '28' },
-  finance:       { label: '경제/금융',  keyword: '경제 주식 재테크 투자' },
-  food:          { label: '음식/요리',  keyword: '요리 레시피 맛집 먹방' },
-  travel:        { label: '여행',       keyword: '여행 vlog 해외여행' },
-  animals:       { label: '동물',       keyword: '동물 강아지 고양이 펫' },
-  ai:            { label: 'AI 영상',    keyword: 'AI generated video shorts' },
-  funny:         { label: '유머/짤',    keyword: '웃긴 영상 짤 meme funny' },
+  education:     { label: '교육',         youtubeId: '27' },
+  beauty:        { label: '뷰티/패션',    youtubeId: '26' },
+  sports:        { label: '스포츠',       youtubeId: '17' },
+  tech:          { label: 'IT/테크·과학',  youtubeId: '28' },
+  travel:        { label: '여행',         youtubeId: '19' },
+  animals:       { label: '동물',         youtubeId: '15' },
+  funny:         { label: '유머/짤',      youtubeId: '23' },
+  news:          { label: '뉴스/정치',    youtubeId: '25' },
+  film:          { label: '영화/애니',    youtubeId: '1'  },
+  autos:         { label: '자동차',       youtubeId: '2'  },
+  vlog:          { label: '일상/브이로그', youtubeId: '22' },
+  nonprofit:     { label: '사회/비영리',  youtubeId: '29' },
+  finance:       { label: '경제/금융',    keywords: { ko: '경제 주식 재테크 투자', en: 'stock market investment finance', ja: '株式投資 経済 資産運用', fr: 'finance investissement bourse' } },
+  food:          { label: '음식/요리',    keywords: { ko: '요리 레시피 맛집 먹방', en: 'cooking recipe food mukbang', ja: '料理 レシピ グルメ', fr: 'recette cuisine gastronomie' } },
+  ai:            { label: 'AI 영상',      keyword: 'AI generated video shorts' },
 };
 
 export interface YTVideoItem {
@@ -124,6 +129,11 @@ export async function searchRecentVideos(
   const region = SEARCH_REGIONS[regionCode] ?? SEARCH_REGIONS.KR;
   const publishedAfter = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
 
+  // 지역 언어에 맞는 키워드 선택 (없으면 영어 → 한국어 순으로 fallback)
+  const keyword = cat.keywords
+    ? (cat.keywords[region.language] ?? cat.keywords['en'] ?? cat.keywords['ko'] ?? '')
+    : (cat.keyword ?? '');
+
   const params = new URLSearchParams({
     part: 'snippet',
     type: 'video',
@@ -132,7 +142,7 @@ export async function searchRecentVideos(
     relevanceLanguage: region.language,
     maxResults: String(Math.min(maxResults, 50)),
     publishedAfter,
-    q: cat.keyword!,
+    q: keyword,
     videoDuration: videoType === 'short' ? 'short' : 'medium',
     key: getApiKey(),
   });
