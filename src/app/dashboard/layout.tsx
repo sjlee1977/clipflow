@@ -18,6 +18,7 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/script', label: '대본 만들기', icon: PenLine },
       { href: '/dashboard/video', label: '영상 만들기', icon: Video },
       { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
+      { href: '/dashboard/auto-blog', label: '자동 블로그 생성', icon: Zap },
     ],
   },
   {
