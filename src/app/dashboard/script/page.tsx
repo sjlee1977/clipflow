@@ -220,6 +220,12 @@ function ScriptPageInner() {
     window.location.href = '/dashboard/thumbnail';
   }
 
+  function handleMultiChannel() {
+    sessionStorage.setItem('clipflow_reformat_script', script);
+    sessionStorage.setItem('clipflow_reformat_topic', topic);
+    window.location.href = '/dashboard/reformat';
+  }
+
   const selectedLlm = SCRIPT_LLM_MODELS.find(m => m.id === llmModelId);
   const selectedTone = TONES.find(t => t.id === tone);
 
@@ -334,6 +340,14 @@ function ScriptPageInner() {
                 className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70"
               >
                 썸네일 생성
+                <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
+              </button>
+
+              <button
+                onClick={handleMultiChannel}
+                className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70"
+              >
+                멀티채널 배포
                 <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
               </button>
 
