@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
 
 export async function POST(req: NextRequest) {
   try {
+    const { JSDOM } = await import('jsdom');
+    const { Readability } = await import('@mozilla/readability');
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'URL이 필요합니다' }, { status: 400 });
