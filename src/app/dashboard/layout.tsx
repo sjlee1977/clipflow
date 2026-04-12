@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, type LucideIcon } from 'lucide-react';
 
 const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
@@ -24,6 +24,12 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: Zap },
       { href: '/dashboard/trends/subscriber', label: '구독자 분석', icon: Users },
       { href: '/dashboard/keyword', label: '키워드 분석', icon: BarChart2 },
+    ],
+  },
+  {
+    group: 'BLOG',
+    items: [
+      { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
     ],
   },
   {
