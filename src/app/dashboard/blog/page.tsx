@@ -1,33 +1,31 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw, Settings } from 'lucide-react';
 
 type Platform = 'wordpress' | 'naver' | 'nextblog';
 type Tone = 'friendly' | 'professional' | 'casual' | 'educational';
 type Length = 'short' | 'medium' | 'long';
-type PublishStatus = 'draft' | 'publish' | 'published';
 
 type CrawlResult = {
   title: string;
   byline: string;
-  excerpt: string;
   content: string;
   siteName: string;
-  url: string;
   length: number;
 };
 
-type PlatformConfig = {
-  wordpress: { siteUrl: string; username: string; appPassword: string; status: PublishStatus };
-  naver: { accessToken: string };
-  nextblog: { supabaseUrl: string; supabaseKey: string; status: PublishStatus };
+type PlatformStatus = {
+  wordpress: boolean;
+  naver: boolean;
+  nextblog: boolean;
 };
 
 const PLATFORM_INFO: Record<Platform, { label: string; color: string; icon: string; desc: string }> = {
-  wordpress: { label: 'WordPress', color: '#21759b', icon: 'W', desc: 'REST API (Application Password)' },
-  naver: { label: '네이버 블로그', color: '#03c75a', icon: 'N', desc: 'Open API (Access Token)' },
-  nextblog: { label: 'Next.js 블로그', color: '#7c3aed', icon: '▲', desc: 'Supabase (posts 테이블)' },
+  wordpress: { label: 'WordPress', color: '#21759b', icon: 'W', desc: 'REST API' },
+  naver: { label: '네이버 블로그', color: '#03c75a', icon: 'N', desc: 'Open API' },
+  nextblog: { label: 'Next.js 블로그', color: '#7c3aed', icon: '▲', desc: 'Supabase' },
 };
 
 const TONE_OPTIONS: { value: Tone; label: string }[] = [
@@ -44,6 +42,7 @@ const LENGTH_OPTIONS: { value: Length; label: string; desc: string }[] = [
 ];
 
 export default function BlogPage() {
+  const router = useRouter();
   const [url, setUrl] = useState('');
   const [crawling, setCrawling] = useState(false);
   const [crawlResult, setCrawlResult] = useState<CrawlResult | null>(null);
@@ -57,21 +56,35 @@ export default function BlogPage() {
   const [blogContent, setBlogContent] = useState('');
   const [blogTitle, setBlogTitle] = useState('');
   const [writeError, setWriteError] = useState('');
-
-  const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
+  const [copied, setCopied] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wordpress');
-  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
-    wordpress: { siteUrl: '', username: '', appPassword: '', status: 'draft' },
-    naver: { accessToken: '' },
-    nextblog: { supabaseUrl: '', supabaseKey: '', status: 'draft' },
-  });
-  const [showPlatformConfig, setShowPlatformConfig] = useState(false);
+  const [platformStatus, setPlatformStatus] = useState<PlatformStatus>({ wordpress: false, naver: false, nextblog: false });
+  const [statusOverride, setStatusOverride] = useState<'draft' | 'publish' | 'published'>('draft');
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ success: boolean; message: string; link?: string } | null>(null);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    fetch('/api/blog/credentials')
+      .then(r => r.json())
+      .then(d => {
+        if (d.wordpress || d.naver || d.nextblog) {
+          setPlatformStatus({
+            wordpress: d.wordpress?.connected ?? false,
+            naver: d.naver?.connected ?? false,
+            nextblog: d.nextblog?.connected ?? false,
+          });
+          // 연결된 첫 번째 플랫폼 자동 선택
+          if (d.wordpress?.connected) setSelectedPlatform('wordpress');
+          else if (d.naver?.connected) setSelectedPlatform('naver');
+          else if (d.nextblog?.connected) setSelectedPlatform('nextblog');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleCrawl() {
     if (!url.trim()) return;
@@ -123,64 +136,46 @@ export default function BlogPage() {
 
   async function handlePublish() {
     if (!blogContent.trim() || !blogTitle.trim()) return;
+    if (!platformStatus[selectedPlatform]) {
+      router.push('/dashboard/settings');
+      return;
+    }
     setPublishing(true);
     setPublishResult(null);
     try {
-      const config = platformConfig[selectedPlatform];
       const res = await fetch('/api/blog/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: selectedPlatform,
-          title: blogTitle,
-          content: blogContent,
-          config,
-        }),
+        body: JSON.stringify({ platform: selectedPlatform, title: blogTitle, content: blogContent, statusOverride }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '발행 실패');
-      setPublishResult({
-        success: true,
-        message: '발행이 완료되었습니다!',
-        link: data.link || data.postUrl || undefined,
-      });
+      setPublishResult({ success: true, message: '발행이 완료되었습니다!', link: data.link || data.postUrl });
     } catch (err: unknown) {
-      setPublishResult({
-        success: false,
-        message: err instanceof Error ? err.message : '발행 중 오류 발생',
-      });
+      setPublishResult({ success: false, message: err instanceof Error ? err.message : '발행 중 오류 발생' });
     } finally {
       setPublishing(false);
     }
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(blogContent).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    navigator.clipboard.writeText(blogContent).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
 
-  // 마크다운 → HTML 미리보기 (간단 버전)
   function renderMarkdown(md: string) {
     const html = md
-      .replace(/^### (.+)$/gm, '<h3 class="text-[14px] font-bold text-white/90 mt-4 mb-1">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 class="text-[16px] font-black text-white mt-5 mb-2">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 class="text-[18px] font-black text-white mt-2 mb-3">$1</h1>')
+      .replace(/^### (.+)$/gm, '<h3 style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.9);margin-top:16px;margin-bottom:4px">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 style="font-size:16px;font-weight:900;color:#fff;margin-top:20px;margin-bottom:8px">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 style="font-size:18px;font-weight:900;color:#fff;margin-top:8px;margin-bottom:12px">$1</h1>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-white/70 text-[13px] leading-relaxed">$1</li>')
-      .replace(/\n\n/g, '</p><p class="text-white/70 text-[13px] leading-relaxed mb-3">')
+      .replace(/^- (.+)$/gm, '<li style="margin-left:16px;list-style:disc;color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6">$1</li>')
+      .replace(/\n\n/g, '</p><p style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6;margin-bottom:12px">')
       .replace(/\n/g, '<br>');
-    return `<p class="text-white/70 text-[13px] leading-relaxed mb-3">${html}</p>`;
+    return `<p style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6;margin-bottom:12px">${html}</p>`;
   }
 
-  const updatePlatformConfig = <K extends Platform>(platform: K, key: keyof PlatformConfig[K], value: string) => {
-    setPlatformConfig(prev => ({
-      ...prev,
-      [platform]: { ...prev[platform], [key]: value },
-    }));
-  };
+  const anyConnected = Object.values(platformStatus).some(Boolean);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -193,14 +188,13 @@ export default function BlogPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">
         {/* ─── 좌측: 크롤링 + 에디터 ─── */}
         <div className="space-y-4">
           {/* URL 크롤링 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
-            <p className="text-[12px] font-bold text-white/60 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Globe size={13} />
-              URL 크롤링
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <Globe size={12} />URL 크롤링
             </p>
             <div className="flex gap-2">
               <input
@@ -217,13 +211,11 @@ export default function BlogPage() {
                 className="flex items-center gap-2 bg-white/8 hover:bg-white/15 disabled:opacity-40 border border-white/10 text-white/70 text-[12px] font-bold px-4 py-2 rounded-lg transition-colors"
               >
                 {crawling ? <Loader2 size={13} className="animate-spin" /> : <Globe size={13} />}
-                {crawling ? '가져오는 중...' : '가져오기'}
+                {crawling ? '...' : '가져오기'}
               </button>
             </div>
 
-            {crawlError && (
-              <p className="text-red-400/80 text-[12px] font-mono mt-2">{crawlError}</p>
-            )}
+            {crawlError && <p className="text-red-400/80 text-[12px] font-mono mt-2">{crawlError}</p>}
 
             {crawlResult && (
               <div className="mt-3">
@@ -238,13 +230,11 @@ export default function BlogPage() {
                     onClick={() => setShowSource(!showSource)}
                     className="text-[11px] font-mono text-white/30 hover:text-white/60 flex items-center gap-1 transition-colors"
                   >
-                    원문 보기 {showSource ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                    원문 {showSource ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   </button>
                 </div>
                 <p className="text-[13px] font-bold text-white/80 mt-2 leading-snug">{crawlResult.title}</p>
-                {crawlResult.byline && (
-                  <p className="text-[11px] text-white/30 font-mono mt-0.5">{crawlResult.byline}</p>
-                )}
+                {crawlResult.byline && <p className="text-[11px] text-white/30 font-mono mt-0.5">{crawlResult.byline}</p>}
                 {showSource && (
                   <div className="mt-3 max-h-48 overflow-y-auto rounded-lg bg-black/30 border border-white/8 p-3">
                     <p className="text-[11px] text-white/40 font-mono leading-relaxed whitespace-pre-wrap">
@@ -257,9 +247,8 @@ export default function BlogPage() {
           </div>
 
           {/* 블로그 에디터 */}
-          {blogContent && (
+          {blogContent ? (
             <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
-              {/* 탭 헤더 */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
                 <div className="flex gap-1">
                   {(['edit', 'preview'] as const).map(tab => (
@@ -285,8 +274,6 @@ export default function BlogPage() {
                   </button>
                 </div>
               </div>
-
-              {/* 제목 입력 */}
               <div className="px-4 pt-3">
                 <input
                   type="text"
@@ -296,47 +283,30 @@ export default function BlogPage() {
                   className="w-full bg-transparent border-b border-white/10 focus:border-white/30 pb-2 text-[16px] font-black text-white outline-none transition-colors placeholder-white/15"
                 />
               </div>
-
-              {/* 편집 / 미리보기 */}
               {activeTab === 'edit' ? (
                 <textarea
                   ref={editorRef}
                   value={blogContent}
                   onChange={e => setBlogContent(e.target.value)}
-                  className="w-full min-h-[400px] bg-transparent px-4 py-3 text-[13px] text-white/80 font-mono leading-relaxed outline-none resize-none placeholder-white/15"
-                  placeholder="블로그 내용을 작성하세요..."
+                  className="w-full min-h-[400px] bg-transparent px-4 py-3 text-[13px] text-white/80 font-mono leading-relaxed outline-none resize-none"
                   spellCheck={false}
                 />
               ) : (
-                <div
-                  className="px-4 py-3 min-h-[400px] prose-invert"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(blogContent) }}
-                />
+                <div className="px-4 py-3 min-h-[400px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(blogContent) }} />
               )}
             </div>
-          )}
-
-          {/* 빈 상태 */}
-          {!blogContent && !crawlResult && (
+          ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
                 <FileText size={24} className="text-white/10" />
               </div>
-              <div className="text-center">
-                <p className="text-[13px] text-white/30 font-mono">URL을 입력하거나 직접 작성을 시작하세요</p>
-              </div>
+              <p className="text-[13px] text-white/30 font-mono">URL을 입력하거나 직접 작성을 시작하세요</p>
               <button
-                onClick={() => setBlogContent('# 블로그 제목\n\n여기에 내용을 작성하세요...')}
+                onClick={() => { setBlogContent('# 블로그 제목\n\n여기에 내용을 작성하세요...'); setBlogTitle('블로그 제목'); }}
                 className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors font-mono"
               >
                 빈 문서로 시작 →
               </button>
-            </div>
-          )}
-
-          {!blogContent && crawlResult && (
-            <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <p className="text-[13px] text-white/30 font-mono">우측에서 AI 작성 옵션을 설정하고 블로그를 생성하세요</p>
             </div>
           )}
         </div>
@@ -345,23 +315,19 @@ export default function BlogPage() {
         <div className="space-y-4">
           {/* AI 블로그 작성 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-            <p className="text-[12px] font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
-              <Wand2 size={13} />
-              AI 블로그 작성
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+              <Wand2 size={12} />AI 블로그 작성
             </p>
 
-            {/* 문체 */}
             <div>
-              <p className="text-[11px] text-white/30 font-mono mb-2">문체</p>
+              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">문체</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {TONE_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setTone(opt.value)}
                     className={`text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
-                      tone === opt.value
-                        ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white'
-                        : 'border-white/8 text-white/40 hover:text-white/60 hover:border-white/15'
+                      tone === opt.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}
                   >
                     {opt.label}
@@ -370,18 +336,15 @@ export default function BlogPage() {
               </div>
             </div>
 
-            {/* 길이 */}
             <div>
-              <p className="text-[11px] text-white/30 font-mono mb-2">길이</p>
+              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">길이</p>
               <div className="flex gap-1.5">
                 {LENGTH_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setLength(opt.value)}
                     className={`flex-1 text-center py-1.5 rounded-lg border transition-colors ${
-                      length === opt.value
-                        ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white'
-                        : 'border-white/8 text-white/40 hover:text-white/60 hover:border-white/15'
+                      length === opt.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}
                   >
                     <span className="text-[12px] font-mono block">{opt.label}</span>
@@ -391,21 +354,18 @@ export default function BlogPage() {
               </div>
             </div>
 
-            {/* 커스텀 프롬프트 */}
             <div>
-              <p className="text-[11px] text-white/30 font-mono mb-2">추가 지시사항 (선택)</p>
+              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">추가 지시사항</p>
               <textarea
                 value={customPrompt}
                 onChange={e => setCustomPrompt(e.target.value)}
-                placeholder="예: SEO 최적화 키워드 포함, 특정 독자층 타겟..."
+                placeholder="예: SEO 최적화, 특정 독자층..."
                 rows={3}
                 className="w-full bg-white/[0.03] border border-white/8 hover:border-white/15 focus:border-[#22c55e]/30 rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/20 outline-none transition-colors font-mono resize-none"
               />
             </div>
 
-            {writeError && (
-              <p className="text-red-400/80 text-[12px] font-mono">{writeError}</p>
-            )}
+            {writeError && <p className="text-red-400/80 text-[12px] font-mono">{writeError}</p>}
 
             <button
               onClick={handleWrite}
@@ -422,11 +382,10 @@ export default function BlogPage() {
             </button>
           </div>
 
-          {/* 발행 설정 */}
+          {/* 발행 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-            <p className="text-[12px] font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
-              <Send size={13} />
-              발행 플랫폼
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+              <Send size={12} />발행 플랫폼
             </p>
 
             {/* 플랫폼 선택 */}
@@ -434,14 +393,13 @@ export default function BlogPage() {
               {(Object.keys(PLATFORM_INFO) as Platform[]).map(platform => {
                 const info = PLATFORM_INFO[platform];
                 const isSelected = selectedPlatform === platform;
+                const isConn = platformStatus[platform];
                 return (
                   <button
                     key={platform}
-                    onClick={() => { setSelectedPlatform(platform); setShowPlatformConfig(true); }}
+                    onClick={() => setSelectedPlatform(platform)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left ${
-                      isSelected
-                        ? 'border-white/20 bg-white/8'
-                        : 'border-white/6 hover:border-white/12 bg-white/[0.01]'
+                      isSelected ? 'border-white/20 bg-white/8' : 'border-white/6 hover:border-white/12 bg-white/[0.01]'
                     }`}
                   >
                     <div
@@ -451,129 +409,62 @@ export default function BlogPage() {
                       {info.icon}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-[13px] font-bold ${isSelected ? 'text-white' : 'text-white/60'}`}>
-                        {info.label}
-                      </p>
+                      <p className={`text-[13px] font-bold ${isSelected ? 'text-white' : 'text-white/60'}`}>{info.label}</p>
                       <p className="text-[10px] font-mono text-white/25">{info.desc}</p>
                     </div>
-                    {isSelected && (
-                      <div className="w-1.5 h-1.5 bg-[#22c55e] rounded-full shrink-0" />
-                    )}
+                    {isConn
+                      ? <span className="text-[10px] font-mono text-green-400/70 shrink-0">연결됨</span>
+                      : <span className="text-[10px] font-mono text-white/20 shrink-0">미연결</span>
+                    }
                   </button>
                 );
               })}
             </div>
 
-            {/* 플랫폼 설정 토글 */}
-            <button
-              onClick={() => setShowPlatformConfig(!showPlatformConfig)}
-              className="w-full flex items-center justify-between text-[11px] font-mono text-white/30 hover:text-white/60 transition-colors"
-            >
-              <span>연결 설정</span>
-              {showPlatformConfig ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
-
-            {showPlatformConfig && (
-              <div className="space-y-2.5">
-                {selectedPlatform === 'wordpress' && (
-                  <>
-                    <ConfigInput
-                      label="사이트 URL"
-                      placeholder="https://yourblog.com"
-                      value={platformConfig.wordpress.siteUrl}
-                      onChange={v => updatePlatformConfig('wordpress', 'siteUrl', v)}
-                    />
-                    <ConfigInput
-                      label="사용자명"
-                      placeholder="admin"
-                      value={platformConfig.wordpress.username}
-                      onChange={v => updatePlatformConfig('wordpress', 'username', v)}
-                    />
-                    <ConfigInput
-                      label="앱 비밀번호"
-                      placeholder="xxxx xxxx xxxx xxxx"
-                      type="password"
-                      value={platformConfig.wordpress.appPassword}
-                      onChange={v => updatePlatformConfig('wordpress', 'appPassword', v)}
-                    />
-                    <div>
-                      <p className="text-[10px] font-mono text-white/30 mb-1">발행 상태</p>
-                      <div className="flex gap-1.5">
-                        {(['draft', 'publish'] as const).map(s => (
-                          <button
-                            key={s}
-                            onClick={() => updatePlatformConfig('wordpress', 'status', s)}
-                            className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
-                              platformConfig.wordpress.status === s
-                                ? 'border-white/20 bg-white/8 text-white'
-                                : 'border-white/8 text-white/30 hover:text-white/60'
-                            }`}
-                          >
-                            {s === 'draft' ? '초안' : '발행'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-                {selectedPlatform === 'naver' && (
-                  <ConfigInput
-                    label="액세스 토큰"
-                    placeholder="Bearer 토큰을 입력하세요"
-                    type="password"
-                    value={platformConfig.naver.accessToken}
-                    onChange={v => updatePlatformConfig('naver', 'accessToken', v)}
-                  />
-                )}
-                {selectedPlatform === 'nextblog' && (
-                  <>
-                    <ConfigInput
-                      label="Supabase URL"
-                      placeholder="https://xxx.supabase.co"
-                      value={platformConfig.nextblog.supabaseUrl}
-                      onChange={v => updatePlatformConfig('nextblog', 'supabaseUrl', v)}
-                    />
-                    <ConfigInput
-                      label="Service Role Key"
-                      placeholder="eyJ..."
-                      type="password"
-                      value={platformConfig.nextblog.supabaseKey}
-                      onChange={v => updatePlatformConfig('nextblog', 'supabaseKey', v)}
-                    />
-                    <div>
-                      <p className="text-[10px] font-mono text-white/30 mb-1">발행 상태</p>
-                      <div className="flex gap-1.5">
-                        {(['draft', 'published'] as const).map(s => (
-                          <button
-                            key={s}
-                            onClick={() => updatePlatformConfig('nextblog', 'status', s)}
-                            className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
-                              platformConfig.nextblog.status === s
-                                ? 'border-white/20 bg-white/8 text-white'
-                                : 'border-white/8 text-white/30 hover:text-white/60'
-                            }`}
-                          >
-                            {s === 'draft' ? '초안' : '발행'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
+            {/* 연결 안 된 경우 안내 */}
+            {!platformStatus[selectedPlatform] && (
+              <div className="flex items-center gap-2 bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2.5">
+                <p className="text-[12px] text-white/40 font-mono flex-1">설정 페이지에서 계정을 연결해주세요</p>
+                <button
+                  onClick={() => router.push('/dashboard/settings')}
+                  className="flex items-center gap-1.5 text-[11px] font-mono text-white/50 hover:text-white/80 border border-white/15 hover:border-white/30 px-2.5 py-1 rounded-md transition-colors shrink-0"
+                >
+                  <Settings size={11} />설정
+                </button>
               </div>
             )}
 
-            {/* 발행 버튼 */}
+            {/* 연결된 경우 발행 상태 선택 */}
+            {platformStatus[selectedPlatform] && (
+              <div>
+                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">발행 상태</p>
+                <div className="flex gap-1.5">
+                  {(selectedPlatform === 'nextblog'
+                    ? [{ v: 'draft', l: '초안' }, { v: 'published', l: '발행' }]
+                    : [{ v: 'draft', l: '초안' }, { v: 'publish', l: '발행' }]
+                  ).map(({ v, l }) => (
+                    <button
+                      key={v}
+                      onClick={() => setStatusOverride(v as 'draft' | 'publish' | 'published')}
+                      className={`flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
+                        statusOverride === v ? 'border-white/20 bg-white/8 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 결과 메시지 */}
             {publishResult && (
               <div className={`text-[12px] font-mono p-3 rounded-lg border ${
-                publishResult.success
-                  ? 'text-[#22c55e]/80 border-[#22c55e]/20 bg-[#22c55e]/5'
-                  : 'text-red-400/80 border-red-500/20 bg-red-500/5'
+                publishResult.success ? 'text-[#22c55e]/80 border-[#22c55e]/20 bg-[#22c55e]/5' : 'text-red-400/80 border-red-500/20 bg-red-500/5'
               }`}>
                 {publishResult.message}
                 {publishResult.link && (
-                  <a href={publishResult.link} target="_blank" rel="noopener noreferrer"
-                    className="block mt-1 text-[11px] underline opacity-70 hover:opacity-100 break-all">
+                  <a href={publishResult.link} target="_blank" rel="noopener noreferrer" className="block mt-1 text-[11px] underline opacity-70 hover:opacity-100 break-all">
                     {publishResult.link}
                   </a>
                 )}
@@ -583,44 +474,29 @@ export default function BlogPage() {
             <button
               onClick={handlePublish}
               disabled={publishing || !blogContent.trim() || !blogTitle.trim()}
-              className="w-full flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 disabled:opacity-30 border border-white/15 text-white/70 font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors"
+              className={`w-full flex items-center justify-center gap-2 font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors ${
+                platformStatus[selectedPlatform]
+                  ? 'bg-white/8 hover:bg-white/15 disabled:opacity-30 border border-white/15 text-white/70'
+                  : 'bg-white/5 border border-white/10 text-white/30 cursor-pointer'
+              }`}
             >
               {publishing ? (
                 <><Loader2 size={14} className="animate-spin" /> 발행 중...</>
-              ) : (
+              ) : platformStatus[selectedPlatform] ? (
                 <><Send size={14} /> {PLATFORM_INFO[selectedPlatform].label}에 발행</>
+              ) : (
+                <><Settings size={14} /> 계정 연결하기</>
               )}
             </button>
+
+            {!anyConnected && (
+              <p className="text-[10px] text-white/20 font-mono text-center">
+                설정 페이지에서 블로그 플랫폼을 먼저 연결하세요
+              </p>
+            )}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ConfigInput({
-  label,
-  placeholder,
-  value,
-  onChange,
-  type = 'text',
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-}) {
-  return (
-    <div>
-      <p className="text-[10px] font-mono text-white/30 mb-1">{label}</p>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-white/[0.03] border border-white/8 hover:border-white/15 focus:border-[#22c55e]/30 rounded-lg px-3 py-1.5 text-[12px] text-white/70 placeholder-white/20 outline-none transition-colors font-mono"
-      />
     </div>
   );
 }

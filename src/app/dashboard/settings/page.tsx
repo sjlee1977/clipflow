@@ -158,6 +158,238 @@ function DualKeySection({
   );
 }
 
+// ── 블로그 플랫폼 연결 섹션 ──
+type BlogPlatform = 'wordpress' | 'naver' | 'nextblog';
+
+interface BlogCredentials {
+  wordpress: { connected: boolean; siteUrl: string; username: string; appPassword: string; status: string };
+  naver: { connected: boolean; accessToken: string };
+  nextblog: { connected: boolean; supabaseUrl: string; supabaseKey: string; status: string };
+}
+
+function BlogPlatformSection() {
+  const [creds, setCreds] = useState<BlogCredentials | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<BlogPlatform | null>(null);
+  const [deleting, setDeleting] = useState<BlogPlatform | null>(null);
+  const [editing, setEditing] = useState<BlogPlatform | null>(null);
+  const [toast, setToast] = useState('');
+
+  const [wpForm, setWpForm] = useState({ siteUrl: '', username: '', appPassword: '', status: 'draft' });
+  const [naverForm, setNaverForm] = useState({ accessToken: '' });
+  const [nextForm, setNextForm] = useState({ supabaseUrl: '', supabaseKey: '', status: 'draft' });
+
+  useEffect(() => { fetchCreds(); }, []);
+
+  async function fetchCreds() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/blog/credentials');
+      if (res.ok) setCreds(await res.json());
+    } finally { setLoading(false); }
+  }
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500); }
+
+  async function handleSave(platform: BlogPlatform) {
+    setSaving(platform);
+    const configMap = { wordpress: wpForm, naver: naverForm, nextblog: nextForm };
+    const res = await fetch('/api/blog/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform, config: configMap[platform] }),
+    });
+    setSaving(null);
+    if (res.ok) { showToast('저장되었습니다'); setEditing(null); await fetchCreds(); }
+    else { const d = await res.json(); showToast(d.error || '저장 실패'); }
+  }
+
+  async function handleDelete(platform: BlogPlatform) {
+    if (!confirm('연결 정보를 삭제하시겠습니까?')) return;
+    setDeleting(platform);
+    await fetch('/api/blog/credentials', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform }),
+    });
+    setDeleting(null);
+    showToast('삭제되었습니다');
+    await fetchCreds();
+  }
+
+  const platformMeta = {
+    wordpress: { label: 'WordPress', color: '#21759b', icon: 'W', desc: 'REST API (Application Password)' },
+    naver: { label: '네이버 블로그', color: '#03c75a', icon: 'N', desc: 'Open API (Access Token)' },
+    nextblog: { label: 'Next.js 블로그', color: '#7c3aed', icon: '▲', desc: 'Supabase posts 테이블' },
+  };
+
+  if (loading) return (
+    <div className="flex items-center gap-2 px-5 py-6 text-white/30 text-[13px] font-mono border border-white/10">
+      <span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" />불러오는 중...
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 px-5 py-2.5 text-white/80 text-[13px] font-mono z-50">{toast}</div>
+      )}
+
+      {(Object.keys(platformMeta) as BlogPlatform[]).map(platform => {
+        const info = platformMeta[platform];
+        const isConnected = creds?.[platform]?.connected ?? false;
+        const isEditing = editing === platform;
+        const isSaving = saving === platform;
+        const isDeleting = deleting === platform;
+
+        return (
+          <div key={platform} className="border border-white/10 bg-white/[0.02]">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-black text-white shrink-0" style={{ backgroundColor: info.color }}>
+                  {info.icon}
+                </div>
+                <div>
+                  <p className="text-white text-[13px] font-bold font-mono">{info.label}</p>
+                  <p className="text-white/35 text-[11.5px] font-mono mt-0.5">{info.desc}</p>
+                </div>
+              </div>
+              {isConnected
+                ? <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-1 border border-green-400/30 text-green-400/80 bg-green-400/5"><span className="w-1.5 h-1.5 rounded-full bg-green-400" />연결됨</span>
+                : <span className="text-[11px] font-mono px-2 py-1 border border-white/10 text-white/30">미연결</span>}
+            </div>
+
+            {/* 바디 */}
+            <div className="px-5 py-4">
+              {isConnected && !isEditing ? (
+                <div className="flex items-center gap-3">
+                  {platform === 'wordpress' && creds?.wordpress && (
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-1.5">
+                        <span className="text-white/30 text-[10px] font-mono w-20 shrink-0">Site URL</span>
+                        <span className="text-white/60 text-[12px] font-mono truncate">{creds.wordpress.siteUrl}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-1.5">
+                        <span className="text-white/30 text-[10px] font-mono w-20 shrink-0">Username</span>
+                        <span className="text-white/60 text-[12px] font-mono">{creds.wordpress.username}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-1.5">
+                        <span className="text-white/30 text-[10px] font-mono w-20 shrink-0">App PW</span>
+                        <span className="text-white/50 text-[12px] font-mono">{creds.wordpress.appPassword}</span>
+                      </div>
+                    </div>
+                  )}
+                  {platform === 'naver' && creds?.naver && (
+                    <div className="flex-1 bg-black/30 border border-white/10 px-3 py-2">
+                      <span className="text-white/30 text-[10px] font-mono">Access Token </span>
+                      <span className="text-white/50 text-[12px] font-mono">{creds.naver.accessToken}</span>
+                    </div>
+                  )}
+                  {platform === 'nextblog' && creds?.nextblog && (
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-1.5">
+                        <span className="text-white/30 text-[10px] font-mono w-24 shrink-0">Supabase URL</span>
+                        <span className="text-white/60 text-[12px] font-mono truncate">{creds.nextblog.supabaseUrl}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-black/30 border border-white/10 px-3 py-1.5">
+                        <span className="text-white/30 text-[10px] font-mono w-24 shrink-0">Service Key</span>
+                        <span className="text-white/50 text-[12px] font-mono">{creds.nextblog.supabaseKey}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button onClick={() => setEditing(platform)} className="px-3 py-1.5 border border-white/15 text-white/50 hover:text-white/80 hover:border-white/30 text-[12px] font-mono transition-colors">변경</button>
+                    <button onClick={() => handleDelete(platform)} disabled={isDeleting} className="px-3 py-1.5 border border-red-500/20 text-red-400/50 hover:text-red-400 hover:border-red-400/40 text-[12px] font-mono transition-colors disabled:opacity-40">{isDeleting ? '...' : '삭제'}</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {platform === 'wordpress' && (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">Site URL</span>
+                          <input type="text" value={wpForm.siteUrl} onChange={e => setWpForm(f => ({ ...f, siteUrl: e.target.value }))} placeholder="https://yourblog.com" className={inputCls} />
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">Username</span>
+                          <input type="text" value={wpForm.username} onChange={e => setWpForm(f => ({ ...f, username: e.target.value }))} placeholder="admin" className={inputCls} />
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">App Password</span>
+                          <input type="password" value={wpForm.appPassword} onChange={e => setWpForm(f => ({ ...f, appPassword: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" className={inputCls} />
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">기본 상태</span>
+                          <div className="flex gap-1.5 flex-1">
+                            {(['draft', 'publish'] as const).map(s => (
+                              <button key={s} onClick={() => setWpForm(f => ({ ...f, status: s }))} className={`flex-1 text-[11px] font-mono py-1.5 border transition-colors ${wpForm.status === s ? 'border-white/30 bg-white/8 text-white' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
+                                {s === 'draft' ? '초안' : '발행'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-white/20 text-[11px] font-mono">WordPress 관리자 → 사용자 → 프로필 → 앱 비밀번호에서 발급</p>
+                    </>
+                  )}
+                  {platform === 'naver' && (
+                    <>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">Access Token</span>
+                        <input type="password" value={naverForm.accessToken} onChange={e => setNaverForm({ accessToken: e.target.value })} placeholder="Bearer 토큰" className={inputCls} />
+                      </div>
+                      <p className="text-white/20 text-[11px] font-mono">네이버 개발자센터 → 애플리케이션 → 블로그 권한 OAuth 발급 필요</p>
+                    </>
+                  )}
+                  {platform === 'nextblog' && (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">Supabase URL</span>
+                          <input type="text" value={nextForm.supabaseUrl} onChange={e => setNextForm(f => ({ ...f, supabaseUrl: e.target.value }))} placeholder="https://xxx.supabase.co" className={inputCls} />
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">Service Key</span>
+                          <input type="password" value={nextForm.supabaseKey} onChange={e => setNextForm(f => ({ ...f, supabaseKey: e.target.value }))} placeholder="eyJ..." className={inputCls} />
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <span className="text-white/35 text-[11px] font-mono w-28 shrink-0">기본 상태</span>
+                          <div className="flex gap-1.5 flex-1">
+                            {(['draft', 'published'] as const).map(s => (
+                              <button key={s} onClick={() => setNextForm(f => ({ ...f, status: s }))} className={`flex-1 text-[11px] font-mono py-1.5 border transition-colors ${nextForm.status === s ? 'border-white/30 bg-white/8 text-white' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
+                                {s === 'draft' ? '초안' : '발행'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-white/20 text-[11px] font-mono">Supabase 대시보드 → Settings → API → service_role 키 사용</p>
+                    </>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSave(platform)}
+                      disabled={isSaving}
+                      className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[12px] font-mono transition-colors"
+                    >
+                      {isSaving ? '저장 중...' : '저장'}
+                    </button>
+                    {isEditing && (
+                      <button onClick={() => setEditing(null)} className="px-3 py-2 border border-white/10 text-white/40 hover:text-white/70 text-[12px] font-mono transition-colors">취소</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface TrendSettings {
   categories: string[];
   outlier_multiplier: number;
@@ -485,6 +717,17 @@ export default function SettingsPage() {
           />
         </div>
       )}
+
+      {/* 블로그 플랫폼 연결 */}
+      <div className="mt-6">
+        <div className="relative mb-4">
+          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
+            <span className="w-1 h-1 bg-[#7c3aed]/60 rounded-full" />
+            <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">블로그 연결</span>
+          </div>
+        </div>
+        <BlogPlatformSection />
+      </div>
 
       {/* 트렌드 수집 설정 */}
       <div className="mt-6">
