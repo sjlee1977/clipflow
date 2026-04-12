@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const SCRIPT_LLM_MODELS = [
@@ -117,6 +117,14 @@ function OptionItem({ active, onClick, children, sub }: {
 }
 
 export default function ScriptPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" /></div>}>
+      <ScriptPageInner />
+    </Suspense>
+  );
+}
+
+function ScriptPageInner() {
   const searchParams = useSearchParams();
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState<ToneId>('friendly_casual');

@@ -6,19 +6,30 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, LayoutDashboard, type LucideIcon } from 'lucide-react';
+
+const DASHBOARD_ITEM = { href: '/dashboard', label: '대시보드', icon: LayoutDashboard };
 
 const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
-    group: 'STUDIO',
+    group: '만들기',
     items: [
       { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: FileText },
       { href: '/dashboard/script', label: '대본 만들기', icon: PenLine },
       { href: '/dashboard/video', label: '영상 만들기', icon: Video },
+      { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
     ],
   },
   {
-    group: 'TRENDS',
+    group: '발행',
+    items: [
+      { href: '/dashboard/calendar', label: '콘텐츠 캘린더', icon: CalendarDays },
+      { href: '/dashboard/reformat', label: '멀티포맷 변환', icon: Repeat2 },
+      { href: '/dashboard/thumbnail', label: '썸네일 생성', icon: Image },
+    ],
+  },
+  {
+    group: '분석',
     items: [
       { href: '/dashboard/trends/viral', label: '급상승 영상', icon: TrendingUp },
       { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: Zap },
@@ -27,16 +38,7 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
     ],
   },
   {
-    group: 'PLAN',
-    items: [
-      { href: '/dashboard/calendar', label: '콘텐츠 캘린더', icon: CalendarDays },
-      { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
-      { href: '/dashboard/reformat', label: '멀티포맷 변환', icon: Repeat2 },
-      { href: '/dashboard/thumbnail', label: '썸네일 생성', icon: Image },
-    ],
-  },
-  {
-    group: 'LIBRARY',
+    group: '라이브러리',
     items: [
       { href: '/dashboard/history', label: '내 영상', icon: Film },
       { href: '/dashboard/my-scripts', label: '내 대본', icon: ScrollText },
@@ -44,7 +46,7 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
     ],
   },
   {
-    group: 'SETTINGS',
+    group: '설정',
     items: [
       { href: '/dashboard/settings', label: '설정', icon: Settings },
     ],
@@ -109,6 +111,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* 네비게이션 */}
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+          {/* 대시보드 단독 아이템 */}
+          <div>
+            {(() => {
+              const item = DASHBOARD_ITEM;
+              const active = pathname === '/dashboard';
+              return (
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                    active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10' : 'hover:bg-[var(--hover-bg)]'
+                  }`}
+                  style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
+                >
+                  <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 ${
+                    active ? 'bg-[#22c55e]/80 text-white' : ''
+                  }`}><item.icon size={14} /></span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })()}
+          </div>
+
+          {/* 구분선 */}
+          <div style={{ borderTop: '1px solid var(--border)' }} className="-mx-3" />
+
           {NAV_ITEMS.map((group) => (
             <div key={group.group}>
               <p className="text-[11px] font-semibold tracking-widest uppercase px-2 mb-1.5" style={{ color: 'var(--text-ultra)' }}>{group.group}</p>
