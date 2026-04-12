@@ -22,8 +22,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import crypto from 'crypto';
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
+// jsdom + Readability은 동적 import 필수 (ESM 호환성 문제)
+// import { JSDOM } from 'jsdom';
+// import { Readability } from '@mozilla/readability';
 
 // Vercel 타임아웃 연장
 export const maxDuration = 60;
@@ -223,7 +224,9 @@ async function crawlSinglePost(url: string): Promise<CompetitorPost | null> {
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
-    const html    = await res.text();
+    const html = await res.text();
+    const { JSDOM }       = await import('jsdom');
+    const { Readability } = await import('@mozilla/readability');
     const dom     = new JSDOM(html, { url });
     const reader  = new Readability(dom.window.document);
     const article = reader.parse();
