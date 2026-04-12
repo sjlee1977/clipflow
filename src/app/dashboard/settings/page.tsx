@@ -397,6 +397,180 @@ interface TrendSettings {
   is_active: boolean;
 }
 
+// ── 알림 설정 섹션 ──
+function NotificationSection() {
+  const [hasTelegram, setHasTelegram] = useState(false);
+  const [botToken, setBotToken] = useState('');
+  const [chatId, setChatId] = useState('');
+  const [notifyTrends, setNotifyTrends] = useState(true);
+  const [notifySchedule, setNotifySchedule] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [toast, setToast] = useState('');
+  const [toastOk, setToastOk] = useState(true);
+
+  useEffect(() => { fetchSettings(); }, []);
+
+  async function fetchSettings() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/notify/settings');
+      if (res.ok) {
+        const d = await res.json();
+        setHasTelegram(d.hasTelegram);
+        setNotifyTrends(d.notify_trends ?? true);
+        setNotifySchedule(d.notify_schedule ?? true);
+      }
+    } finally { setLoading(false); }
+  }
+
+  function showToast(msg: string, ok = true) {
+    setToast(msg); setToastOk(ok);
+    setTimeout(() => setToast(''), 3000);
+  }
+
+  async function handleSave() {
+    if (!botToken.trim() || !chatId.trim()) return;
+    setSaving(true);
+    const res = await fetch('/api/notify/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_bot_token: botToken.trim(), telegram_chat_id: chatId.trim(), notify_trends: notifyTrends, notify_schedule: notifySchedule }),
+    });
+    setSaving(false);
+    if (res.ok) { showToast('저장되었습니다'); setEditing(false); setHasTelegram(true); setBotToken(''); setChatId(''); }
+    else { const d = await res.json(); showToast(d.error || '저장 실패', false); }
+  }
+
+  async function handleToggle(key: 'trends' | 'schedule', value: boolean) {
+    if (key === 'trends') setNotifyTrends(value);
+    else setNotifySchedule(value);
+    await fetch('/api/notify/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key === 'trends' ? 'notify_trends' : 'notify_schedule']: value }),
+    });
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    const res = await fetch('/api/notify/test', { method: 'POST' });
+    setTesting(false);
+    if (res.ok) showToast('테스트 메시지가 전송됐습니다! 텔레그램을 확인해보세요 ✅');
+    else { const d = await res.json(); showToast(d.error || '전송 실패', false); }
+  }
+
+  async function handleDelete() {
+    if (!confirm('알림 설정을 초기화하시겠습니까?')) return;
+    await fetch('/api/notify/settings', { method: 'DELETE' });
+    setHasTelegram(false); setEditing(false); showToast('초기화됐습니다');
+  }
+
+  if (loading) return (
+    <div className="flex items-center gap-2 px-5 py-6 text-white/30 text-[13px] font-mono border border-white/10">
+      <span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" />불러오는 중...
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 backdrop-blur border px-5 py-2.5 text-[13px] font-mono z-50 ${toastOk ? 'bg-white/10 border-white/20 text-white/80' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>{toast}</div>
+      )}
+
+      {/* 텔레그램 연결 */}
+      <div className="border border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center text-[13px] font-black text-white shrink-0" style={{ backgroundColor: '#229ED9' }}>✈</div>
+            <div>
+              <p className="text-white text-[13px] font-bold font-mono">Telegram 봇 알림</p>
+              <p className="text-white/35 text-[11.5px] font-mono mt-0.5">Bot Token + Chat ID로 무료 알림</p>
+            </div>
+          </div>
+          {hasTelegram
+            ? <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-1 border border-green-400/30 text-green-400/80 bg-green-400/5"><span className="w-1.5 h-1.5 rounded-full bg-green-400" />연결됨</span>
+            : <span className="text-[11px] font-mono px-2 py-1 border border-white/10 text-white/30">미설정</span>}
+        </div>
+        <div className="px-5 py-4">
+          {hasTelegram && !editing ? (
+            <div className="space-y-3">
+              {/* 알림 토글 */}
+              <div className="space-y-2">
+                {([
+                  { key: 'trends', label: '트렌드 급상승 알림', desc: '새로운 트렌드 감지 시 즉시 알림', value: notifyTrends },
+                  { key: 'schedule', label: '발행 리마인더', desc: '오늘 예약된 콘텐츠 아침 알림', value: notifySchedule },
+                ] as const).map(item => (
+                  <div key={item.key} className="flex items-center justify-between px-3 py-2.5 border border-white/8 bg-white/[0.01] rounded-lg">
+                    <div>
+                      <p className="text-[12px] font-mono text-white/70">{item.label}</p>
+                      <p className="text-[10px] font-mono text-white/30">{item.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle(item.key, !item.value)}
+                      className="relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0"
+                      style={{ background: item.value ? '#22c55e' : 'rgba(255,255,255,0.1)' }}
+                    >
+                      <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                        style={{ transform: item.value ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button onClick={handleTest} disabled={testing}
+                  className="px-4 py-1.5 border border-[#229ED9]/40 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9]/80 hover:text-[#229ED9] text-[12px] font-mono transition-colors disabled:opacity-40">
+                  {testing ? '전송 중...' : '테스트 메시지 전송'}
+                </button>
+                <button onClick={() => setEditing(true)} className="px-3 py-1.5 border border-white/15 text-white/50 hover:text-white/80 text-[12px] font-mono transition-colors">변경</button>
+                <button onClick={handleDelete} className="px-3 py-1.5 border border-red-500/20 text-red-400/50 hover:text-red-400 text-[12px] font-mono transition-colors">초기화</button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-white/[0.02] border border-white/8 rounded-lg px-4 py-3 space-y-1.5">
+                <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-2">설정 방법</p>
+                {[
+                  '1. Telegram에서 @BotFather 에게 /newbot 명령 전송',
+                  '2. 봇 이름 설정 후 Bot Token 수령',
+                  '3. 생성한 봇에게 메시지 전송 (채팅 시작)',
+                  '4. @userinfobot 에게 메시지 → Chat ID 확인',
+                ].map((step, i) => (
+                  <p key={i} className="text-[11px] font-mono text-white/35">{step}</p>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <span className="text-white/35 text-[11px] font-mono w-24 shrink-0">Bot Token</span>
+                  <input type="password" value={botToken} onChange={e => setBotToken(e.target.value)}
+                    placeholder="1234567890:ABCDEFabcdef..."
+                    className={inputCls} />
+                </div>
+                <div className="flex gap-2 items-center">
+                  <span className="text-white/35 text-[11px] font-mono w-24 shrink-0">Chat ID</span>
+                  <input type="text" value={chatId} onChange={e => setChatId(e.target.value)}
+                    placeholder="123456789"
+                    className={inputCls} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleSave} disabled={!botToken.trim() || !chatId.trim() || saving}
+                  className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:bg-white/10 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[12px] font-mono transition-colors">
+                  {saving ? '저장 중...' : '저장'}
+                </button>
+                {editing && <button onClick={() => { setEditing(false); setBotToken(''); setChatId(''); }}
+                  className="px-3 py-2 border border-white/10 text-white/40 hover:text-white/70 text-[12px] font-mono transition-colors">취소</button>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrendSettingsSection() {
   const [settings, setSettings] = useState<TrendSettings>({
     categories: [],
@@ -727,6 +901,17 @@ export default function SettingsPage() {
           </div>
         </div>
         <BlogPlatformSection />
+      </div>
+
+      {/* 알림 설정 */}
+      <div className="mt-6">
+        <div className="relative mb-4">
+          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
+            <span className="w-1 h-1 bg-[#229ED9]/60 rounded-full" />
+            <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">알림 설정</span>
+          </div>
+        </div>
+        <NotificationSection />
       </div>
 
       {/* 트렌드 수집 설정 */}

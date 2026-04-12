@@ -4,13 +4,13 @@ on:
   schedule:
     - cron: '0 */6 * * *'   # 6시간마다 (한국 수집)
     - cron: '0 0 * * *'     # 매일 UTC 자정 (해외 수집)
+    - cron: '0 0 * * *'     # 매일 UTC 자정 = KST 오전 9시 (발행 리마인더)
   workflow_dispatch:
 
 jobs:
   collect-kr:
     name: 한국 수집 (6시간)
     runs-on: ubuntu-latest
-    # 6시간마다 트리거될 때만 실행 (workflow_dispatch 포함)
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 */6 * * *'
     steps:
       - name: Trigger KR trends collection
@@ -25,7 +25,6 @@ jobs:
   collect-global:
     name: 해외 수집 (24시간)
     runs-on: ubuntu-latest
-    # 매일 자정 트리거될 때만 실행 (workflow_dispatch 포함)
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 0 * * *'
     steps:
       - name: Trigger global trends collection
@@ -36,3 +35,16 @@ jobs:
             -d '{"regions":["US","GB","JP","FR"]}' \
             --fail \
             && echo "✅ 해외 수집 성공" || echo "❌ 해외 수집 실패"
+
+  schedule-reminder:
+    name: 발행 리마인더 (매일 KST 09:00)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 0 * * *'
+    steps:
+      - name: Send daily schedule reminder
+        run: |
+          curl -s -X POST "${{ secrets.APP_URL }}/api/notify/trigger" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"schedule"}' \
+            && echo "✅ 리마인더 전송 성공" || echo "❌ 리마인더 전송 실패"
