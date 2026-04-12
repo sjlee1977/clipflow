@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Video, Zap, ArrowUpDown } from 'lucide-react';
+import { Video, Zap, ArrowUpDown, PenLine, CalendarPlus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type ViralSort = 'hourly' | 'views' | 'publishedAt';
 const VIRAL_SORTS: { key: ViralSort; label: string }[] = [
@@ -35,6 +36,7 @@ interface ViralSignal {
 }
 
 export default function ViralPage() {
+  const router = useRouter();
   const [signals, setSignals] = useState<ViralSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -473,7 +475,7 @@ export default function ViralPage() {
           {/* 컬럼 헤더 */}
           <div
             className="grid text-[11px] font-semibold tracking-wider uppercase px-5 py-2.5"
-            style={{ gridTemplateColumns: '40px 1fr 130px 100px 100px 80px', color: 'var(--text-faint)', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)' }}
+            style={{ gridTemplateColumns: '40px 1fr 130px 100px 100px 80px 120px', color: 'var(--text-faint)', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)' }}
           >
             <span>순위</span>
             <span>영상 정보</span>
@@ -481,6 +483,7 @@ export default function ViralPage() {
             <span className="text-right">시간당 증가</span>
             <span className="text-right">총 조회수</span>
             <span className="text-right">게시일</span>
+            <span className="text-right">액션</span>
           </div>
           {/* 테이블 바디 */}
           <div style={{ background: 'var(--sidebar)' }}>
@@ -488,15 +491,13 @@ export default function ViralPage() {
               const video = signal.trend_videos;
               const channel = video.trend_channels;
               return (
-                <a
+                <div
                   key={signal.id}
-                  href={`https://www.youtube.com/watch?v=${video.video_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="grid items-center px-5 py-3 group"
                   style={{
-                    gridTemplateColumns: '40px 1fr 130px 100px 100px 80px',
+                    gridTemplateColumns: '40px 1fr 130px 100px 100px 80px 120px',
                     borderBottom: idx < sortedSignals.length - 1 ? '1px solid var(--border)' : 'none',
+                    cursor: 'default',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -504,7 +505,13 @@ export default function ViralPage() {
                   <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>
                     #{idx + 1}
                   </span>
-                  <div className="flex items-center gap-3 min-w-0">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.video_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 min-w-0"
+                    onClick={e => e.stopPropagation()}
+                  >
                     {video.thumbnail ? (
                       <img src={video.thumbnail} alt={video.title ?? ''} className="w-[72px] h-[40px] rounded-lg object-cover shrink-0" />
                     ) : (
@@ -520,7 +527,7 @@ export default function ViralPage() {
                         </span>
                       )}
                     </div>
-                  </div>
+                  </a>
                   <div className="text-right min-w-0">
                     <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{channel?.channel_name ?? '—'}</p>
                     {channel?.avg_views ? (
@@ -530,7 +537,32 @@ export default function ViralPage() {
                   <p className="text-xs font-bold text-right text-[#22c55e]">{formatHourlyRate(signal.growth_rate_hourly)}</p>
                   <p className="text-xs text-right font-medium" style={{ color: 'var(--text)' }}>{formatViews(signal.current_views)}회</p>
                   <p className="text-xs text-right" style={{ color: 'var(--text-faint)' }}>{timeAgo(video.published_at)}</p>
-                </a>
+                  {/* 액션 버튼 */}
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      title="대본 생성"
+                      onClick={() => {
+                        const params = new URLSearchParams({ topic: video.title ?? '', category: video.category ?? '' });
+                        router.push(`/dashboard/script?${params.toString()}`);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all opacity-0 group-hover:opacity-100"
+                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+                    >
+                      <PenLine size={10} />대본
+                    </button>
+                    <button
+                      title="캘린더에 추가"
+                      onClick={() => {
+                        const params = new URLSearchParams({ title: video.title ?? '', trendUrl: `https://www.youtube.com/watch?v=${video.video_id}` });
+                        router.push(`/dashboard/calendar?${params.toString()}`);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all opacity-0 group-hover:opacity-100"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-faint)', border: '1px solid var(--border)' }}
+                    >
+                      <CalendarPlus size={10} />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>

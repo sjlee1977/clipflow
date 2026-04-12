@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, type LucideIcon } from 'lucide-react';
 
 const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
@@ -27,9 +27,12 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
     ],
   },
   {
-    group: 'BLOG',
+    group: 'PLAN',
     items: [
+      { href: '/dashboard/calendar', label: '콘텐츠 캘린더', icon: CalendarDays },
       { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
+      { href: '/dashboard/reformat', label: '멀티포맷 변환', icon: Repeat2 },
+      { href: '/dashboard/thumbnail', label: '썸네일 생성', icon: Image },
     ],
   },
   {
@@ -55,6 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [newTrendCount, setNewTrendCount] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -70,6 +74,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (data) setCredits(data.credits_remaining);
       }
     });
+    // 새 트렌드 수 확인 (최근 3시간 이내)
+    const checkTrends = async () => {
+      try {
+        const since = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+        const supabase = createClient();
+        const { count } = await supabase
+          .from('viral_signals')
+          .select('id', { count: 'exact', head: true })
+          .gte('detected_at', since);
+        if (count && count > 0) setNewTrendCount(count);
+      } catch { /* silent */ }
+    };
+    checkTrends();
   }, []);
 
   async function handleLogout() {
@@ -118,6 +135,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             active ? 'bg-[#22c55e]/80 text-white' : ''
                           }`}><item.icon size={14} /></span>
                           <span>{item.label}</span>
+                          {/* 트렌드 알림 배지 */}
+                          {item.href.includes('/trends/viral') && newTrendCount > 0 && (
+                            <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500/90 text-white text-[9px] font-black px-1">
+                              {newTrendCount > 99 ? '99+' : newTrendCount}
+                            </span>
+                          )}
                         </Link>
                       )}
                     </div>

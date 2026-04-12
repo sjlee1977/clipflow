@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 const SCRIPT_LLM_MODELS = [
   // ── Claude 4.6 & 4.5 (Official API IDs) ────────────────
@@ -116,6 +117,7 @@ function OptionItem({ active, onClick, children, sub }: {
 }
 
 export default function ScriptPage() {
+  const searchParams = useSearchParams();
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState<ToneId>('friendly_casual');
   const [category, setCategory] = useState('');
@@ -124,8 +126,19 @@ export default function ScriptPage() {
   const [targetAudience, setTargetAudience] = useState('');
   const [videoLength, setVideoLength] = useState('');
 
-  // Read category from sessionStorage (set by prompt page)
+  // Read from URL params (from trend page) or sessionStorage (from prompt page)
   useEffect(() => {
+    const urlTopic = searchParams.get('topic');
+    const urlCategory = searchParams.get('category');
+    if (urlTopic) {
+      setTopic(urlTopic);
+      if (urlCategory) {
+        setCategory(urlCategory);
+        const defaultTone = CATEGORY_DEFAULT_TONES[urlCategory];
+        if (defaultTone) setTone(defaultTone);
+      }
+      return; // URL params take priority
+    }
     const savedTopic = sessionStorage.getItem('clipflow_script_topic');
     if (savedTopic) { sessionStorage.removeItem('clipflow_script_topic'); setTopic(savedTopic); }
     const savedCat = sessionStorage.getItem('clipflow_script_category');
@@ -135,7 +148,7 @@ export default function ScriptPage() {
       const defaultTone = CATEGORY_DEFAULT_TONES[savedCat];
       if (defaultTone) setTone(defaultTone);
     }
-  }, []);
+  }, [searchParams]);
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [topicFocused, setTopicFocused] = useState(false);
