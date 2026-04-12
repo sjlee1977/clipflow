@@ -214,6 +214,12 @@ function ScriptPageInner() {
     window.location.href = '/dashboard/video';
   }
 
+  function handleMakeThumbnail() {
+    sessionStorage.setItem('clipflow_thumbnail_script', script);
+    sessionStorage.setItem('clipflow_thumbnail_topic', topic);
+    window.location.href = '/dashboard/thumbnail';
+  }
+
   const selectedLlm = SCRIPT_LLM_MODELS.find(m => m.id === llmModelId);
   const selectedTone = TONES.find(t => t.id === tone);
 
@@ -321,6 +327,14 @@ function ScriptPageInner() {
               >
                 영상만들기
                 <span className="w-8 h-[1px] bg-green-500/30 group-hover:w-12 group-hover:bg-green-500 transition-all duration-300" />
+              </button>
+
+              <button
+                onClick={handleMakeThumbnail}
+                className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70"
+              >
+                썸네일 생성
+                <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
               </button>
 
               <button
