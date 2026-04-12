@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     '@remotion/noise',
     '@remotion/shapes',
     '@remotion/transitions',
+    'jsdom',
+    '@mozilla/readability',
   ],
   images: {
     remotePatterns: [
