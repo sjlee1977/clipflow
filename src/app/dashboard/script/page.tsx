@@ -2,17 +2,15 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Download, ExternalLink, Wand2, Loader2, RefreshCw } from 'lucide-react';
 
 const SCRIPT_LLM_MODELS = [
-  // ── Claude 4.6 & 4.5 (Official API IDs) ────────────────
   { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
   { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
-  // ── Gemini 3.0 & 2.5 (2026 Standard) ────────────────────
   { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
   { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
   { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
-  // ── Qwen (DashScope) 旗舰 & 经济 & Omni ──────────────────
   { id: 'qwen3.6-plus',             name: 'Qwen 3.6 Plus',      provider: 'Alibaba',   price: '신규·고지능' },
   { id: 'qwen3.5-plus',             name: 'Qwen 3.5 Plus',      provider: 'Alibaba',   price: '합리적·지능' },
   { id: 'qwen3.5-flash',            name: 'Qwen 3.5 Flash',     provider: 'Alibaba',   price: '초저가·빠름' },
@@ -48,21 +46,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   general:    '일반',
 };
 
-
-/* ── 오른쪽 패널 섹션 (아코디언) ── */
 function PanelAccordion({ label, value, open, onToggle, children }: {
-  label: string;
-  value: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
+  label: string; value: string; open: boolean; onToggle: () => void; children: React.ReactNode;
 }) {
   return (
     <div className="border-b border-white/5 mb-1">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between py-3 group"
-      >
+      <button onClick={onToggle} className="w-full flex items-center justify-between py-3 group">
         <span className="text-[white]/70 text-[13px] tracking-widest uppercase">{label}</span>
         <span className="flex items-center gap-2">
           <span className="text-white/70 text-[13px] font-mono truncate max-w-[120px]">{value}</span>
@@ -77,44 +66,172 @@ function PanelAccordion({ label, value, open, onToggle, children }: {
   );
 }
 
-/* ── 가격 티어 뱃지 ── */
 function PriceBadge({ price }: { price?: string }) {
   if (!price) return null;
   const isFree = price.includes('무료');
   const val = parseFloat(price.replace(/[^0-9.]/g, ''));
   let cls = 'text-white/25 bg-white/5';
-  if (isFree)      cls = 'text-green-400/80 bg-green-400/10';
+  if (isFree)       cls = 'text-green-400/80 bg-green-400/10';
   else if (val < 1) cls = 'text-green-500/70 bg-green-500/10';
   else if (val < 5) cls = 'text-green-400/70 bg-green-400/10';
   else              cls = 'text-red-400/60 bg-red-400/10';
-  return (
-    <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-sm whitespace-nowrap ${cls}`}>
-      {isFree ? 'FREE' : price}
-    </span>
-  );
+  return <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-sm whitespace-nowrap ${cls}`}>{isFree ? 'FREE' : price}</span>;
 }
 
-/* ── 오른쪽 패널 선택 버튼 ── */
 function OptionItem({ active, onClick, children, sub }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  sub?: string;
+  active: boolean; onClick: () => void; children: React.ReactNode; sub?: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center justify-between px-2 py-2 text-[12.5px] font-mono border-l-2 transition-colors ${
-        active
-          ? 'border-green-500 text-green-500 bg-green-500/5'
-          : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
-      }`}
-    >
+    <button onClick={onClick} className={`w-full flex items-center justify-between px-2 py-2 text-[12.5px] font-mono border-l-2 transition-colors ${
+      active ? 'border-green-500 text-green-500 bg-green-500/5' : 'border-transparent text-white/65 hover:text-white hover:border-white/30'
+    }`}>
       <span>{children}</span>
       <PriceBadge price={sub} />
     </button>
   );
 }
+
+// ─── 인라인 썸네일 패널 ──────────────────────────────────────────────────────
+
+type ThumbStatus = 'idle' | 'generating' | 'done' | 'error';
+type ThumbStyle = 'youtube_bold' | 'youtube_face' | 'blog_clean' | 'blog_dark';
+
+const THUMB_STYLES: { value: ThumbStyle; label: string }[] = [
+  { value: 'youtube_bold', label: '임팩트 볼드' },
+  { value: 'youtube_face', label: '리액션 페이스' },
+  { value: 'blog_clean',   label: '클린 미니멀' },
+  { value: 'blog_dark',    label: '다크 에디토리얼' },
+];
+
+function ThumbnailPanel({ script, topic }: { script: string; topic: string }) {
+  const [thumbStatus, setThumbStatus] = useState<ThumbStatus>('idle');
+  const [thumbStyle, setThumbStyle] = useState<ThumbStyle>('youtube_bold');
+  const [images, setImages] = useState<{ url: string; prompt: string }[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [thumbError, setThumbError] = useState('');
+
+  async function generate() {
+    setThumbStatus('generating');
+    setImages([]);
+    setThumbError('');
+    setSelectedIdx(null);
+    try {
+      const res = await fetch('/api/thumbnail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script, title: topic, style: thumbStyle, thumbnailType: 'youtube' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '생성 실패');
+      setImages(data.images ?? []);
+      if (data.images?.length > 0) setSelectedIdx(0);
+      setThumbStatus('done');
+    } catch (e) {
+      setThumbError(e instanceof Error ? e.message : '생성 오류');
+      setThumbStatus('error');
+    }
+  }
+
+  async function handleDownload(url: string, idx: number) {
+    if (url.startsWith('data:')) {
+      const a = document.createElement('a'); a.href = url; a.download = `thumbnail_${idx + 1}.jpg`; a.click();
+    } else {
+      const blob = await (await fetch(url)).blob();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `thumbnail_${idx + 1}.jpg`; a.click();
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 스타일 선택 */}
+      <div>
+        <p className="text-white/30 text-[10px] font-mono uppercase tracking-wider mb-2">썸네일 스타일</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {THUMB_STYLES.map(s => (
+            <button
+              key={s.value}
+              onClick={() => setThumbStyle(s.value)}
+              className={`py-1.5 px-2 text-[11px] font-mono rounded-lg border transition-all ${
+                thumbStyle === s.value
+                  ? 'border-[#22c55e]/50 bg-[#22c55e]/10 text-white'
+                  : 'border-white/8 text-white/40 hover:text-white/60 hover:border-white/15'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 생성 버튼 */}
+      <button
+        onClick={generate}
+        disabled={thumbStatus === 'generating'}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white/8 hover:bg-white/12 border border-white/10 hover:border-white/20 text-white/70 hover:text-white text-[12px] font-bold transition-all disabled:opacity-40"
+      >
+        {thumbStatus === 'generating' ? (
+          <><Loader2 size={13} className="animate-spin" />대본 분석 중...</>
+        ) : images.length > 0 ? (
+          <><RefreshCw size={13} />다시 생성</>
+        ) : (
+          <><Wand2 size={13} />썸네일 생성</>
+        )}
+      </button>
+
+      {thumbError && (
+        <p className="text-red-400/70 text-[11px] font-mono">{thumbError}</p>
+      )}
+
+      {/* 생성된 이미지 */}
+      {thumbStatus === 'done' && images.length > 0 && (
+        <div className="space-y-2">
+          {/* 선택된 이미지 크게 */}
+          {selectedIdx !== null && (
+            <div className="rounded-xl overflow-hidden border border-white/10">
+              <div className="aspect-video relative">
+                <img src={images[selectedIdx].url} alt="thumbnail" className="w-full h-full object-cover" />
+                <div className="absolute top-1.5 right-1.5 flex gap-1">
+                  <button
+                    onClick={() => handleDownload(images[selectedIdx].url, selectedIdx)}
+                    className="flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                  >
+                    <Download size={10} />저장
+                  </button>
+                  {!images[selectedIdx].url.startsWith('data:') && (
+                    <a href={images[selectedIdx].url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                    >
+                      <ExternalLink size={10} />원본
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 섬네일 그리드 */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {images.map((img, idx) => (
+              <div
+                key={idx}
+                onClick={() => setSelectedIdx(idx)}
+                className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                  selectedIdx === idx ? 'border-[#22c55e]/60' : 'border-white/8 hover:border-white/25'
+                }`}
+              >
+                <div className="aspect-video">
+                  <img src={img.url} alt={`thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 메인 페이지 ─────────────────────────────────────────────────────────────
 
 export default function ScriptPage() {
   return (
@@ -134,7 +251,6 @@ function ScriptPageInner() {
   const [targetAudience, setTargetAudience] = useState('');
   const [videoLength, setVideoLength] = useState('');
 
-  // Read from URL params (from trend page) or sessionStorage (from prompt page)
   useEffect(() => {
     const urlTopic = searchParams.get('topic');
     const urlCategory = searchParams.get('category');
@@ -145,7 +261,7 @@ function ScriptPageInner() {
         const defaultTone = CATEGORY_DEFAULT_TONES[urlCategory];
         if (defaultTone) setTone(defaultTone);
       }
-      return; // URL params take priority
+      return;
     }
     const savedTopic = sessionStorage.getItem('clipflow_script_topic');
     if (savedTopic) { sessionStorage.removeItem('clipflow_script_topic'); setTopic(savedTopic); }
@@ -172,7 +288,6 @@ function ScriptPageInner() {
     setScript('');
     setError('');
     setSaveWarning('');
-
     try {
       const res = await fetch('/api/generate-script', {
         method: 'POST',
@@ -181,21 +296,14 @@ function ScriptPageInner() {
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.needsKey) {
-          setError(`__KEY__${data.error}`);
-        } else {
-          throw new Error(data.error || '대본 생성 실패');
-        }
+        if (data.needsKey) { setError(`__KEY__${data.error}`); }
+        else { throw new Error(data.error || '대본 생성 실패'); }
       }
       setScript(data.script);
       setStatus('done');
       if (data.saveError) {
         setSaveWarning(`대본 저장 실패: ${data.saveError}`);
-        console.warn('[ScriptPage] 저장 실패:', data.saveError);
-      } else {
-        console.log('[ScriptPage] 대본 생성 및 저장 완료:', data.scriptId);
       }
-      // 사이드바 업데이트 알림
       window.dispatchEvent(new Event('clipflow_script_updated'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '대본 생성에 실패했습니다.');
@@ -214,12 +322,6 @@ function ScriptPageInner() {
     window.location.href = '/dashboard/video';
   }
 
-  function handleMakeThumbnail() {
-    sessionStorage.setItem('clipflow_thumbnail_script', script);
-    sessionStorage.setItem('clipflow_thumbnail_topic', topic);
-    window.location.href = '/dashboard/thumbnail';
-  }
-
   function handleMultiChannel() {
     sessionStorage.setItem('clipflow_reformat_script', script);
     sessionStorage.setItem('clipflow_reformat_topic', topic);
@@ -231,6 +333,7 @@ function ScriptPageInner() {
 
   return (
     <div className="flex gap-0 -m-6 min-h-full">
+      {/* ─── 좌측: 입력 / 대본 ─── */}
       <div className="flex-1 min-w-0 p-6 border-r border-white/8">
         {(status === 'idle' || status === 'loading' || status === 'error') && (
           <>
@@ -239,13 +342,11 @@ function ScriptPageInner() {
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                 <span className="text-green-500 text-sm font-semibold">대본 만들기</span>
               </div>
-
               <div
                 className={`relative flex flex-col border transition-colors duration-200 bg-[#161616] rounded-xl ${topicFocused ? 'border-green-500/50' : 'border-white/8'}`}
                 onMouseEnter={() => setTopicFocused(true)}
                 onMouseLeave={() => setTopicFocused(false)}
               >
-                {/* 상단: SCRIPT INPUT + 글자수 */}
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
                   <span className="text-white/35 text-xs font-medium uppercase tracking-wide">Script Input</span>
                   <span className="text-white/25 text-xs tabular-nums">{topic.length}자</span>
@@ -257,8 +358,6 @@ function ScriptPageInner() {
                   className="w-full h-40 bg-transparent text-white border-0 focus:outline-none resize-none text-[13px] leading-relaxed placeholder:text-white/20 px-4 pt-3 pb-2"
                   disabled={status === 'loading'}
                 />
-
-                {/* 하단: 힌트 + 버튼 */}
                 <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
                   <span className="text-white/25 text-xs">주제 · 키워드 · 문장 모두 가능</span>
                   <button
@@ -267,16 +366,12 @@ function ScriptPageInner() {
                     className="inline-flex items-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/8 disabled:cursor-not-allowed text-white disabled:text-white/25 font-semibold text-sm rounded-lg transition-colors shadow-[0_0_16px_rgba(34,197,94,0.35)] disabled:shadow-none"
                   >
                     {status === 'loading' ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        생성 중...
-                      </>
+                      <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />생성 중...</>
                     ) : '대본 생성 →'}
                   </button>
                 </div>
               </div>
             </div>
-
             {error && (
               <div className="border-l-2 border-red-500 pl-4 mb-4">
                 <p className="text-red-400 text-xs font-mono">{error.replace('__KEY__', '')}</p>
@@ -300,61 +395,35 @@ function ScriptPageInner() {
             )}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">완성된 대본</span>
-              <button
-                onClick={() => { setStatus('idle'); setScript(''); }}
-                className="text-white/40 hover:text-white/70 text-xs font-mono transition-colors"
-              >← 다시 만들기</button>
+              <button onClick={() => { setStatus('idle'); setScript(''); }} className="text-white/40 hover:text-white/70 text-xs font-mono transition-colors">← 다시 만들기</button>
             </div>
-
             <div className="relative group">
               <textarea
                 value={script}
                 onChange={e => setScript(e.target.value)}
                 className="w-full h-[500px] bg-transparent text-white/80 text-[13px] font-mono leading-relaxed border-0 focus:outline-none resize-none pb-12"
               />
-              <div className="absolute bottom-4 right-4 flex gap-2">
+              <div className="absolute bottom-4 right-4">
                 <button
                   onClick={handleCopy}
                   className={`px-3 py-1.5 text-[12.5px] font-mono border transition-colors ${
-                    copied 
-                      ? 'border-green-400 text-green-400' 
-                      : 'border-white/20 text-white/55 hover:border-white/40 hover:text-white/80'
+                    copied ? 'border-green-400 text-green-400' : 'border-white/20 text-white/55 hover:border-white/40 hover:text-white/80'
                   }`}
                 >
                   {copied ? 'COPIED!' : 'COPY'}
                 </button>
               </div>
             </div>
-
             <div className="flex items-center gap-8 mt-12 pb-10">
-              <button
-                onClick={handleUseScript}
-                className="group flex items-center gap-3 text-green-500 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-green-400"
-              >
+              <button onClick={handleUseScript} className="group flex items-center gap-3 text-green-500 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-green-400">
                 영상만들기
                 <span className="w-8 h-[1px] bg-green-500/30 group-hover:w-12 group-hover:bg-green-500 transition-all duration-300" />
               </button>
-
-              <button
-                onClick={handleMakeThumbnail}
-                className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70"
-              >
-                썸네일 생성
-                <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
-              </button>
-
-              <button
-                onClick={handleMultiChannel}
-                className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70"
-              >
+              <button onClick={handleMultiChannel} className="group flex items-center gap-3 text-white/40 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-white/70">
                 멀티채널 배포
                 <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
               </button>
-
-              <button
-                onClick={() => { setStatus('idle'); setScript(''); }}
-                className="text-white/20 hover:text-white/50 text-[11px] font-mono tracking-widest uppercase transition-colors"
-              >
+              <button onClick={() => { setStatus('idle'); setScript(''); }} className="text-white/20 hover:text-white/50 text-[11px] font-mono tracking-widest uppercase transition-colors">
                 새 대본 작성하기
               </button>
             </div>
@@ -362,132 +431,130 @@ function ScriptPageInner() {
         )}
       </div>
 
+      {/* ─── 우측 사이드바 ─── */}
       <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
         <div className="flex-1 px-5 py-5 space-y-6">
 
-          {/* 카테고리 뱃지 */}
-          {category && (
-            <div className="flex items-center gap-2">
-              <span className="text-white/30 text-xs font-medium">카테고리</span>
-              <span className="text-xs font-medium text-white/60 bg-white/8 border border-white/10 px-2.5 py-1 rounded-full">
-                {CATEGORY_LABELS[category] ?? category}
-              </span>
-            </div>
-          )}
+          {/* 대본 완성 → 썸네일 패널로 전환 */}
+          {status === 'done' ? (
+            <>
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
+                  <span className="text-[#22c55e] text-[11px] font-bold uppercase tracking-widest">썸네일 생성</span>
+                </div>
+                <p className="text-[11px] font-mono text-white/30 mb-4 leading-relaxed">
+                  대본 전체를 AI가 분석해 분위기·핵심 비주얼을 추출하고 썸네일을 자동 생성합니다
+                </p>
+                <ThumbnailPanel script={script} topic={topic} />
+              </div>
 
-          {/* 톤 / 분위기 */}
-          <div>
-            <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-2.5">톤 / 분위기</p>
-            {(!category || category === 'general') ? (
-              <div className="flex flex-col gap-1.5">
-                {TONES.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTone(t.id)}
-                    disabled={status === 'loading'}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${
-                      tone === t.id
-                        ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
-                        : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/80 hover:bg-white/4'
-                    }`}
-                  >
-                    <span className="font-mono text-[13px]">{t.label}</span>
-                    <span className={`font-mono text-[12px] ${tone === t.id ? 'text-[#22c55e]/60' : 'text-white/20'}`}>{t.sub}</span>
+              <div className="border-t border-white/5 pt-4">
+                <p className="text-white/20 text-[10px] font-mono uppercase tracking-widest mb-3">다음 단계</p>
+                <div className="space-y-2">
+                  <button onClick={handleUseScript} className="w-full text-left px-3 py-2 rounded-lg border border-white/8 hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 text-white/50 hover:text-white/80 text-[12px] font-mono transition-all">
+                    → 영상 만들기
                   </button>
-                ))}
+                  <button onClick={handleMultiChannel} className="w-full text-left px-3 py-2 rounded-lg border border-white/8 hover:border-white/20 text-white/50 hover:text-white/80 text-[12px] font-mono transition-all">
+                    → 멀티채널 배포
+                  </button>
+                </div>
               </div>
-            ) : (
-              <p className="text-white/30 text-sm leading-relaxed">
-                이 카테고리는 전용 프롬프트의 내장 톤으로 자동 적용됩니다.
-              </p>
-            )}
-          </div>
+            </>
+          ) : (
+            <>
+              {/* 입력 중 → 설정 패널 */}
+              {category && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/30 text-xs font-medium">카테고리</span>
+                  <span className="text-xs font-medium text-white/60 bg-white/8 border border-white/10 px-2.5 py-1 rounded-full">
+                    {CATEGORY_LABELS[category] ?? category}
+                  </span>
+                </div>
+              )}
 
-          {/* 추가 옵션 */}
-          <div>
-            <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-2.5">추가 옵션</p>
-            <div className="space-y-3">
               <div>
-                <label className="block text-white/40 text-xs font-medium mb-1.5">영상 목표 길이</label>
-                <select
-                  value={videoLength}
-                  onChange={e => setVideoLength(e.target.value)}
-                  disabled={status === 'loading'}
-                  className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg cursor-pointer [&>option]:bg-[#1a1a1a]"
-                >
-                  <option value="">선택 안 함</option>
-                  <option value="5분 내외 (3,000자 이상)">5분 내외</option>
-                  <option value="10분 내외 (5,000자 이상)">10분 내외</option>
-                  <option value="15분 내외 (7,000자 이상)">15분 내외</option>
-                  <option value="20분 이상 (9,000자 이상)">20분 이상</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-white/40 text-xs font-medium mb-1.5">핵심 키워드</label>
-                <input
-                  value={keywords}
-                  onChange={e => setKeywords(e.target.value)}
-                  placeholder="예: 성능, 배터리, 카메라"
-                  className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg placeholder:text-white/25"
-                  disabled={status === 'loading'}
-                />
-              </div>
-              <div>
-                <label className="block text-white/40 text-xs font-medium mb-1.5">타겟 시청자</label>
-                <input
-                  value={targetAudience}
-                  onChange={e => setTargetAudience(e.target.value)}
-                  placeholder="예: 20~30대 직장인"
-                  className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg placeholder:text-white/25"
-                  disabled={status === 'loading'}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* AI 모델 */}
-          <PanelAccordion
-            label="AI 모델"
-            value={selectedLlm?.name ?? ''}
-            open={modelOpen}
-            onToggle={() => setModelOpen(prev => !prev)}
-          >
-            <div className="space-y-3">
-              {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
-                <div key={provider}>
-                  <p className="text-white/25 text-[11px] font-semibold uppercase tracking-wide px-1 mb-1.5">{provider}</p>
-                  <div className="space-y-1">
-                    {SCRIPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
-                      <OptionItem
-                        key={m.id}
-                        active={llmModelId === m.id}
-                        onClick={() => { setLlmModelId(m.id); setModelOpen(false); }}
-                        sub={m.price}
+                <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-2.5">톤 / 분위기</p>
+                {(!category || category === 'general') ? (
+                  <div className="flex flex-col gap-1.5">
+                    {TONES.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTone(t.id)}
+                        disabled={status === 'loading'}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-colors ${
+                          tone === t.id
+                            ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
+                            : 'border-white/8 text-white/50 hover:border-white/20 hover:text-white/80 hover:bg-white/4'
+                        }`}
                       >
-                        {m.name}
-                      </OptionItem>
+                        <span className="font-mono text-[13px]">{t.label}</span>
+                        <span className={`font-mono text-[12px] ${tone === t.id ? 'text-[#22c55e]/60' : 'text-white/20'}`}>{t.sub}</span>
+                      </button>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-white/30 text-sm leading-relaxed">이 카테고리는 전용 프롬프트의 내장 톤으로 자동 적용됩니다.</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-2.5">추가 옵션</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-white/40 text-xs font-medium mb-1.5">영상 목표 길이</label>
+                    <select value={videoLength} onChange={e => setVideoLength(e.target.value)} disabled={status === 'loading'}
+                      className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg cursor-pointer [&>option]:bg-[#1a1a1a]">
+                      <option value="">선택 안 함</option>
+                      <option value="5분 내외 (3,000자 이상)">5분 내외</option>
+                      <option value="10분 내외 (5,000자 이상)">10분 내외</option>
+                      <option value="15분 내외 (7,000자 이상)">15분 내외</option>
+                      <option value="20분 이상 (9,000자 이상)">20분 이상</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-white/40 text-xs font-medium mb-1.5">핵심 키워드</label>
+                    <input value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="예: 성능, 배터리, 카메라"
+                      className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg placeholder:text-white/25" disabled={status === 'loading'} />
+                  </div>
+                  <div>
+                    <label className="block text-white/40 text-xs font-medium mb-1.5">타겟 시청자</label>
+                    <input value={targetAudience} onChange={e => setTargetAudience(e.target.value)} placeholder="예: 20~30대 직장인"
+                      className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-lg placeholder:text-white/25" disabled={status === 'loading'} />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </PanelAccordion>
+              </div>
 
-          {/* 설정 요약 */}
-          <div className="pt-4 border-t border-white/5 space-y-2">
-            <p className="text-white/30 text-xs font-semibold uppercase tracking-wide mb-3">대본 설정 요약</p>
-            <div className="flex justify-between text-[13px]">
-              <span className="text-white/35">톤</span>
-              <span className="text-white/65 font-mono">
-                {(!category || category === 'general') ? selectedTone?.label : '카테고리 내장'}
-              </span>
-            </div>
-            <div className="flex justify-between text-[13px]">
-              <span className="text-white/35">AI 모델</span>
-              <span className="text-white/65 font-mono">{selectedLlm?.name}</span>
-            </div>
-          </div>
+              <PanelAccordion label="AI 모델" value={selectedLlm?.name ?? ''} open={modelOpen} onToggle={() => setModelOpen(prev => !prev)}>
+                <div className="space-y-3">
+                  {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
+                    <div key={provider}>
+                      <p className="text-white/25 text-[11px] font-semibold uppercase tracking-wide px-1 mb-1.5">{provider}</p>
+                      <div className="space-y-1">
+                        {SCRIPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
+                          <OptionItem key={m.id} active={llmModelId === m.id} onClick={() => { setLlmModelId(m.id); setModelOpen(false); }} sub={m.price}>
+                            {m.name}
+                          </OptionItem>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </PanelAccordion>
 
+              <div className="pt-4 border-t border-white/5 space-y-2">
+                <p className="text-white/30 text-xs font-semibold uppercase tracking-wide mb-3">대본 설정 요약</p>
+                <div className="flex justify-between text-[13px]">
+                  <span className="text-white/35">톤</span>
+                  <span className="text-white/65 font-mono">{(!category || category === 'general') ? selectedTone?.label : '카테고리 내장'}</span>
+                </div>
+                <div className="flex justify-between text-[13px]">
+                  <span className="text-white/35">AI 모델</span>
+                  <span className="text-white/65 font-mono">{selectedLlm?.name}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </aside>
     </div>
