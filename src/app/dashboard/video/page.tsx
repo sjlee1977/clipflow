@@ -27,7 +27,8 @@ const VIDEO_MODELS = [
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 import { GOOGLE_VOICES } from '@/lib/google';
 import { ELEVENLABS_VOICES } from '@/lib/elevenlabs';
-import { supabase } from '@/lib/supabase';
+import { createClient as createBrowserClient } from '@/lib/supabase-browser';
+const supabase = createBrowserClient();
 import { KOREAN_FONTS, DEFAULT_FONT_ID } from '@/lib/fonts';
 import { TEMPLATES, DEFAULT_TEMPLATE_ID, TemplateId } from '@/lib/templates';
 
@@ -240,10 +241,10 @@ function OptionItem({ active, onClick, children, sub }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-colors ${
+      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border transition-colors ${
         active
           ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
-          : 'border-transparent text-white/55 hover:text-white hover:bg-white/5'
+          : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'
       }`}
     >
       <span className="font-medium">{children}</span>
@@ -304,6 +305,14 @@ export default function DashboardPage() {
   const [carouselStatus, setCarouselStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [showCarousel, setShowCarousel] = useState(false);
 
+  // [모델 환경설정 복구] — localStorage는 클라이언트 마운트 후에만 읽을 수 있음 (SSR 우회)
+  useEffect(() => {
+    const savedImageModel = localStorage.getItem('clipflow_imageModelId');
+    if (savedImageModel) setImageModelId(savedImageModel);
+    const savedLlmModel = localStorage.getItem('clipflow_llmModelId');
+    if (savedLlmModel) setLlmModelId(savedLlmModel);
+  }, []);
+
   // [장면 보존 및 복구]
   useEffect(() => {
     const savedScript = sessionStorage.getItem('clipflow_script');
@@ -331,7 +340,7 @@ export default function DashboardPage() {
             : data.scenes;
           setScenes(restoredScenes);
           if (data.format) setFormat(data.format);
-          if (data.imageModelId) setImageModelId(data.imageModelId);
+          // imageModelId/llmModelId는 localStorage 환경설정 우선 — session 복원 시 덮어쓰지 않음
           if (data.imageStyle) setImageStyle(data.imageStyle);
           if (data.voiceId) setVoiceId(data.voiceId);
           if (data.ttsProvider) setTtsProvider(data.ttsProvider);
@@ -377,7 +386,7 @@ export default function DashboardPage() {
             : data.scenes;
           setScenes(restoredScenes);
           if (data.format) setFormat(data.format);
-          if (data.imageModelId) setImageModelId(data.imageModelId);
+          // imageModelId/llmModelId는 localStorage 환경설정 우선 — session 복원 시 덮어쓰지 않음
           if (data.imageStyle) setImageStyle(data.imageStyle);
           if (data.voiceId) setVoiceId(data.voiceId);
           if (data.ttsProvider) setTtsProvider(data.ttsProvider);
@@ -913,19 +922,49 @@ export default function DashboardPage() {
             const seq = String((count ?? 0) + 1).padStart(3, '0');
             const fileName = `clipflow${yy}${mmdd}${seq}`;
 
-            await supabase.from('videos').insert({
-              title: script.slice(0, 50) || '제목 없음',
-              video_url: sData.outputFile,
-              format,
-              scene_count: scenes.length,
-              voice_id: voiceId,
-              image_style: imageStyle,
-              image_model: imageModelId,
-              template_id: templateId,
-              tts_provider: ttsProvider,
-              file_name: fileName,
-              scenes: scenes.map(s => ({ text: s.text, displayText: s.displayText, imageUrl: s.imageUrl, imagePrompt: s.imagePrompt, motionPrompt: s.motionPrompt, shouldAnimate: s.shouldAnimate, videoUrl: s.videoUrl, textAnimationStyle: s.textAnimationStyle, textPosition: s.textPosition })),
+            // PPT 모드: 첫 슬라이드 제목 추출 / 일반 모드: 스크립트 앞부분
+            const videoTitle = pptMode
+              ? (scenes[0]?.slideData?.title?.slice(0, 50) || scenes[0]?.text?.slice(0, 50) || 'PPT 영상')
+              : (script.slice(0, 50) || '제목 없음');
+
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+            const saveRes = await fetch('/api/save-video', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: currentUser?.id ?? null,
+                title: videoTitle,
+                video_url: sData.outputFile,
+                format,
+                scene_count: scenes.length,
+                voice_id: voiceId,
+                image_style: pptMode ? 'ppt' : imageStyle,
+                image_model: imageModelId,
+                template_id: templateId,
+                tts_provider: ttsProvider,
+                file_name: fileName,
+                scenes: scenes.map(s => ({
+                  text: s.text,
+                  displayText: s.displayText,
+                  imageUrl: s.imageUrl || '',
+                  imagePrompt: s.imagePrompt,
+                  motionPrompt: s.motionPrompt,
+                  shouldAnimate: s.shouldAnimate,
+                  videoUrl: s.videoUrl,
+                  textAnimationStyle: s.textAnimationStyle,
+                  textPosition: s.textPosition,
+                  slideData: s.slideData,
+                  pptTheme: s.pptTheme,
+                })),
+              }),
             });
+            if (!saveRes.ok) {
+              const saveBody = await saveRes.json().catch(() => ({}));
+              const saveErr = saveBody?.error ?? `HTTP ${saveRes.status}`;
+              console.error('[save-video]', saveErr);
+              setError(`영상 저장 실패: ${saveErr}`);
+            }
             return;
           }
 
@@ -1160,14 +1199,14 @@ export default function DashboardPage() {
                     onClick={() => handlePreview(true)}
                     disabled={!script.trim() || isProcessing}
                     title="이미지 생성 없이 편집 화면으로 이동 후 직접 이미지 업로드"
-                    className="flex items-center gap-1.5 bg-white/8 hover:bg-white/14 disabled:bg-white/3 disabled:cursor-not-allowed text-white/60 disabled:text-white/20 font-medium text-[13px] rounded-lg px-3 py-1.5 border border-white/15 hover:border-white/30 transition-colors"
+                    className="flex items-center gap-1.5 bg-white/8 hover:bg-white/14 disabled:bg-white/3 disabled:cursor-not-allowed text-white/60 disabled:text-white/20 font-bold text-[13px] rounded-xl px-3 py-1.5 border border-white/15 hover:border-white/30 transition-colors"
                   >
                     ↑ 직접 편집
                   </button>
                   <button
                     onClick={() => handlePreview(false)}
                     disabled={!script.trim() || isProcessing}
-                    className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-white disabled:text-white/20 font-semibold text-[13px] rounded-lg px-4 py-1.5 transition-colors"
+                    className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[13px] rounded-xl px-4 py-1.5 transition-colors"
                   >
                     {status === 'previewing' ? (
                       <>
@@ -1270,7 +1309,7 @@ export default function DashboardPage() {
                 {scenes.filter(s => s.shouldAnimate && !s.videoUrl && !s.isAnimating).length > 0 && (
                   <button
                     onClick={handleAutoAnimate}
-                    className="flex items-center gap-1.5 bg-[white]/10 border border-[white]/40 hover:border-[white] text-[white] text-[11px] font-mono px-2 py-0.5 rounded-full transition-colors"
+                    className="flex items-center gap-1.5 bg-[white]/10 border border-[white]/40 hover:border-[white] text-[white] text-[11px] font-bold px-2 py-0.5 rounded-full transition-colors"
                   >
                     ✦ AI 추천 {scenes.filter(s => s.shouldAnimate && !s.videoUrl && !s.isAnimating).length}개 일괄 생성
                   </button>
@@ -1287,7 +1326,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleGenerateCarousel}
                     disabled={carouselStatus === 'loading'}
-                    className="text-[#22c55e]/40 hover:text-[#22c55e]/80 text-xs font-mono transition-colors disabled:opacity-40"
+                    className="text-[#22c55e]/40 hover:text-[#22c55e]/80 text-xs font-bold transition-colors disabled:opacity-40"
                   >
                     {carouselStatus === 'loading' ? '⊞ 생성 중...' : '⊞ 캐러셀'}
                   </button>
@@ -1306,7 +1345,7 @@ export default function DashboardPage() {
                 {status === 'preview' && (
                   <button
                     onClick={handleRender}
-                    className="bg-green-500 hover:bg-green-400 text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
+                    className="bg-green-500 hover:bg-green-400 text-black font-bold text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-xl transition-colors"
                   >
                     영상 생성 →
                   </button>
@@ -1319,7 +1358,7 @@ export default function DashboardPage() {
               {scenes.map((scene, i) => (
                 <div
                   key={i}
-                  className={`group rounded-lg overflow-hidden transition-all duration-200 ${
+                  className={`group rounded-xl overflow-hidden transition-all duration-200 ${
                     scene.videoUrl
                       ? 'bg-[#0c1a1a] border border-[white]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
                       : scene.isAnimating
@@ -1495,7 +1534,7 @@ export default function DashboardPage() {
                     {/* 썸네일 — Lottie 모드면 업로드 영역으로 교체 */}
                     {imageStyle === 'lottie' ? (
                       <div
-                        className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md border cursor-pointer transition-colors ${
+                        className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-xl border cursor-pointer transition-colors ${
                           scene.lottieData
                             ? 'bg-[white]/10 border-[white]/50 hover:border-[white]'
                             : 'bg-black/40 border-dashed border-white/25 hover:border-[white]/60 hover:bg-[white]/5'
@@ -1523,7 +1562,7 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                     <div
-                      className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-md bg-black/40 border border-white/10 ${scene.imageUrl ? 'cursor-zoom-in hover:border-white/30' : ''}`}
+                      className={`relative w-[108px] h-[78px] shrink-0 overflow-hidden rounded-xl bg-black/40 border border-white/10 ${scene.imageUrl ? 'cursor-zoom-in hover:border-white/30' : ''}`}
                       onClick={() => scene.imageUrl && setLightboxUrl(scene.imageUrl)}
                     >
                       {scene.isLoading ? (
@@ -1558,7 +1597,7 @@ export default function DashboardPage() {
                       ) : (
                         // 이미지 없음 — 클릭하면 바로 업로드
                         <div
-                          className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer bg-black/60 border border-dashed border-white/20 hover:border-white/50 hover:bg-white/5 transition-colors rounded-md"
+                          className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer bg-black/60 border border-dashed border-white/20 hover:border-white/50 hover:bg-white/5 transition-colors rounded-xl"
                           onClick={() => replaceInputRefs.current[i]?.click()}
                           title="클릭하여 이미지 업로드"
                         >
@@ -1656,22 +1695,49 @@ export default function DashboardPage() {
             )}
 
             {status === 'rendering' && (
-              <div className="mt-8 border-l-2 border-green-500/40 pl-4 py-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="w-3.5 h-3.5 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                  <div>
-                    <p className="text-green-500/80 text-xs font-mono">영상 생성 중... {Math.round(renderProgress * 100)}%</p>
-                    <p className="text-[white]/60 text-[11px] tracking-widest uppercase font-mono mt-0.5">
-                      {renderProgress > 0 ? 'AWS Lambda 렌더링 진행 중' : '나레이션(TTS) 생성 및 렌더링 준비 중...'}
-                    </p>
-                  </div>
+              <div className="mt-8 px-1">
+                {/* % 숫자 + 상태 */}
+                <div className="flex items-end gap-2 mb-4">
+                  <span
+                    className="text-[42px] font-black tabular-nums leading-none"
+                    style={{ color: '#22c55e', textShadow: '0 0 28px rgba(34,197,94,0.45)', letterSpacing: '-0.04em' }}
+                  >
+                    {Math.round(renderProgress * 100)}
+                  </span>
+                  <span className="text-lg font-bold text-green-500/50 mb-1">%</span>
+                  <span className="text-[11px] font-mono text-white/25 mb-1.5 ml-1 tracking-wider">
+                    {renderProgress === 0
+                      ? '음성 생성 중'
+                      : renderProgress < 0.08
+                      ? '렌더링 시작'
+                      : renderProgress < 0.92
+                      ? '프레임 렌더링'
+                      : '마무리 중'}
+                  </span>
                 </div>
-                {/* 미니 프로그레스 바 */}
-                <div className="w-full h-0.5 bg-white/5 overflow-hidden rounded-full">
-                  <div 
-                    className="h-full bg-green-500 transition-all duration-500 ease-out" 
-                    style={{ width: `${renderProgress * 100}%` }}
+
+                {/* 프로그레스 바 */}
+                <div className="relative w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${renderProgress * 100}%`,
+                      background: 'linear-gradient(90deg, #15803d 0%, #22c55e 100%)',
+                      boxShadow: '0 0 12px rgba(34,197,94,0.7)',
+                    }}
                   />
+                  {/* 글로우 펄스 */}
+                  {renderProgress > 0.02 && renderProgress < 0.98 && (
+                    <div
+                      className="absolute inset-y-0 rounded-full animate-pulse"
+                      style={{
+                        left: `${Math.max(0, renderProgress * 100 - 6)}%`,
+                        width: '6%',
+                        background: 'rgba(34,197,94,0.5)',
+                        filter: 'blur(3px)',
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -1700,7 +1766,7 @@ export default function DashboardPage() {
                       <div
                         key={card.index}
                         style={{ backgroundColor: card.bgColor }}
-                        className="relative aspect-square rounded-lg p-3 flex flex-col justify-between border border-white/8 overflow-hidden"
+                        className="relative aspect-square rounded-xl p-3 flex flex-col justify-between border border-white/8 overflow-hidden"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-white/20 text-[10px] font-mono">{card.index + 1}</span>
@@ -1785,7 +1851,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleGenerateCarousel}
                 disabled={carouselStatus === 'loading'}
-                className="flex items-center gap-2 border border-[#22c55e]/40 hover:border-[#22c55e]/80 text-[#22c55e]/70 hover:text-[#22c55e] text-[13px] font-mono tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
+                className="flex items-center gap-2 border border-[#22c55e]/40 hover:border-[#22c55e]/80 text-[#22c55e]/70 hover:text-[#22c55e] text-[13px] font-bold tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
               >
                 {carouselStatus === 'loading' ? (
                   <><span className="w-2.5 h-2.5 border border-[#22c55e] border-t-transparent rounded-full animate-spin inline-block" /> 캐러셀 생성 중</>
@@ -1811,7 +1877,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {carouselStatus === 'done' && (
-                      <button onClick={handleDownloadCarousel} className="text-white/40 hover:text-white/70 text-xs flex items-center gap-1">
+                      <button onClick={handleDownloadCarousel} className="text-white/60 hover:text-white/70 text-xs flex items-center gap-1">
                         ↓ 다운로드
                       </button>
                     )}
@@ -1904,7 +1970,7 @@ export default function DashboardPage() {
                       key={s.id}
                       onClick={() => { setImageStyle(s.id); }}
                       disabled={isProcessing}
-                      className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                         imageStyle === s.id
                           ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
                           : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
@@ -1916,7 +1982,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => { setImageStyle('none'); }}
                     disabled={isProcessing}
-                    className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
+                    className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                       imageStyle === 'none'
                         ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
                         : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
@@ -1977,7 +2043,7 @@ export default function DashboardPage() {
                         { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
                       ] as const).map(t => (
                         <button key={t.id} onClick={() => setPptTheme(t.id)}
-                          className={`flex flex-col items-start px-3 py-2 border rounded-lg text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#22c55e]/60 bg-[#22c55e]/10' : 'border-white/8 hover:border-white/20'}`}>
+                          className={`flex flex-col items-start px-3 py-2 border rounded-xl text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#22c55e]/60 bg-[#22c55e]/10' : 'border-white/8 hover:border-white/20'}`}>
                           <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-white' : 'text-white/55'}`}>{t.label}</span>
                           <span className="text-[10px] text-white/30 mt-0.5">{t.desc}</span>
                         </button>
@@ -2063,7 +2129,7 @@ export default function DashboardPage() {
                   <p className="text-white/35 text-xs font-medium mb-1.5">메인 캐릭터</p>
                   <div
                     onClick={() => !isProcessing && characterInputRef.current?.click()}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-white/10 rounded-lg text-white/35 transition-colors ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-white/10 rounded-xl text-white/35 transition-colors ${
                       !isProcessing ? 'hover:border-white/25 hover:text-white/60 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                     }`}
                   >
@@ -2103,7 +2169,7 @@ export default function DashboardPage() {
                     {subCharacters.length < 5 && (
                       <div
                         onClick={() => !isProcessing && subCharacterInputRef.current?.click()}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-dashed border-white/10 rounded-lg text-white/25 transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs border border-dashed border-white/10 rounded-xl text-white/25 transition-colors ${
                           !isProcessing ? 'hover:border-white/25 hover:text-white/45 cursor-pointer' : 'opacity-30 cursor-not-allowed'
                         }`}
                       >
@@ -2119,7 +2185,7 @@ export default function DashboardPage() {
               <PanelAccordion label="장면 AI" value={LLM_MODELS.find(m => m.id === llmModelId)?.name ?? ''} closeOnSelect>
                 <div className="space-y-0.5">
                   {LLM_MODELS.map(m => (
-                    <OptionItem key={m.id} active={llmModelId === m.id} onClick={() => setLlmModelId(m.id)} sub={m.price}>
+                    <OptionItem key={m.id} active={llmModelId === m.id} onClick={() => { setLlmModelId(m.id); localStorage.setItem('clipflow_llmModelId', m.id); }} sub={m.price}>
                       {m.name}
                     </OptionItem>
                   ))}
@@ -2134,7 +2200,7 @@ export default function DashboardPage() {
                   <PanelAccordion label="이미지 AI" value={pptMode ? '' : (IMAGE_MODELS.find(m => m.id === imageModelId)?.name ?? '')} closeOnSelect>
                     <div className="space-y-0.5">
                       {IMAGE_MODELS.map(m => (
-                        <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => setImageModelId(m.id)} sub={m.price}>
+                        <OptionItem key={m.id} active={imageModelId === m.id} onClick={() => { setImageModelId(m.id); localStorage.setItem('clipflow_imageModelId', m.id); }} sub={m.price}>
                           {m.name}
                         </OptionItem>
                       ))}
@@ -2299,6 +2365,10 @@ export default function DashboardPage() {
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">비율</span>
                   <span className="text-white/40">{format === 'shorts' ? '9:16' : format === 'square' ? '1:1' : '16:9'}</span>
+                </div>
+                <div className="flex justify-between text-[13px] font-mono">
+                  <span className="text-white/20">장면 AI</span>
+                  <span className="text-white/40">{LLM_MODELS.find(m => m.id === llmModelId)?.name?.split(' ').slice(0, 2).join(' ')}</span>
                 </div>
                 <div className="flex justify-between text-[13px] font-mono">
                   <span className="text-white/20">이미지 AI</span>

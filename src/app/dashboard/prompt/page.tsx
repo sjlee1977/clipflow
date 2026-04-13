@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 // TEMPLATES 임포트 제거 (사이드바로 이동 예정)
 
 // ── Types & Constants ────────────────────────────────────────────────────────
@@ -73,8 +74,62 @@ function FieldLabel({
   );
 }
 
-const iCls = 'w-full border focus:outline-none text-[13px] rounded-lg px-3 py-2.5 resize-none transition-colors cf-input';
-const sCls = 'w-full border focus:outline-none text-[13px] rounded-lg px-3 py-2.5 transition-colors cursor-pointer cf-input';
+const iCls = 'w-full border focus:outline-none text-[13px] rounded-xl px-3 py-2.5 resize-none transition-colors cf-input';
+const sCls = 'w-full border focus:outline-none text-[13px] rounded-xl px-3 py-2.5 transition-colors cursor-pointer cf-input';
+
+// ── LLM Models ────────────────────────────────────────────────────────────────
+const PROMPT_LLM_MODELS = [
+  { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
+  { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
+  { id: 'qwen3.6-plus',              name: 'Qwen 3.6 Plus',       provider: 'Alibaba',   price: '신규·고지능' },
+  { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가·빠름' },
+];
+
+const CATEGORY_DEFAULT_TONES_MAP: Record<string, string> = {
+  economy: 'urgent_direct', horror: 'dramatic_tension', psychology: 'calm_analytical',
+  health: 'trust_clear', history: 'storytelling', general: 'friendly_casual',
+};
+
+// ── Sidebar Panel Components ──────────────────────────────────────────────────
+function SidebarPriceBadge({ price }: { price?: string }) {
+  if (!price) return null;
+  return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap text-white/30 bg-white/5">{price}</span>;
+}
+
+function SidebarAccordion({ label, value, open, onToggle, children }: {
+  label: string; value: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="border-b border-white/8">
+      <button onClick={onToggle} className="w-full flex items-center justify-between py-2.5 group">
+        <span className="text-white/40 text-[11px] tracking-widest uppercase">{label}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-[12px] font-mono truncate max-w-[130px] text-white/70">{value}</span>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"
+            className={`text-white/30 group-hover:text-white/60 transition-all duration-200 ${open ? 'rotate-180' : ''}`}>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      </button>
+      {open && <div className="pb-3">{children}</div>}
+    </div>
+  );
+}
+
+function SidebarOptionItem({ active, onClick, children, sub }: {
+  active: boolean; onClick: () => void; children: React.ReactNode; sub?: string;
+}) {
+  return (
+    <button onClick={onClick} className={`sidebar-btn w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-bold border-l-2 transition-colors ${
+      active ? 'border-green-500 text-green-500 bg-green-500/5' : 'border-transparent text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5'
+    }`}>
+      <span>{children}</span>
+      <SidebarPriceBadge price={sub} />
+    </button>
+  );
+}
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
@@ -92,9 +147,6 @@ export default function PromptPage() {
     health: { ...DEFAULT_CAT_DATA },
   });
 
-  const [result, setResult] = useState('');
-  const [pageStatus, setPageStatus] = useState<'idle' | 'done'>('idle');
-  const [copied, setCopied] = useState(false);
 
   // YouTube analysis state
   const [ytUrl, setYtUrl] = useState('');
@@ -110,6 +162,10 @@ export default function PromptPage() {
   const [scriptText, setScriptText] = useState('');
   const [scriptStatus, setScriptStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [scriptError, setScriptError] = useState('');
+
+  // Sidebar model selection state
+  const [ytAnalysisModelId, setYtAnalysisModelId] = useState('claude-sonnet-4-6');
+  const [ytModelOpen, setYtModelOpen] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -163,7 +219,7 @@ export default function PromptPage() {
 
   // ── YouTube Analyzer ──
   async function handleYoutubeAnalyze() {
-    if (!ytUrl.trim()) return;
+    if (!ytUrl.trim() || !ytAnalysisModelId) return;
     setYtStatus('loading'); setYtError('');
     try {
       // 일반 카테고리 탭에서 분석 시 → AI가 카테고리 자동 감지
@@ -171,7 +227,7 @@ export default function PromptPage() {
 
       const res = await fetch('/api/analyze-youtube', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: ytUrl.trim(), category: requestCategory }),
+        body: JSON.stringify({ url: ytUrl.trim(), category: requestCategory, modelId: ytAnalysisModelId }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || '분석 실패');
@@ -220,35 +276,28 @@ export default function PromptPage() {
 
   // ── Script Analyzer ──
   async function handleScriptAnalyze() {
-    if (!scriptText.trim()) return;
+    if (!scriptText.trim() || !ytAnalysisModelId) return;
     setScriptStatus('loading'); setScriptError('');
     try {
       const requestCategory = activeCategory === 'general' ? 'auto' : activeCategory;
-
       const res = await fetch('/api/analyze-script', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: scriptText.trim(), category: requestCategory }),
+        body: JSON.stringify({ script: scriptText.trim(), category: requestCategory, modelId: ytAnalysisModelId }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || '분석 실패');
-
       const targetCat: CategoryId = (requestCategory === 'auto' && d.detectedCategory)
-        ? (d.detectedCategory as CategoryId)
-        : activeCategory;
-
+        ? (d.detectedCategory as CategoryId) : activeCategory;
       if (targetCat !== activeCategory) setActiveCategory(targetCat);
-
       const applyFields = (cat: CategoryId, fields: Record<string, string>) => {
         setAllData(prev => ({ ...prev, [cat]: { ...prev[cat], ...fields } }));
       };
-
       const updates: Record<string, string> = {};
       if (d.topic) updates.topic = d.topic;
       if (d.angle) updates.angle = d.angle;
       if (d.hookStyle) updates.hookStyle = d.hookStyle;
       if (d.differentiation) updates.differentiation = d.differentiation;
       if (d.videoLength) updates.videoLength = d.videoLength;
-
       const catFields: Record<string, string[]> = {
         general:   ['genContent', 'genPoint1', 'genPoint2', 'genPoint3', 'genCaution', 'genReference'],
         economy:   ['econData', 'econBullish', 'econNeutral', 'econBearish', 'econRisk', 'econSector'],
@@ -263,7 +312,7 @@ export default function PromptPage() {
       applyFields(targetCat, updates);
       setScriptStatus('done');
     } catch (err: unknown) {
-      setScriptError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다');
+      setScriptError(err instanceof Error ? err.message : '분석 오류');
       setScriptStatus('error');
     }
   }
@@ -359,28 +408,9 @@ export default function PromptPage() {
   }
 
   function handleGenerate() {
-    setResult(buildPrompt());
-    setPageStatus('done');
-    setTimeout(() => document.getElementById('prompt-output')?.scrollIntoView({ behavior: 'smooth' }), 100);
-  }
-
-  function handleCopy() {
-    navigator.clipboard.writeText(result);
-    setCopied(true); setTimeout(() => setCopied(false), 1500);
-  }
-
-  function handleDownload() {
-    const now = new Date();
-    const d = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-    const filename = `${catInfo.label}_요청서_${d}.txt`;
-    const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function handleUseAsScript() {
-    sessionStorage.setItem('clipflow_script_topic', result);
+    if (!canGenerate) return;
+    const prompt = buildPrompt();
+    sessionStorage.setItem('clipflow_script_topic', prompt);
     sessionStorage.setItem('clipflow_script_category', activeCategory);
     router.push('/dashboard/script');
   }
@@ -475,7 +505,7 @@ export default function PromptPage() {
               {CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => { setActiveCategory(cat.id); setPageStatus('idle'); }}
+                  onClick={() => setActiveCategory(cat.id)}
                   className={`flex-1 flex items-center justify-center px-2 py-3 text-[13px] font-medium border-b-2 transition-colors ${
                     activeCategory === cat.id
                       ? `border-current ${cat.textCls}`
@@ -497,118 +527,10 @@ export default function PromptPage() {
                 </div>
               </div>
 
-              {/* ── YouTube 자동 분석 ── */}
-              <div className="border border-white/8 bg-white/[0.03] rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-red-500 shrink-0">
-                    <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
-                  </svg>
-                  <span className="text-white/90 text-[13px] font-medium">YouTube URL로 {catInfo.label} 전용 필드 자동 분석</span>
-                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-white/20 text-white/50">AI</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={ytUrl}
-                    onChange={e => { setYtUrl(e.target.value); setYtStatus('idle'); setYtError(''); }}
-                    onKeyDown={e => e.key === 'Enter' && handleYoutubeAnalyze()}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    disabled={ytStatus === 'loading'}
-                    className="flex-1 cf-input text-[13px] px-3 py-2 focus:outline-none transition-colors"
-                    style={{ borderColor: catInfo.inputBorder }}
-                    onFocus={e => e.currentTarget.style.borderColor = catInfo.inputFocusBorder}
-                    onBlur={e => e.currentTarget.style.borderColor = catInfo.inputBorder}
-                  />
-                  <button
-                    onClick={handleYoutubeAnalyze}
-                    disabled={!ytUrl.trim() || ytStatus === 'loading'}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[white] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] whitespace-nowrap"
-                  >
-                    {ytStatus === 'loading' ? <><span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />분석 중...</> : 'AI 분석 →'}
-                  </button>
-                </div>
-                {ytStatus === 'error' && <p className="mt-2 text-red-400 text-[12px]">{ytError}</p>}
-                {ytStatus === 'done' && (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      <span className="text-green-400 text-[12px]">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
-                    </div>
-                    {ytTitle && <p className="text-white/35 text-[11.5px] truncate">원본: {ytTitle}</p>}
-                    {ytTranscriptSource === 'description' && <p className="text-green-500/60 text-[11.5px]">자막 없음 — 영상 설명란으로 분석</p>}
-                    {ytTranscript && (
-                      <div className="border border-white/10 bg-black/30">
-                        <button
-                          onClick={() => setShowTranscript(v => !v)}
-                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors"
-                        >
-                          <span className="text-[11.5px]" style={{ color: '#8B9A3A' }}>{ytTranscriptSource === 'description' ? '영상 설명' : '원본 스크립트'} ({ytTranscript.length.toLocaleString()}자)</span>
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`text-white/30 transition-transform ${showTranscript ? 'rotate-180' : ''}`}>
-                            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        {showTranscript && (
-                          <div className="border-t border-white/5">
-                            <textarea value={ytTranscript} readOnly rows={6} className="w-full bg-transparent text-white/45 text-[12px] px-3 py-2 resize-none focus:outline-none leading-relaxed" />
-                            <div className="flex justify-end px-3 pb-2">
-                              <button
-                                onClick={() => { navigator.clipboard.writeText(ytTranscript); setTranscriptCopied(true); setTimeout(() => setTranscriptCopied(false), 1500); }}
-                                className={`px-3 py-1 text-[11px] border transition-colors ${transcriptCopied ? 'border-green-400 text-green-400' : 'border-white/20 text-white/40 hover:border-white/40 hover:text-white/70'}`}
-                              >
-                                {transcriptCopied ? 'COPIED!' : '스크립트 복사'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* ── 대본 직접 분석 ── */}
-              <div className="border border-white/10 bg-white/[0.02] p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[white] shrink-0">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                  <span className="text-white/90 text-[13px] font-medium">대본 붙여넣기로 {catInfo.label} 전용 필드 자동 분석</span>
-                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-white/20 text-white/50">AI</span>
-                </div>
-                <textarea
-                  value={scriptText}
-                  onChange={e => { setScriptText(e.target.value); setScriptStatus('idle'); setScriptError(''); }}
-                  rows={5}
-                  placeholder="기존 대본을 붙여넣으면 아래 필드를 자동으로 채워드립니다..."
-                  disabled={scriptStatus === 'loading'}
-                  className="w-full cf-input text-[13px] px-3 py-2 resize-none focus:outline-none transition-colors mb-2"
-                  style={{ borderColor: catInfo.inputBorder }}
-                  onFocus={e => e.currentTarget.style.borderColor = catInfo.inputFocusBorder}
-                  onBlur={e => e.currentTarget.style.borderColor = catInfo.inputBorder}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1">
-                    {scriptStatus === 'error' && <p className="text-red-400 text-[12px]">{scriptError}</p>}
-                    {scriptStatus === 'done' && (
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                        <span className="text-green-400 text-[12px]">분석 완료 — {catInfo.label} 전용 필드 자동 입력됨</span>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleScriptAnalyze}
-                    disabled={!scriptText.trim() || scriptStatus === 'loading'}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[white] hover:bg-[#14a8a5] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold transition-colors text-[12px] whitespace-nowrap"
-                  >
-                    {scriptStatus === 'loading' ? <><span className="w-2.5 h-2.5 border-2 border-black border-t-transparent rounded-full animate-spin" />분석 중...</> : 'AI 분석 →'}
-                  </button>
-                </div>
-              </div>
-
               {/* ── 공통 필드 ── */}
               <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
                 <div className="flex items-center justify-between">
-                  <p className="text-white/80 text-[14px] font-light tracking-[0.05em]">공통 필드</p>
+                  <p className={`text-[12px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>공통 필드</p>
                   <button
                     onClick={resetAll}
                     className="text-[13px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/70 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/5 transition-colors"
@@ -669,7 +591,7 @@ export default function PromptPage() {
 
               {/* ── 카테고리 전용 필드 ── */}
               <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
-                <p className={`text-[11px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
+                <p className={`text-[12px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
 
                 {/* ═══ 일반 ═══ */}
                 {activeCategory === 'general' && (
@@ -690,8 +612,8 @@ export default function PromptPage() {
                           { key: 'genPoint3', label: '포인트 3', placeholder: '세 번째 강조 내용\n예: 한 달 후 실제 변화' },
                         ].map(({ key, label, placeholder }) => (
                           <div key={key}>
-                            <div className="mb-2"><span className="text-[11px] font-semibold px-2 py-0.5 bg-sky-400/15 text-sky-400 border border-sky-400/30">{label}</span></div>
-                            <textarea value={get(key)} onChange={e => set(key, e.target.value)} rows={4} placeholder={placeholder} className={iCls + ' text-[12px]'} />
+                            <div className="mb-2"><span className="text-[12px] font-semibold px-2 py-0.5 bg-sky-400/15 text-sky-400 border border-sky-400/30">{label}</span></div>
+                            <textarea value={get(key)} onChange={e => set(key, e.target.value)} rows={4} placeholder={placeholder} className={iCls + ' text-[13px]'} />
                           </div>
                         ))}
                       </div>
@@ -875,157 +797,134 @@ export default function PromptPage() {
               </div>
 
               {/* ── 생성 버튼 ── */}
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-end pt-2">
                 <button
                   onClick={handleGenerate}
                   disabled={!canGenerate}
                   title={!canGenerate ? '필수 항목을 모두 입력해주세요 (빨간 점 표시 항목)' : ''}
-                  className={`inline-flex items-center gap-2 px-8 py-3 font-bold text-[13px] tracking-widest uppercase transition-colors ${
+                  className={`inline-flex items-center gap-2 px-6 py-2 font-bold text-[13px] tracking-widest uppercase rounded-xl transition-colors ${
                     canGenerate
                       ? 'bg-green-500 hover:bg-green-400 text-black'
                       : 'bg-white/10 text-white/20 cursor-not-allowed'
                   }`}
                 >
-                  스크립트 생성 →
+                  요청서 생성 →
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── 출력 영역 ── */}
-        {pageStatus === 'done' && (
-          <div id="prompt-output" className="mt-2">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${catInfo.dotCls}`} />
-                <span className={`text-[13px] font-semibold ${catInfo.textCls}`}>생성된 요청서</span>
-              </div>
-              <button
-                onClick={() => setPageStatus('idle')}
-                className="text-white/30 hover:text-white/60 text-[12px] transition-colors"
-              >
-                ← 다시 편집
-              </button>
-            </div>
-
-            <div className="relative">
-              <textarea
-                value={result}
-                onChange={e => setResult(e.target.value)}
-                className="w-full h-[560px] bg-white/[0.03] text-white/80 text-[13px] leading-relaxed border border-white/10 focus:border-white/25 focus:outline-none resize-none p-4"
-              />
-              <div className="absolute top-3 right-3 flex gap-2">
-                <button
-                  onClick={handleCopy}
-                  className={`px-3 py-1.5 text-[12px] border transition-colors ${copied ? 'border-green-400 text-green-400 bg-green-400/5' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60'}`}
-                >
-                  {copied ? '복사됨!' : '복사'}
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="px-3 py-1.5 text-[12px] border border-white/20 text-white/50 hover:border-white/40 hover:text-white/80 bg-black/60 transition-colors"
-                >
-                  저장 (.txt)
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                onClick={handleUseAsScript}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold transition-colors text-sm rounded-lg shadow-[0_0_16px_rgba(34,197,94,0.3)]"
-              >
-                이 요청서로 대본 만들기 →
-              </button>
-              <button
-                onClick={() => setPageStatus('idle')}
-                className="px-5 py-3 border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70 text-[13px] transition-colors"
-              >
-                새로 작성
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── 우측 가이드 패널 ── */}
+      {/* ── 우측 사이드바 ── */}
       <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
         <div className="flex-1 px-4 py-5 space-y-5">
 
-          {/* 카테고리별 필수 항목 안내 */}
-          <div className="border-t border-white/5 pt-4">
-            <p className={`text-[13px] tracking-widest uppercase mb-3 ${catInfo.textCls} opacity-70`}>{catInfo.label} 필수 항목</p>
-            <div className="space-y-1.5 text-[12px] text-white/45 leading-relaxed">
-              <div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>영상 주제 제목</span></div>
-              <div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>핵심 앵글 / 대중의 착각</span></div>
-              {activeCategory === 'general' && <div className="flex gap-1.5"><span className="text-sky-400/50 shrink-0">○</span><span className="text-white/30">추가 필수 항목 없음</span></div>}
-              {activeCategory === 'economy' && <div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>오늘 날짜 & 핵심 수치</span></div>}
-              {activeCategory === 'history' && <><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>시대 & 핵심 사건</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>현재와의 연결고리</span></div></>}
-              {activeCategory === 'psychology' && <><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>핵심 심리 현상 & 이름</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>관련 연구 & 실험</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>일상 적용 상황</span></div></>}
-              {activeCategory === 'horror' && <><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>공포의 소재 & 배경</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>핵심 반전 포인트</span></div></>}
-              {activeCategory === 'health' && <><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>건강 주제 & 핵심 현상</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>관련 연구 & 의학적 근거</span></div><div className="flex gap-1.5"><span className="text-red-400 shrink-0">●</span><span>대중의 잘못된 상식</span></div></>}
+          {/* YouTube 자동 분석 */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500 shrink-0">
+                <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
+              </svg>
+              <span className="text-white/60 text-[11px] font-bold uppercase tracking-widest">YouTube 자동 분석</span>
             </div>
-          </div>
-
-          {/* 카테고리별 팁 */}
-          <div className="border-t border-white/5 pt-4">
-            <p className="text-[white]/60 text-[13px] tracking-widest uppercase mb-3">작성 팁</p>
             <div className="space-y-2.5">
-              {(activeCategory === 'general' ? [
-                { tag: '주제', tip: '"요리"보다 "라면에 이것 하나 넣으면 식당 맛 나는 이유"처럼 구체적 제목이 클릭을 만듭니다' },
-                { tag: '앵글', tip: '대부분이 모르는 반전 포인트가 클릭률과 시청 완료율을 높이는 핵심입니다' },
-                { tag: 'YouTube', tip: '일반 탭에서 URL 분석 시 AI가 카테고리를 자동 감지해 해당 탭으로 이동합니다' },
-              ] : activeCategory === 'economy' ? [
-                { tag: '수치', tip: '날짜+지수+수급을 한 셀에 넣으면 AI가 실제 데이터로 대본을 씁니다' },
-                { tag: '앵글', tip: '"금리 인하 = 상승"처럼 대중이 당연히 여기는 것을 정면으로 뒤집으세요' },
-                { tag: '시나리오', tip: '3가지 시나리오가 있으면 AI가 구조적으로 대본을 나눠씁니다' },
-              ] : activeCategory === 'history' ? [
-                { tag: '연결', tip: '현재와의 연결이 약하면 단순 역사 나열이 됩니다. 지금 왜 중요한지 반드시 입력하세요' },
-                { tag: '수치', tip: '역사 영상은 구체적 숫자(사망자, 기간, 퍼센트)가 몰입감을 만듭니다' },
-                { tag: '패턴', tip: '\'역사는 반복된다\'는 전제를 넣으면 시청자가 미래를 읽는 느낌을 받습니다' },
-              ] : activeCategory === 'psychology' ? [
-                { tag: '실험', tip: '연구자명+연도+수치가 있어야 신뢰감이 생깁니다. 없으면 AI가 지어냅니다' },
-                { tag: '일상', tip: '시청자가 "나 이거 해봤어"라고 느낄수록 시청 완료율이 높아집니다' },
-                { tag: '행동', tip: '마지막에 바로 쓸 수 있는 행동 1가지를 넣으면 공유율이 올라갑니다' },
-              ] : activeCategory === 'horror' ? [
-                { tag: '반전', tip: '반전이 없으면 공포 영상이 아닙니다. 시청자가 예상 못 한 한 줄을 반드시 준비하세요' },
-                { tag: '긴장', tip: '도입 → 중간 고조 → 클라이맥스 구간을 직접 지정해주면 대본 구조가 살아납니다' },
-                { tag: '팩트', tip: '숫자(날짜, 건수, 거리)는 공포감을 현실로 만드는 핵심 도구입니다' },
-              ] : [
-                { tag: '근거', tip: '연구기관+수치가 없으면 건강 영상이 아니라 의견글이 됩니다' },
-                { tag: '상식', tip: '"XX하면 건강해진다"는 통념을 정면으로 뒤집는 앵글이 클릭률을 만듭니다' },
-                { tag: '지침', tip: '오늘 당장 실천 가능한 행동 1가지가 영상의 가치를 결정합니다' },
-              ]).map(({ tag, tip }) => (
-                <div key={tag} className="border border-white/5 bg-white/[0.02] px-3 py-2.5">
-                  <span className={`text-[11px] font-semibold tracking-widest ${catInfo.textCls} opacity-80`}>{tag}</span>
-                  <p className="text-[12px] text-white/40 mt-1 leading-relaxed">{tip}</p>
+              <div className="space-y-1.5">
+                <input
+                  value={ytUrl}
+                  onChange={e => { setYtUrl(e.target.value); setYtStatus('idle'); setYtError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && ytAnalysisModelId && handleYoutubeAnalyze()}
+                  placeholder="https://youtube.com/watch?v=..."
+                  disabled={ytStatus === 'loading'}
+                  className="w-full cf-input text-[12px] px-3 py-2 focus:outline-none"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleYoutubeAnalyze}
+                    disabled={!ytUrl.trim() || !ytAnalysisModelId || ytStatus === 'loading'}
+                    className="sidebar-btn flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white text-[11px] font-bold transition-all"
+                  >
+                    {ytStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
+                  </button>
                 </div>
-              ))}
+              </div>
+
+              {ytStatus === 'error' && <p className="text-red-400/70 text-[11px] font-mono">{ytError}</p>}
+              {ytStatus === 'done' && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                    <span className="text-green-400 text-[11px]">분석 완료 — 필드 자동 입력됨</span>
+                  </div>
+                  {ytTitle && <p className="text-white/30 text-[10px] font-mono truncate">{ytTitle}</p>}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* 사용 방법 */}
-          <div className="border-t border-white/5 pt-4">
-            <p className="text-[white]/60 text-[13px] tracking-widest uppercase mb-3">사용 방법</p>
-            <div className="space-y-2 text-[12px] text-white/45 leading-relaxed">
-              {[
-                ['01', '카테고리 탭 선택'],
-                ['02', '필수 항목(●) 입력'],
-                ['03', '요청서 생성 → 클릭'],
-                ['04', '복사 후 AI에 붙여넣기'],
-              ].map(([step, text]) => (
-                <div key={step} className="flex gap-2">
-                  <span className={`shrink-0 ${catInfo.textCls} opacity-60`}>{step}</span>
-                  <span>{text}</span>
+          {/* 대본 붙여넣기 분석 */}
+          <div className="border-t border-white/8 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50 shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span className="text-white/60 text-[11px] font-bold uppercase tracking-widest">대본 붙여넣기 분석</span>
+            </div>
+            <div className="space-y-2.5">
+              <div className="space-y-1.5">
+                <textarea
+                  value={scriptText}
+                  onChange={e => { setScriptText(e.target.value); setScriptStatus('idle'); setScriptError(''); }}
+                  rows={8}
+                  placeholder="기존 대본을 붙여넣으면 필드를 자동으로 채워드립니다..."
+                  disabled={scriptStatus === 'loading'}
+                  className="w-full cf-input text-[12px] px-3 py-2 resize-none focus:outline-none"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleScriptAnalyze}
+                    disabled={!scriptText.trim() || !ytAnalysisModelId || scriptStatus === 'loading'}
+                    className="sidebar-btn flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white text-[11px] font-bold transition-all"
+                  >
+                    {scriptStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
+                  </button>
                 </div>
-              ))}
+              </div>
+              {scriptStatus === 'error' && <p className="text-red-400/70 text-[11px] font-mono">{scriptError}</p>}
+              {scriptStatus === 'done' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <span className="text-green-400 text-[11px]">분석 완료 — 필드 자동 입력됨</span>
+                </div>
+              )}
             </div>
-            <div className="mt-3 border border-white/8 bg-white/[0.02] px-3 py-2">
-              <p className="text-white/35 text-[11.5px] leading-relaxed">
-                입력값은 카테고리별로 자동 저장되어 페이지를 닫아도 유지됩니다
-              </p>
-            </div>
+          </div>
+
+          {/* 분석 AI 모델 */}
+          <div className="border-t border-white/8 pt-4">
+            <SidebarAccordion
+              label="분석 AI 모델"
+              value={PROMPT_LLM_MODELS.find(m => m.id === ytAnalysisModelId)?.name ?? ''}
+              open={ytModelOpen}
+              onToggle={() => setYtModelOpen(v => !v)}
+            >
+              <div className="space-y-3 pt-1">
+                {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
+                  <div key={provider}>
+                    <p className="text-white/20 text-[10px] font-semibold uppercase tracking-wide px-1 mb-1">{provider}</p>
+                    <div className="space-y-0.5">
+                      {PROMPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
+                        <SidebarOptionItem key={m.id} active={ytAnalysisModelId === m.id}
+                          onClick={() => { setYtAnalysisModelId(m.id); setYtModelOpen(false); }} sub={m.price}>
+                          {m.name}
+                        </SidebarOptionItem>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SidebarAccordion>
           </div>
 
         </div>

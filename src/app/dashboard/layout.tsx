@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, LayoutDashboard, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, type LucideIcon } from 'lucide-react';
 
 const DASHBOARD_ITEM = { href: '/dashboard', label: '대시보드', icon: LayoutDashboard };
 
@@ -44,6 +44,7 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/history', label: '내 영상', icon: Film },
       { href: '/dashboard/my-scripts', label: '내 대본', icon: ScrollText },
       { href: '/dashboard/carousel', label: '내 캐러셀', icon: LayoutTemplate },
+      { href: '/dashboard/my-thumbnails', label: '내 썸네일', icon: Images },
     ],
   },
   {
@@ -101,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       {/* 사이드바 */}
-      <aside className="w-[330px] shrink-0 flex flex-col" style={{ background: 'var(--sidebar)', borderRight: '1px solid var(--border)' }}>
+      <aside className="w-[240px] shrink-0 flex flex-col" style={{ background: 'var(--sidebar)', borderRight: '1px solid var(--border)' }}>
         {/* 로고 */}
         <div className="flex items-center gap-2 px-[26px] h-[52px]" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-3 h-3 bg-[#22c55e] shrink-0" />
@@ -120,12 +121,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               return (
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                  className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-colors text-sm font-medium ${
                     active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10' : 'hover:bg-[var(--hover-bg)]'
                   }`}
                   style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
                 >
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 ${
+                  <span className={`w-6 h-6 flex items-center justify-center rounded-xl shrink-0 ${
                     active ? 'bg-[#22c55e]/80 text-white' : ''
                   }`}><item.icon size={14} /></span>
                   <span>{item.label}</span>
@@ -146,7 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   return (
                     <div key={item.href} className="relative">
                       {'soon' in item && item.soon ? (
-                        <div className="flex items-center gap-2.5 px-3 py-2 cursor-not-allowed select-none rounded-lg" style={{ color: 'var(--text-faint)' }}>
+                        <div className="flex items-center gap-2.5 px-3 py-2 cursor-not-allowed select-none rounded-xl" style={{ color: 'var(--text-faint)' }}>
                           <span className="w-4 flex items-center justify-center"><item.icon size={14} /></span>
                           <span className="text-sm">{item.label}</span>
                           <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded" style={{ border: '1px solid var(--border-md)', color: 'var(--text-faint)' }}>SOON</span>
@@ -154,12 +155,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       ) : (
                         <Link
                           href={item.href}
-                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors text-sm ${
+                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors text-sm ${
                             active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10 font-medium' : 'hover:bg-[var(--hover-bg)]'
                           }`}
                           style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
                         >
-                          <span className={`w-6 h-6 flex items-center justify-center rounded-md shrink-0 ${
+                          <span className={`w-6 h-6 flex items-center justify-center rounded-xl shrink-0 ${
                             active ? 'bg-[#22c55e]/80 text-white' : ''
                           }`}><item.icon size={14} /></span>
                           <span>{item.label}</span>

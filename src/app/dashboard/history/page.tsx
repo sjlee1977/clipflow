@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
+const supabase = createClient();
 
 function VideoThumbnail({ src, className }: { src: string; className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -144,7 +145,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     supabase.from('videos').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { setVideos(data ?? []); setLoading(false); });
+      .then(({ data }: { data: unknown[] | null }) => { setVideos((data ?? []) as Video[]); setLoading(false); });
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -219,7 +220,7 @@ export default function HistoryPage() {
       {/* 영상 리스트 */}
       <div className="space-y-0.5">
         {videos.map((v, i) => (
-          <div key={v.id} className="group rounded-lg border border-white/5 hover:border-white/12 bg-white/[0.015] hover:bg-white/[0.035] transition-all duration-150 overflow-hidden">
+          <div key={v.id} className="group rounded-xl border border-white/5 hover:border-white/12 bg-white/[0.015] hover:bg-white/[0.035] transition-all duration-150 overflow-hidden">
             <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2.5">
 
               {/* 순위 */}
@@ -332,7 +333,7 @@ export default function HistoryPage() {
             {/* 펼침 영상 플레이어 */}
             {playing === v.id && (
               <div className="border-t border-white/6 bg-black/40 px-4 py-4">
-                <div className={`mx-auto relative bg-black rounded-lg overflow-hidden ${v.format === 'shorts' ? 'max-w-[280px]' : 'max-w-[640px]'}`}>
+                <div className={`mx-auto relative bg-black rounded-xl overflow-hidden ${v.format === 'shorts' ? 'max-w-[280px]' : 'max-w-[640px]'}`}>
                   <video
                     src={v.video_url}
                     controls
