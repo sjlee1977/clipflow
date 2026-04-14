@@ -150,19 +150,16 @@ export default function SubscriberPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2" style={{ color: 'var(--text)' }}>
-            <Users size={20} className="text-[#22c55e]" />
-            구독자 분석
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            구독자 기반 이상 감지 — 구독자 대비 조회수 급등 / 구독자 급성장 채널
+        <div className="flex items-center gap-3">
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <Users size={13} strokeWidth={1.8} />
+          </span>
+          <div>
+            <span className="text-sm font-semibold text-white">구독자 분석</span>
             {lastUpdated && (
-              <span className="ml-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
-                최종 갱신: {lastUpdated}
-              </span>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>
             )}
-          </p>
+          </div>
         </div>
       </div>
 
@@ -170,9 +167,9 @@ export default function SubscriberPage() {
       {collectStatus && (
         <div className="px-4 py-2.5 rounded-lg text-sm"
           style={{
-            background: collectStatus.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-            border: `1px solid ${collectStatus.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            color: collectStatus.ok ? '#22c55e' : '#ef4444',
+            background: collectStatus.ok ? 'rgba(56,189,248,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${collectStatus.ok ? 'rgba(56,189,248,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            color: collectStatus.ok ? '#4f8ef7' : '#ef4444',
           }}>
           {collectStatus.ok ? '✓ ' : '✗ '}{collectStatus.msg}
         </div>
@@ -207,7 +204,7 @@ export default function SubscriberPage() {
             <button key={val} onClick={() => setPeriod(val)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
               style={period === val
-                ? { background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', boxShadow: '0 0 10px rgba(34,197,94,0.35)' }
+                ? { background: 'linear-gradient(135deg, #4f8ef7, #16a34a)', color: '#fff', boxShadow: '0 0 10px rgba(56,189,248,0.35)' }
                 : { color: 'var(--text-faint)' }}>
               {label}
             </button>
@@ -225,7 +222,7 @@ export default function SubscriberPage() {
           <button key={i} onClick={() => setSubRangeIdx(i)}
             className="px-3 py-1.5 rounded-lg text-xs transition-colors"
             style={subRangeIdx === i
-              ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.6)', color: '#22c55e' }
+              ? { background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.6)', color: '#4f8ef7' }
               : { border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
             {r.label}
           </button>
@@ -251,7 +248,7 @@ export default function SubscriberPage() {
         <button onClick={() => setSelectedRegion('')}
           className="px-3 py-1.5 rounded-lg text-xs transition-colors"
           style={selectedRegion === ''
-            ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.6)', color: '#22c55e' }
+            ? { background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.6)', color: '#4f8ef7' }
             : { border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
           전체
         </button>
@@ -259,7 +256,7 @@ export default function SubscriberPage() {
           <button key={code} onClick={() => setSelectedRegion(code)}
             className="px-3 py-1.5 rounded-lg text-xs transition-colors"
             style={selectedRegion === code
-              ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.6)', color: '#22c55e' }
+              ? { background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.6)', color: '#4f8ef7' }
               : { border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
             {r.label}
           </button>
@@ -271,7 +268,7 @@ export default function SubscriberPage() {
         <button onClick={() => setSelectedCategory('')}
           className="px-3 py-1.5 rounded-lg text-xs transition-colors"
           style={selectedCategory === ''
-            ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.6)', color: '#22c55e' }
+            ? { background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.6)', color: '#4f8ef7' }
             : { border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
           전체
         </button>
@@ -279,7 +276,7 @@ export default function SubscriberPage() {
           <button key={key} onClick={() => setSelectedCategory(key)}
             className="px-3 py-1.5 rounded-lg text-xs transition-colors"
             style={selectedCategory === key
-              ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.6)', color: '#22c55e' }
+              ? { background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.6)', color: '#4f8ef7' }
               : { border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
             {cat.label}
           </button>
@@ -289,7 +286,7 @@ export default function SubscriberPage() {
             onClick={triggerCollect}
             disabled={collecting || loading}
             className="px-2.5 py-1.5 rounded-lg text-xs transition-colors ml-1"
-            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
+            style={{ border: '1px solid #4f8ef7', color: collecting ? 'var(--text-faint)' : '#4f8ef7', background: 'transparent' }}
           >
             {collecting ? '수집 중...' : '지금 수집'}
           </button>
@@ -321,7 +318,7 @@ export default function SubscriberPage() {
                 <button key={s.key} onClick={() => setSortKey(s.key)}
                   className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
                   style={sortKey === s.key
-                    ? { background: 'var(--sidebar)', color: '#22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
+                    ? { background: 'var(--sidebar)', color: '#4f8ef7', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
                     : { color: 'var(--text-faint)' }}>
                   {s.label}
                 </button>
@@ -358,7 +355,7 @@ export default function SubscriberPage() {
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>#{idx + 1}</span>
+                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#4f8ef7' : 'var(--text-faint)' }}>#{idx + 1}</span>
                   <div className="flex items-center gap-3 min-w-0">
                     {video.thumbnail ? (
                       <img src={video.thumbnail} alt={video.title} className="w-[72px] h-[40px] rounded-lg object-cover shrink-0" />
@@ -366,7 +363,7 @@ export default function SubscriberPage() {
                       <div className="w-[72px] h-[40px] rounded-lg shrink-0" style={{ background: 'var(--hover-bg)' }} />
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-medium truncate group-hover:text-[#22c55e] transition-colors" style={{ color: 'var(--text)' }}>{video.title}</p>
+                      <p className="text-xs font-medium truncate group-hover:text-[#4f8ef7] transition-colors" style={{ color: 'var(--text)' }}>{video.title}</p>
                       {video.category && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}>
                           {TREND_CATEGORIES[video.category]?.label ?? video.category}
@@ -384,9 +381,9 @@ export default function SubscriberPage() {
                   </div>
                   <div className="text-right">
                     {signalType === 'views_per_sub' ? (
-                      <p className="text-xs font-bold text-[#22c55e]">{(signal.views_per_sub * 100).toFixed(1)}%</p>
+                      <p className="text-xs font-bold text-[#4f8ef7]">{(signal.views_per_sub * 100).toFixed(1)}%</p>
                     ) : (
-                      <p className="text-xs font-bold text-[#22c55e]">+{(signal.subscriber_growth_rate * 100).toFixed(2)}%/h</p>
+                      <p className="text-xs font-bold text-[#4f8ef7]">+{(signal.subscriber_growth_rate * 100).toFixed(2)}%/h</p>
                     )}
                   </div>
                   <p className="text-xs text-right font-medium" style={{ color: 'var(--text)' }}>{formatNum(signal.current_views)}회</p>

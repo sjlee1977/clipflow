@@ -59,6 +59,61 @@ const DEFAULT_CAT_DATA = {};
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
+/**
+ * 참조 디자인 스타일 필드 카드
+ * - 왼쪽 컬러 액센트 보더
+ * - 상단: 라벨 + 필수/선택 배지 + 설명
+ * - 하단: 인풋이 들어가는 중첩 다크 박스
+ */
+function FieldCard({
+  required, optional, children, sub, accentColor = '#4f8ef7', inputContent,
+}: {
+  required?: boolean;
+  optional?: boolean;
+  children: React.ReactNode;
+  sub?: string;
+  accentColor?: string;
+  inputContent: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-xl overflow-hidden transition-all"
+      style={{
+        background: 'transparent',
+        border: '1px solid var(--border)',
+        borderLeft: `3px solid ${accentColor}`,
+      }}
+    >
+      {/* 헤더: 라벨 + 배지 */}
+      <div className="px-4 pt-3 pb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>{children}</span>
+          {required && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}>
+              필수
+            </span>
+          )}
+          {optional && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ background: 'rgba(79,142,247,0.10)', color: '#93c5fd', border: '1px solid rgba(79,142,247,0.20)' }}>
+              선택
+            </span>
+          )}
+        </div>
+        {sub && (
+          <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--text-faint)' }}>{sub}</p>
+        )}
+      </div>
+      {/* 인풋 영역 */}
+      <div className="px-3 pb-3">
+        {inputContent}
+      </div>
+    </div>
+  );
+}
+
+/** 레거시 호환용 (섹션 헤더 등에서 사용) */
 function FieldLabel({
   required, optional, children, sub,
 }: { required?: boolean; optional?: boolean; children: React.ReactNode; sub?: string }) {
@@ -74,8 +129,9 @@ function FieldLabel({
   );
 }
 
-const iCls = 'w-full border focus:outline-none text-[13px] rounded-xl px-3 py-2.5 resize-none transition-colors cf-input';
-const sCls = 'w-full border focus:outline-none text-[13px] rounded-xl px-3 py-2.5 transition-colors cursor-pointer cf-input';
+// 인풋 클래스: 검정 배경 + 파란 얇은 테두리 (모든 입력 필드 공통)
+const iCls = 'w-full bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg focus:outline-none text-[13px] px-3 py-2.5 resize-none text-white/85 placeholder-white/25 transition-colors';
+const sCls = 'w-full bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg focus:outline-none text-[13px] px-3 py-2.5 cursor-pointer text-white/85 transition-colors';
 
 // ── LLM Models ────────────────────────────────────────────────────────────────
 const PROMPT_LLM_MODELS = [
@@ -87,10 +143,6 @@ const PROMPT_LLM_MODELS = [
   { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가·빠름' },
 ];
 
-const CATEGORY_DEFAULT_TONES_MAP: Record<string, string> = {
-  economy: 'urgent_direct', horror: 'dramatic_tension', psychology: 'calm_analytical',
-  health: 'trust_clear', history: 'storytelling', general: 'friendly_casual',
-};
 
 // ── Sidebar Panel Components ──────────────────────────────────────────────────
 function SidebarPriceBadge({ price }: { price?: string }) {
@@ -123,7 +175,7 @@ function SidebarOptionItem({ active, onClick, children, sub }: {
 }) {
   return (
     <button onClick={onClick} className={`sidebar-btn w-full flex items-center justify-between px-2 py-1.5 text-[12px] font-bold border-l-2 transition-colors ${
-      active ? 'border-green-500 text-green-500 bg-green-500/5' : 'border-transparent text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5'
+      active ? 'border-[#4f8ef7] text-[#4f8ef7] bg-[#4f8ef7]/5' : 'border-transparent text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5'
     }`}>
       <span>{children}</span>
       <SidebarPriceBadge price={sub} />
@@ -153,10 +205,6 @@ export default function PromptPage() {
   const [ytStatus, setYtStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [ytError, setYtError] = useState('');
   const [ytTitle, setYtTitle] = useState('');
-  const [ytTranscript, setYtTranscript] = useState('');
-  const [ytTranscriptSource, setYtTranscriptSource] = useState<'transcript' | 'description' | ''>('');
-  const [showTranscript, setShowTranscript] = useState(false);
-  const [transcriptCopied, setTranscriptCopied] = useState(false);
 
   // Script analysis state
   const [scriptText, setScriptText] = useState('');
@@ -166,6 +214,8 @@ export default function PromptPage() {
   // Sidebar model selection state
   const [ytAnalysisModelId, setYtAnalysisModelId] = useState('claude-sonnet-4-6');
   const [ytModelOpen, setYtModelOpen] = useState(false);
+  const [ytLoadingStep, setYtLoadingStep] = useState(0);
+  const ytLoadingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -204,11 +254,7 @@ export default function PromptPage() {
     setAllData(prev => ({ ...prev, [activeCategory]: { ...prev[activeCategory], [field]: value } }));
   }, [activeCategory]);
 
-  const resetCategory = () => {
-    setAllData(prev => ({ ...prev, [activeCategory]: { ...DEFAULT_CAT_DATA } }));
-  };
-
-  const resetAll = () => {
+const resetAll = () => {
     const empty = Object.fromEntries(
       CATEGORIES.map(c => [c.id, { ...DEFAULT_CAT_DATA }])
     ) as Record<CategoryId, Record<string, string>>;
@@ -220,7 +266,10 @@ export default function PromptPage() {
   // ── YouTube Analyzer ──
   async function handleYoutubeAnalyze() {
     if (!ytUrl.trim() || !ytAnalysisModelId) return;
-    setYtStatus('loading'); setYtError('');
+    setYtStatus('loading'); setYtError(''); setYtLoadingStep(0);
+    ytLoadingRef.current = setInterval(() => {
+      setYtLoadingStep(s => (s + 1) % 4);
+    }, 1800);
     try {
       // 일반 카테고리 탭에서 분석 시 → AI가 카테고리 자동 감지
       const requestCategory = activeCategory === 'general' ? 'auto' : activeCategory;
@@ -265,10 +314,10 @@ export default function PromptPage() {
       applyFields(targetCat, updates);
 
       if (d.title) setYtTitle(d.title);
-      if (d.transcript) setYtTranscript(d.transcript);
-      if (d.transcriptSource) setYtTranscriptSource(d.transcriptSource);
+      if (ytLoadingRef.current) { clearInterval(ytLoadingRef.current); ytLoadingRef.current = null; }
       setYtStatus('done');
     } catch (err: unknown) {
+      if (ytLoadingRef.current) { clearInterval(ytLoadingRef.current); ytLoadingRef.current = null; }
       setYtError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다');
       setYtStatus('error');
     }
@@ -420,82 +469,35 @@ export default function PromptPage() {
     return true;
   })();
 
-  // Fill status for right panel
-  const fillStatus = (() => {
-    const common: { label: string; value: string; required?: boolean }[] = [
-      { label: '영상 주제', value: get('topic'), required: true },
-      { label: '핵심 앵글', value: get('angle'), required: true },
-      { label: '영상 길이', value: get('videoLength') },
-      { label: '도입 훅 방향', value: get('hookStyle') },
-      { label: '도입 훅 소재', value: get('hookHint') },
-      { label: '경쟁 영상 차별점', value: get('differentiation') },
-      { label: '비유 방향', value: get('analogy') },
-      { label: '영상 톤', value: get('tone') },
-      { label: '추가 요청사항', value: get('extra') },
-    ];
-    const specific: { label: string; value: string; required?: boolean }[] = (() => {
-      if (activeCategory === 'general') return [
-        { label: '핵심 내용 & 자료', value: get('genContent') },
-        { label: '포인트 1', value: get('genPoint1') },
-        { label: '포인트 2', value: get('genPoint2') },
-        { label: '포인트 3', value: get('genPoint3') },
-        { label: '주의사항', value: get('genCaution') },
-        { label: '참고 사례', value: get('genReference') },
-      ];
-      if (activeCategory === 'economy') return [
-        { label: '날짜 & 수치', value: get('econData'), required: true },
-        { label: '낙관 시나리오', value: get('econBullish') },
-        { label: '중립 시나리오', value: get('econNeutral') },
-        { label: '비관 시나리오', value: get('econBearish') },
-        { label: '리스크 메커니즘', value: get('econRisk') },
-        { label: '수혜주/섹터', value: get('econSector') },
-      ];
-      if (activeCategory === 'history') return [
-        { label: '시대 & 핵심 사건', value: get('histEra'), required: true },
-        { label: '현재와의 연결고리', value: get('histConnect'), required: true },
-        { label: '역사 패턴', value: get('histPattern') },
-        { label: '핵심 팩트', value: get('histFacts') },
-        { label: '교훈', value: get('histLesson') },
-      ];
-      if (activeCategory === 'psychology') return [
-        { label: '심리 현상', value: get('psychPhenomenon'), required: true },
-        { label: '관련 연구', value: get('psychResearch'), required: true },
-        { label: '일상 적용', value: get('psychApplication'), required: true },
-        { label: '행동 변화', value: get('psychBehavior') },
-      ];
-      if (activeCategory === 'horror') return [
-        { label: '소재 & 배경', value: get('horrorMaterial'), required: true },
-        { label: '핵심 반전', value: get('horrorTwist'), required: true },
-        { label: '긴장 구간', value: get('horrorTension') },
-        { label: '충격 팩트', value: get('horrorFact') },
-        { label: '마무리 방향', value: get('horrorEnding') },
-      ];
-      if (activeCategory === 'health') return [
-        { label: '건강 주제', value: get('healthTopic'), required: true },
-        { label: '연구 & 근거', value: get('healthResearch'), required: true },
-        { label: '잘못된 상식', value: get('healthMisconception'), required: true },
-        { label: '행동 지침', value: get('healthAction') },
-        { label: '주의사항', value: get('healthCaution') },
-      ];
-      return [];
-    })();
-    const all = [...common, ...specific];
-    return { items: all, filled: all.filter(f => f.value.trim()).length, total: all.length };
-  })();
 
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex gap-0 -m-6 min-h-full">
+    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ── 왼쪽 폼 영역 ── */}
-      <div className="flex-1 min-w-0 p-6 border-r border-white/8 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
 
         {/* 헤더 탭 */}
         <div className="relative mt-4 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-            <span className="text-green-500 text-sm font-semibold">대본 요청 스크립트 생성기</span>
+          <div className="flex items-center gap-3 mb-4">
+            <span
+              className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
+              style={{
+                background: 'rgba(79,142,247,0.06)',
+                border: '1px solid rgba(79,142,247,0.22)',
+                color: '#4f8ef7',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </span>
+            <span className="text-sm font-semibold text-white">대본 요청 스크립트</span>
           </div>
 
           <div className="border rounded-xl cf-card" style={{ borderColor: 'var(--border)' }}>
@@ -528,70 +530,86 @@ export default function PromptPage() {
               </div>
 
               {/* ── 공통 필드 ── */}
-              <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
-                <div className="flex items-center justify-between">
-                  <p className={`text-[12px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>공통 필드</p>
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}>
+                {/* 카드 헤더 */}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(56,189,248,0.04)' }}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${catInfo.dotCls}`} />
+                    <p className={`text-[12px] font-semibold uppercase tracking-widest ${catInfo.textCls}`}>공통 필드</p>
+                  </div>
                   <button
                     onClick={resetAll}
-                    className="text-[13px] px-2.5 py-1 rounded border border-red-500/30 text-red-400/70 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/5 transition-colors"
+                    className="text-[12px] px-2.5 py-1 rounded-lg border border-red-500/25 text-red-400/60 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5 transition-colors"
                   >
                     전체 초기화
                   </button>
                 </div>
-
-                {/* ── 비주얼 스타일 갤러리 섹션 제거됨 (우측 사이드바로 이동) ── */}
+                <div className="p-4 space-y-5">
 
                 {/* 영상 주제 */}
-                <div>
-                  <FieldLabel required sub="키워드가 아닌 제목처럼 구체적으로">영상 주제 제목</FieldLabel>
-                  <input value={get('topic')} onChange={e => set('topic', e.target.value)} placeholder="예: 삼성전자 10만원, 진짜 가능한가" className={iCls} />
-                </div>
+                <FieldCard required sub="키워드가 아닌 제목처럼 구체적으로" accentColor="#4f8ef7"
+                  inputContent={<input value={get('topic')} onChange={e => set('topic', e.target.value)} placeholder="예: 삼성전자 10만원, 진짜 가능한가" className={iCls} />}>
+                  영상 주제 제목
+                </FieldCard>
 
                 {/* 핵심 앵글 */}
-                <div>
-                  <FieldLabel required sub="이 주제에서 대부분이 잘못 알고 있는 것 — 날카로울수록 영상 전체가 살아나요">핵심 앵글 / 대중의 착각</FieldLabel>
-                  <textarea value={get('angle')} onChange={e => set('angle', e.target.value)} rows={3} placeholder="예: 금리가 내리면 무조건 주가가 오른다고 생각하지만, 실제로는 금리 인하 속도와 경기침체 여부가 더 중요하다" className={iCls} />
-                </div>
+                <FieldCard required sub="이 주제에서 대부분이 잘못 알고 있는 것 — 날카로울수록 영상 전체가 살아나요" accentColor="#4f8ef7"
+                  inputContent={<textarea value={get('angle')} onChange={e => set('angle', e.target.value)} rows={3} placeholder="예: 금리가 내리면 무조건 주가가 오른다고 생각하지만, 실제로는 금리 인하 속도와 경기침체 여부가 더 중요하다" className={iCls} />}>
+                  핵심 앵글 / 대중의 착각
+                </FieldCard>
 
                 {/* 비유 방향 */}
-                <div>
-                  <FieldLabel optional sub="안 주면 AI가 매번 비슷한 비유 반복">비유 방향</FieldLabel>
-                  <input value={get('analogy')} onChange={e => set('analogy', e.target.value)} placeholder="예: 주식 시장을 날씨에 비유 / 경제를 음식 관계로" className={iCls} />
-                </div>
+                <FieldCard optional sub="안 주면 AI가 매번 비슷한 비유 반복" accentColor="rgba(79,142,247,0.4)"
+                  inputContent={<input value={get('analogy')} onChange={e => set('analogy', e.target.value)} placeholder="예: 주식 시장을 날씨에 비유 / 경제를 음식 관계로" className={iCls} />}>
+                  비유 방향
+                </FieldCard>
 
                 {/* 영상 톤 */}
-                <div>
-                  <FieldLabel optional sub="도입부 특히 강하게 / 반전 극적으로 / 차분하게">영상 톤 & 강조 포인트</FieldLabel>
-                  <input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />
-                </div>
+                <FieldCard optional sub="도입부 특히 강하게 / 반전 극적으로 / 차분하게" accentColor="rgba(79,142,247,0.4)"
+                  inputContent={<input value={get('tone')} onChange={e => set('tone', e.target.value)} placeholder="예: 도입부를 긴박하게 / 결론부 특히 임팩트 있게 / 전반적으로 차분한 다큐 느낌" className={iCls} />}>
+                  영상 톤 & 강조 포인트
+                </FieldCard>
 
-                {/* 도입 훅 방향 — 일반 카테고리에만 표시 */}
-                {activeCategory === 'general' && <div>
-                  <FieldLabel optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택">도입 훅 방향</FieldLabel>
-                  <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls + ' mb-2'}>
-                    <option value="">AI 자동 선택</option>
-                    <option value="A형 — 도발적 질문: &quot;[핵심 주제], 지금 제대로 알고 있어?&quot;">A형 — 도발적 질문형</option>
-                    <option value="B형 — 충격 수치: &quot;[충격적 수치나 사실], 이게 우리한테 무슨 의미인지 알아?&quot;">B형 — 충격 수치형</option>
-                    <option value="C형 — 착각 지적: &quot;지금 [상황]인데, 대부분이 완전히 잘못 보고 있어.&quot;">C형 — 착각 지적형</option>
-                  </select>
-                  {get('hookStyle') && (
-                    <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
-                      placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
-                  )}
-                </div>}
+                {/* 도입 훅 방향 */}
+                {activeCategory === 'general' && (
+                  <FieldCard optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택" accentColor="rgba(79,142,247,0.4)"
+                    inputContent={
+                      <>
+                        <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls}>
+                          <option value="">AI 자동 선택</option>
+                          <option value="A형 — 도발적 질문: &quot;[핵심 주제], 지금 제대로 알고 있어?&quot;">A형 — 도발적 질문형</option>
+                          <option value="B형 — 충격 수치: &quot;[충격적 수치나 사실], 이게 우리한테 무슨 의미인지 알아?&quot;">B형 — 충격 수치형</option>
+                          <option value="C형 — 착각 지적: &quot;지금 [상황]인데, 대부분이 완전히 잘못 보고 있어.&quot;">C형 — 착각 지적형</option>
+                        </select>
+                        {get('hookStyle') && (
+                          <div className="mt-2">
+                            <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
+                              placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
+                          </div>
+                        )}
+                      </>
+                    }>
+                    도입 훅 방향
+                  </FieldCard>
+                )}
 
                 {/* 경쟁 영상 차별점 */}
-                <div>
-                  <FieldLabel optional sub="유사 주제 영상들과 다른 이 영상만의 관점 — 클수록 4단계 인사이트가 날카로워집니다">경쟁 영상과의 차별점</FieldLabel>
-                  <textarea value={get('differentiation')} onChange={e => set('differentiation', e.target.value)} rows={3}
+                <FieldCard optional sub="유사 주제 영상들과 다른 이 영상만의 관점 — 클수록 4단계 인사이트가 날카로워집니다" accentColor="rgba(79,142,247,0.4)"
+                  inputContent={<textarea value={get('differentiation')} onChange={e => set('differentiation', e.target.value)} rows={3}
                     placeholder={`예:\n- 기존 영상들은 금리 인하 자체에 집중하지만, 이 영상은 '선반영 이후의 실망 매물' 타이밍에 집중\n- 단순 종목 추천이 아닌 수급 데이터 기반 근거 제시`}
-                    className={iCls} />
-                </div>
-              </div>
+                    className={iCls} />}>
+                  경쟁 영상과의 차별점
+                </FieldCard>
+              </div>{/* /p-4 */}
+              </div>{/* /공통 필드 카드 */}
 
               {/* ── 카테고리 전용 필드 ── */}
-              <div className={`border-l-2 ${catInfo.borderCls} pl-4 space-y-5`}>
-                <p className={`text-[12px] font-medium uppercase tracking-wide ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}>
+                <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(56,189,248,0.04)' }}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${catInfo.dotCls}`} />
+                  <p className={`text-[12px] font-semibold uppercase tracking-widest ${catInfo.textCls}`}>{catInfo.label} 전용 필드</p>
+                </div>
+                <div className="p-4 space-y-5">
 
                 {/* ═══ 일반 ═══ */}
                 {activeCategory === 'general' && (
@@ -788,7 +806,8 @@ export default function PromptPage() {
                     </div>
                   </>
                 )}
-              </div>
+              </div>{/* /p-4 */}
+              </div>{/* /전용 필드 카드 */}
 
               {/* ── 추가 요청사항 (공통) ── */}
               <div>
@@ -802,10 +821,10 @@ export default function PromptPage() {
                   onClick={handleGenerate}
                   disabled={!canGenerate}
                   title={!canGenerate ? '필수 항목을 모두 입력해주세요 (빨간 점 표시 항목)' : ''}
-                  className={`inline-flex items-center gap-2 px-6 py-2 font-bold text-[13px] tracking-widest uppercase rounded-xl transition-colors ${
+                  className={`inline-flex items-center gap-2 px-6 py-2 font-bold text-[13px] tracking-widest uppercase rounded-xl transition-all ${
                     canGenerate
-                      ? 'bg-green-500 hover:bg-green-400 text-black'
-                      : 'bg-white/10 text-white/20 cursor-not-allowed'
+                      ? 'cf-btn-primary'
+                      : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/8'
                   }`}
                 >
                   요청서 생성 →
@@ -818,113 +837,212 @@ export default function PromptPage() {
       </div>
 
       {/* ── 우측 사이드바 ── */}
-      <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
-        <div className="flex-1 px-4 py-5 space-y-5">
+      <aside
+        className="w-[340px] shrink-0 flex flex-col border-l overflow-y-auto"
+        style={{ borderColor: 'var(--border)', background: 'var(--sidebar)' }}
+      >
+        <div className="flex-1 px-3 py-4 space-y-3">
 
-          {/* YouTube 자동 분석 */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500 shrink-0">
-                <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
-              </svg>
-              <span className="text-white/60 text-[11px] font-bold uppercase tracking-widest">YouTube 자동 분석</span>
-            </div>
-            <div className="space-y-2.5">
-              <div className="space-y-1.5">
-                <input
-                  value={ytUrl}
-                  onChange={e => { setYtUrl(e.target.value); setYtStatus('idle'); setYtError(''); }}
-                  onKeyDown={e => e.key === 'Enter' && ytAnalysisModelId && handleYoutubeAnalyze()}
-                  placeholder="https://youtube.com/watch?v=..."
-                  disabled={ytStatus === 'loading'}
-                  className="w-full cf-input text-[12px] px-3 py-2 focus:outline-none"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleYoutubeAnalyze}
-                    disabled={!ytUrl.trim() || !ytAnalysisModelId || ytStatus === 'loading'}
-                    className="sidebar-btn flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white text-[11px] font-bold transition-all"
-                  >
-                    {ytStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
-                  </button>
-                </div>
-              </div>
-
-              {ytStatus === 'error' && <p className="text-red-400/70 text-[11px] font-mono">{ytError}</p>}
-              {ytStatus === 'done' && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                    <span className="text-green-400 text-[11px]">분석 완료 — 필드 자동 입력됨</span>
-                  </div>
-                  {ytTitle && <p className="text-white/30 text-[10px] font-mono truncate">{ytTitle}</p>}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 대본 붙여넣기 분석 */}
-          <div className="border-t border-white/8 pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50 shrink-0">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              <span className="text-white/60 text-[11px] font-bold uppercase tracking-widest">대본 붙여넣기 분석</span>
-            </div>
-            <div className="space-y-2.5">
-              <div className="space-y-1.5">
-                <textarea
-                  value={scriptText}
-                  onChange={e => { setScriptText(e.target.value); setScriptStatus('idle'); setScriptError(''); }}
-                  rows={8}
-                  placeholder="기존 대본을 붙여넣으면 필드를 자동으로 채워드립니다..."
-                  disabled={scriptStatus === 'loading'}
-                  className="w-full cf-input text-[12px] px-3 py-2 resize-none focus:outline-none"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleScriptAnalyze}
-                    disabled={!scriptText.trim() || !ytAnalysisModelId || scriptStatus === 'loading'}
-                    className="sidebar-btn flex items-center gap-1 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white text-[11px] font-bold transition-all"
-                  >
-                    {scriptStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
-                  </button>
-                </div>
-              </div>
-              {scriptStatus === 'error' && <p className="text-red-400/70 text-[11px] font-mono">{scriptError}</p>}
-              {scriptStatus === 'done' && (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  <span className="text-green-400 text-[11px]">분석 완료 — 필드 자동 입력됨</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 분석 AI 모델 */}
-          <div className="border-t border-white/8 pt-4">
-            <SidebarAccordion
-              label="분석 AI 모델"
-              value={PROMPT_LLM_MODELS.find(m => m.id === ytAnalysisModelId)?.name ?? ''}
-              open={ytModelOpen}
-              onToggle={() => setYtModelOpen(v => !v)}
+          {/* ── YouTube 자동 분석 카드 ── */}
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 16px rgba(79,142,247,0.05)',
+            }}
+          >
+            {/* 카드 헤더 */}
+            <div
+              className="flex items-center gap-2.5 px-4 py-2.5"
+              style={{ borderBottom: '1px solid var(--border)', background: 'rgba(239,68,68,0.04)' }}
             >
-              <div className="space-y-3 pt-1">
-                {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
-                  <div key={provider}>
-                    <p className="text-white/20 text-[10px] font-semibold uppercase tracking-wide px-1 mb-1">{provider}</p>
-                    <div className="space-y-0.5">
-                      {PROMPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
-                        <SidebarOptionItem key={m.id} active={ytAnalysisModelId === m.id}
-                          onClick={() => { setYtAnalysisModelId(m.id); setYtModelOpen(false); }} sub={m.price}>
-                          {m.name}
-                        </SidebarOptionItem>
+              <div
+                className="w-6 h-6 flex items-center justify-center rounded-md shrink-0"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.28)', boxShadow: '0 0 8px rgba(239,68,68,0.15)' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#ef4444">
+                  <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 0 0 2.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
+                </svg>
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                YouTube 자동 분석
+              </span>
+            </div>
+
+            {/* 카드 바디 */}
+            <div className="p-3.5 space-y-2.5">
+              <input
+                value={ytUrl}
+                onChange={e => { setYtUrl(e.target.value); setYtStatus('idle'); setYtError(''); }}
+                onKeyDown={e => e.key === 'Enter' && ytAnalysisModelId && handleYoutubeAnalyze()}
+                placeholder="https://youtube.com/watch?v=..."
+                disabled={ytStatus === 'loading'}
+                className="w-full cf-input text-[12px] px-3 py-2 focus:outline-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={handleYoutubeAnalyze}
+                  disabled={!ytUrl.trim() || !ytAnalysisModelId || ytStatus === 'loading'}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
+                >
+                  {ytStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
+                </button>
+              </div>
+
+              {/* 로딩 애니메이션 */}
+              {ytStatus === 'loading' && (() => {
+                const steps = ['자막 추출 중...', '카테고리 감지 중...', 'AI 분석 중...', '필드 채우는 중...'];
+                return (
+                  <div className="relative rounded-lg overflow-hidden py-5 flex flex-col items-center gap-3"
+                    style={{ border: '1px solid rgba(239,68,68,0.2)', background: 'radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.06) 0%, transparent 70%)' }}>
+                    <style>{`
+                      @keyframes yt-orbit  { from { transform: rotate(0deg)   translateX(20px) rotate(0deg);    } to { transform: rotate(360deg)  translateX(20px) rotate(-360deg);  } }
+                      @keyframes yt-orbit2 { from { transform: rotate(120deg) translateX(20px) rotate(-120deg); } to { transform: rotate(480deg)  translateX(20px) rotate(-480deg);  } }
+                      @keyframes yt-orbit3 { from { transform: rotate(240deg) translateX(20px) rotate(-240deg); } to { transform: rotate(600deg)  translateX(20px) rotate(-600deg);  } }
+                      @keyframes yt-pulse-ring { 0%,100% { opacity:0.15; transform:scale(1); } 50% { opacity:0.4; transform:scale(1.15); } }
+                      @keyframes yt-scanline { 0% { left: -3rem; } 100% { left: 100%; } }
+                    `}</style>
+                    <div className="relative w-11 h-11">
+                      <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', animation: 'yt-pulse-ring 2s ease-in-out infinite' }} />
+                      <div className="absolute inset-[5px] rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.18)', boxShadow: '0 0 16px rgba(239,68,68,0.3)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" style={{ boxShadow: '0 0 6px #ef4444' }} />
+                      </div>
+                      {[
+                        { anim: 'yt-orbit 1.8s linear infinite',  color: '#ef4444' },
+                        { anim: 'yt-orbit2 1.8s linear infinite', color: '#fca5a5' },
+                        { anim: 'yt-orbit3 1.8s linear infinite', color: '#f87171' },
+                      ].map((o, i) => (
+                        <div key={i} className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: o.color, animation: o.anim, boxShadow: `0 0 4px ${o.color}` }} />
+                        </div>
                       ))}
                     </div>
+                    <div className="text-center space-y-0.5">
+                      <p className="text-[11px] font-medium tracking-wide text-red-400">{steps[ytLoadingStep]}</p>
+                      <p className="text-[10px] text-white/25">잠시만 기다려주세요</p>
+                    </div>
+                    <div className="w-32 h-[1px] relative overflow-hidden rounded-full" style={{ background: 'rgba(239,68,68,0.12)' }}>
+                      <div className="absolute inset-y-0 w-12 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #ef4444, transparent)', animation: 'yt-scanline 1.5s linear infinite' }} />
+                    </div>
                   </div>
-                ))}
+                );
+              })()}
+
+              {ytStatus === 'error' && (
+                <p className="text-red-400/70 text-[11px] font-mono px-1">{ytError}</p>
+              )}
+              {ytStatus === 'done' && (
+                <div
+                  className="flex items-start gap-2 rounded-lg px-3 py-2"
+                  style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.18)' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 mt-1" style={{ boxShadow: '0 0 6px rgba(74,222,128,0.5)' }} />
+                  <div className="min-w-0">
+                    <p className="text-green-400 text-[11px] font-medium">분석 완료 — 필드 자동 입력됨</p>
+                    {ytTitle && <p className="text-white/30 text-[10px] font-mono truncate mt-0.5">{ytTitle}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── 대본 붙여넣기 분석 카드 ── */}
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 16px rgba(79,142,247,0.05)',
+            }}
+          >
+            {/* 카드 헤더 */}
+            <div
+              className="flex items-center gap-2.5 px-4 py-2.5"
+              style={{ borderBottom: '1px solid var(--border)', background: 'rgba(79,142,247,0.03)' }}
+            >
+              <div
+                className="w-6 h-6 flex items-center justify-center rounded-md shrink-0"
+                style={{ background: 'rgba(79,142,247,0.10)', border: '1px solid rgba(79,142,247,0.25)', boxShadow: '0 0 8px rgba(79,142,247,0.12)' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
               </div>
-            </SidebarAccordion>
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                대본 붙여넣기 분석
+              </span>
+            </div>
+
+            {/* 카드 바디 */}
+            <div className="p-3.5 space-y-2.5">
+              <textarea
+                value={scriptText}
+                onChange={e => { setScriptText(e.target.value); setScriptStatus('idle'); setScriptError(''); }}
+                rows={8}
+                placeholder="기존 대본을 붙여넣으면 필드를 자동으로 채워드립니다..."
+                disabled={scriptStatus === 'loading'}
+                className="w-full cf-input text-[12px] px-3 py-2 resize-none focus:outline-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={handleScriptAnalyze}
+                  disabled={!scriptText.trim() || !ytAnalysisModelId || scriptStatus === 'loading'}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'rgba(79,142,247,0.10)', border: '1px solid rgba(79,142,247,0.25)', color: '#93c5fd' }}
+                >
+                  {scriptStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : 'AI 분석 →'}
+                </button>
+              </div>
+              {scriptStatus === 'error' && (
+                <p className="text-red-400/70 text-[11px] font-mono px-1">{scriptError}</p>
+              )}
+              {scriptStatus === 'done' && (
+                <div
+                  className="flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.18)' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" style={{ boxShadow: '0 0 6px rgba(74,222,128,0.5)' }} />
+                  <p className="text-green-400 text-[11px] font-medium">분석 완료 — 필드 자동 입력됨</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── 분석 AI 모델 카드 ── */}
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 16px rgba(79,142,247,0.05)',
+            }}
+          >
+            <div className="px-4 py-3">
+              <SidebarAccordion
+                label="분석 AI 모델"
+                value={PROMPT_LLM_MODELS.find(m => m.id === ytAnalysisModelId)?.name ?? ''}
+                open={ytModelOpen}
+                onToggle={() => setYtModelOpen(v => !v)}
+              >
+                <div className="space-y-3 pt-1">
+                  {(['Anthropic', 'Google', 'Alibaba'] as const).map(provider => (
+                    <div key={provider}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide px-1 mb-1" style={{ color: 'var(--text-ultra)' }}>{provider}</p>
+                      <div className="space-y-0.5">
+                        {PROMPT_LLM_MODELS.filter(m => m.provider === provider).map(m => (
+                          <SidebarOptionItem key={m.id} active={ytAnalysisModelId === m.id}
+                            onClick={() => { setYtAnalysisModelId(m.id); setYtModelOpen(false); }} sub={m.price}>
+                            {m.name}
+                          </SidebarOptionItem>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SidebarAccordion>
+            </div>
           </div>
 
         </div>

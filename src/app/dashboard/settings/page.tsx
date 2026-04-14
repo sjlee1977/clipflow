@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { TREND_CATEGORIES } from '@/lib/youtube-trends';
 
 type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen';
@@ -511,7 +512,7 @@ function NotificationSection() {
                     <button
                       onClick={() => handleToggle(item.key, !item.value)}
                       className="relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0"
-                      style={{ background: item.value ? '#22c55e' : 'rgba(255,255,255,0.1)' }}
+                      style={{ background: item.value ? '#4f8ef7' : 'rgba(255,255,255,0.1)' }}
                     >
                       <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
                         style={{ transform: item.value ? 'translateX(22px)' : 'translateX(2px)' }} />
@@ -619,7 +620,7 @@ function TrendSettingsSection() {
     <div className="border border-white/10 bg-white/[0.02]">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
+          <div className="w-2 h-2 rounded-full bg-[#4f8ef7]" />
           <div>
             <p className="text-white text-[13px] font-bold font-mono">트렌드 수집 설정</p>
             <p className="text-white/35 text-[11.5px] font-mono mt-0.5">자동 수집할 카테고리 및 감지 기준</p>
@@ -641,7 +642,7 @@ function TrendSettingsSection() {
           <button
             onClick={() => setSettings(s => ({ ...s, is_active: !s.is_active }))}
             className="relative w-11 h-6 rounded-full transition-colors duration-200"
-            style={{ background: settings.is_active ? '#22c55e' : 'rgba(255,255,255,0.1)' }}
+            style={{ background: settings.is_active ? '#4f8ef7' : 'rgba(255,255,255,0.1)' }}
           >
             <span
               className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
@@ -664,9 +665,9 @@ function TrendSettingsSection() {
               }))}
               className="px-3 py-1.5 text-[11.5px] font-mono border transition-colors"
               style={{
-                borderColor: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)',
-                color: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? '#22c55e' : 'rgba(255,255,255,0.35)',
-                background: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? 'rgba(34,197,94,0.08)' : 'transparent',
+                borderColor: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.1)',
+                color: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? '#4f8ef7' : 'rgba(255,255,255,0.35)',
+                background: settings.categories.length === Object.keys(TREND_CATEGORIES).length ? 'rgba(56,189,248,0.08)' : 'transparent',
               }}
             >
               전체
@@ -679,9 +680,9 @@ function TrendSettingsSection() {
                   onClick={() => toggleCategory(key)}
                   className="px-3 py-1.5 text-[11.5px] font-mono border transition-colors"
                   style={{
-                    borderColor: selected ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)',
-                    color: selected ? '#22c55e' : 'rgba(255,255,255,0.35)',
-                    background: selected ? 'rgba(34,197,94,0.08)' : 'transparent',
+                    borderColor: selected ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.1)',
+                    color: selected ? '#4f8ef7' : 'rgba(255,255,255,0.35)',
+                    background: selected ? 'rgba(56,189,248,0.08)' : 'transparent',
                   }}
                 >
                   {cat.label}
@@ -734,7 +735,7 @@ function TrendSettingsSection() {
             onClick={handleSave}
             disabled={saving || settings.categories.length === 0}
             className="px-5 py-2 font-bold text-[12px] font-mono transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: saved ? 'rgba(34,197,94,0.8)' : '#22c55e', color: '#000' }}
+            style={{ background: saved ? 'rgba(56,189,248,0.8)' : '#4f8ef7', color: '#000' }}
           >
             {saving ? '저장 중...' : saved ? '✓ 저장됨' : '설정 저장'}
           </button>
@@ -791,15 +792,11 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="relative mt-10 mb-8">
-        <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
-          <span className="w-1 h-1 bg-white/40 rounded-full" />
-          <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">설정</span>
-        </div>
-        <div className="border border-white/10 px-5 py-4 bg-white/[0.015]">
-          <p className="text-white/80 text-[13px] font-mono leading-relaxed">각 AI 제공사의 API 키를 등록하면 해당 모델을 사용할 수 있습니다.</p>
-          <p className="text-white/35 text-[12px] font-mono mt-1">키는 내 계정에만 저장되며 다른 사용자와 공유되지 않습니다.</p>
-        </div>
+      <div className="flex items-center gap-3 mb-8 mt-2">
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <SettingsIcon size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-sm font-semibold text-white">설정</span>
       </div>
 
       {/* 연결 현황 */}
@@ -895,7 +892,7 @@ export default function SettingsPage() {
       {/* 블로그 플랫폼 연결 */}
       <div className="mt-6">
         <div className="relative mb-4">
-          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
+          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0b0e14]">
             <span className="w-1 h-1 bg-[#7c3aed]/60 rounded-full" />
             <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">블로그 연결</span>
           </div>
@@ -906,7 +903,7 @@ export default function SettingsPage() {
       {/* 알림 설정 */}
       <div className="mt-6">
         <div className="relative mb-4">
-          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
+          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0b0e14]">
             <span className="w-1 h-1 bg-[#229ED9]/60 rounded-full" />
             <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">알림 설정</span>
           </div>
@@ -917,8 +914,8 @@ export default function SettingsPage() {
       {/* 트렌드 수집 설정 */}
       <div className="mt-6">
         <div className="relative mb-4">
-          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0a0a0a]">
-            <span className="w-1 h-1 bg-[#22c55e]/60 rounded-full" />
+          <div className="absolute top-0 left-0 -translate-y-full inline-flex items-center gap-1.5 px-4 py-1.5 border-t border-l border-r border-white/15 bg-[#0b0e14]">
+            <span className="w-1 h-1 bg-[#4f8ef7]/60 rounded-full" />
             <span className="text-white/50 text-[13px] font-mono tracking-widest uppercase">트렌드 수집</span>
           </div>
         </div>

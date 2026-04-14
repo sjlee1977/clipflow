@@ -24,6 +24,7 @@ const VIDEO_MODELS = [
   { id: 'kling-v1-6', name: 'Kling v1.6 (가성비)', price: '균형' },
   { id: 'fal-wan-v2.1', name: 'WAN 2.1 (fal.ai)', price: '빠름' },
 ];
+import { Video } from 'lucide-react';
 import { MINIMAX_VOICES } from '@/lib/minimax-tts';
 import { GOOGLE_VOICES } from '@/lib/google';
 import { ELEVENLABS_VOICES } from '@/lib/elevenlabs';
@@ -175,7 +176,7 @@ function splitTextToSubtitles(text: string, maxChars = 30): { text: string; star
 /* ── 오른쪽 패널 섹션 (일반) ── */
 function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-white/5 pb-5 mb-5">
+    <div className="border-b border-[rgba(79,142,247,0.12)] pb-5 mb-5">
       <p className="text-white/40 text-xs font-semibold uppercase tracking-wide mb-3">{label}</p>
       {children}
     </div>
@@ -191,7 +192,7 @@ function PanelAccordion({ label, value, children, closeOnSelect = false }: {
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-white/5 mb-1">
+    <div className="border-b border-[rgba(79,142,247,0.12)] mb-1">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between py-3 group"
@@ -243,7 +244,7 @@ function OptionItem({ active, onClick, children, sub }: {
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border transition-colors ${
         active
-          ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
+          ? 'border-[#4f8ef7]/60 text-white bg-[#4f8ef7]/10'
           : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'
       }`}
     >
@@ -1141,7 +1142,7 @@ export default function DashboardPage() {
       )}
 
       {/* ─── 왼쪽: 메인 콘텐츠 ─── */}
-      <div className="flex-1 min-w-0 p-6 border-r border-white/5" style={{ background: 'var(--bg)' }}>
+      <div className="flex-1 min-w-0 p-6" style={{ background: 'var(--bg)', borderRight: '1px solid var(--border)' }}>
 
         {/* ── 입력 단계 ── */}
         {(status === 'idle' || (status === 'previewing' && genTotal === 0) || status === 'error') && (
@@ -1149,17 +1150,19 @@ export default function DashboardPage() {
             {/* 입력 카드 */}
           <div className="relative mt-6 flex flex-col">
               {/* 카드 헤더 */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                <span className="text-green-500 text-sm font-semibold">영상 만들기</span>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+                  <Video size={13} strokeWidth={1.8} />
+                </span>
+                <span className="text-sm font-semibold text-white">영상 만들기</span>
               </div>
 
-              <div className={`flex flex-col border rounded-xl transition-colors duration-200 ${
-                isProcessing ? 'border-white/5' : 'border-white/8 hover:border-green-500/40 focus-within:border-green-500/40'
-              } bg-[#161616]`}>
+              <div className={`flex flex-col border rounded-xl transition-colors duration-200 bg-black ${
+                isProcessing ? 'border-[rgba(79,142,247,0.10)]' : 'border-[rgba(79,142,247,0.15)] hover:border-[rgba(79,142,247,0.35)] focus-within:border-[rgba(79,142,247,0.45)]'
+              }`}>
               {/* 상단 라벨 */}
-              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/5">
-                <span className="text-white/40 text-xs font-medium uppercase tracking-wide">
+              <div className="flex items-center justify-between px-4 pt-3 pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(79,142,247,0.5)' }}>
                   {pptMode ? 'Slide Data' : 'Script Input'}
                 </span>
                 <span className="text-white/30 text-xs tabular-nums">
@@ -1179,7 +1182,7 @@ export default function DashboardPage() {
               />
 
               {/* 하단: TIP + 버튼 */}
-              <div className="px-4 pb-3 flex items-center justify-between border-t border-white/5 pt-3">
+              <div className="px-4 pb-3 flex items-center justify-between border-t border-[rgba(79,142,247,0.12)] pt-3">
                 <span className="text-xs text-white/25">TIP. 구체적일수록 더 좋은 영상이 만들어집니다</span>
                 <div className="flex items-center gap-2">
                   {/* B-roll 준비 상태 표시 */}
@@ -1190,8 +1193,8 @@ export default function DashboardPage() {
                     </span>
                   )}
                   {prefetchStatus === 'ready' && (
-                    <span className="flex items-center gap-1.5 text-xs text-[#22c55e]/70">
-                      <span className="w-2 h-2 rounded-full bg-[#22c55e]/70 inline-block" />
+                    <span className="flex items-center gap-1.5 text-xs text-[#4f8ef7]/70">
+                      <span className="w-2 h-2 rounded-full bg-[#4f8ef7]/70 inline-block" />
                       이미지 준비 완료
                     </span>
                   )}
@@ -1206,7 +1209,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => handlePreview(false)}
                     disabled={!script.trim() || isProcessing}
-                    className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[13px] rounded-xl px-4 py-1.5 transition-colors"
+                    className="flex items-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:bg-white/5 disabled:cursor-not-allowed text-black disabled:text-white/20 font-bold text-[13px] rounded-xl px-4 py-1.5 transition-colors"
                   >
                     {status === 'previewing' ? (
                       <>
@@ -1283,7 +1286,7 @@ export default function DashboardPage() {
         {/* ── 미리보기 단계 ── */}
         {(status === 'previewing' && genTotal > 0 || status === 'preview' || status === 'rendering' || status === 'done' || (status === 'error' && scenes.length > 0)) && scenes.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[rgba(79,142,247,0.12)]">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">{scenes.length}개 장면</span>
                 {status === 'previewing' && (
@@ -1326,7 +1329,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleGenerateCarousel}
                     disabled={carouselStatus === 'loading'}
-                    className="text-[#22c55e]/40 hover:text-[#22c55e]/80 text-xs font-bold transition-colors disabled:opacity-40"
+                    className="text-[#4f8ef7]/40 hover:text-[#4f8ef7]/80 text-xs font-bold transition-colors disabled:opacity-40"
                   >
                     {carouselStatus === 'loading' ? '⊞ 생성 중...' : '⊞ 캐러셀'}
                   </button>
@@ -1360,10 +1363,10 @@ export default function DashboardPage() {
                   key={i}
                   className={`group rounded-xl overflow-hidden transition-all duration-200 ${
                     scene.videoUrl
-                      ? 'bg-[#0c1a1a] border border-[white]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
+                      ? 'bg-[#0f1218] border border-[white]/40 shadow-[0_2px_12px_rgba(23,190,187,0.08)]'
                       : scene.isAnimating
                       ? 'bg-[#151005] border border-green-400/35 shadow-[0_2px_12px_rgba(251,146,60,0.08)]'
-                      : 'bg-[#111] border border-white/15 hover:border-white/30'
+                      : 'bg-[#0b0e14] border border-white/15 hover:border-white/30'
                   }`}
                 >
                   {/* ── 헤더 행: 씬번호 + 미리듣기 + AI애니메이션 + 스타일 + 재생성/교체 ── */}
@@ -1467,40 +1470,40 @@ export default function DashboardPage() {
                         <select
                           value={scene.textAnimationStyle ?? 'none'}
                           onChange={e => updateSceneStyle(i, e.target.value as PreviewScene['textAnimationStyle'])}
-                          className="text-[12px] font-medium bg-[#1a1a1a] border border-white/25 text-white/75 hover:border-white/45 hover:text-white rounded px-2.5 py-1.5 cursor-pointer focus:outline-none shrink-0"
+                          className="text-[12px] font-medium bg-black border border-white/25 text-white/75 hover:border-white/45 hover:text-white rounded px-2.5 py-1.5 cursor-pointer focus:outline-none shrink-0"
                         >
-                          <option value="none" className="bg-[#1a1a1a]">없음</option>
-                          <optgroup label="진입" className="bg-[#1a1a1a]">
-                            <option value="fly-in" className="bg-[#1a1a1a]">fly-in</option>
-                            <option value="typewriter" className="bg-[#1a1a1a]">typewriter</option>
-                            <option value="pop-in" className="bg-[#1a1a1a]">pop-in</option>
-                            <option value="fade-zoom" className="bg-[#1a1a1a]">fade-zoom</option>
+                          <option value="none" className="bg-black">없음</option>
+                          <optgroup label="진입" className="bg-black">
+                            <option value="fly-in" className="bg-black">fly-in</option>
+                            <option value="typewriter" className="bg-black">typewriter</option>
+                            <option value="pop-in" className="bg-black">pop-in</option>
+                            <option value="fade-zoom" className="bg-black">fade-zoom</option>
                           </optgroup>
-                          <optgroup label="타이포" className="bg-[#1a1a1a]">
-                            <option value="stagger-words" className="bg-[#1a1a1a]">stagger-words</option>
-                            <option value="kinetic-bounce" className="bg-[#1a1a1a]">kinetic-bounce</option>
-                            <option value="focus-highlight" className="bg-[#1a1a1a]">focus-highlight</option>
+                          <optgroup label="타이포" className="bg-black">
+                            <option value="stagger-words" className="bg-black">stagger-words</option>
+                            <option value="kinetic-bounce" className="bg-black">kinetic-bounce</option>
+                            <option value="focus-highlight" className="bg-black">focus-highlight</option>
                           </optgroup>
-                          <optgroup label="에너지" className="bg-[#1a1a1a]">
-                            <option value="pulse-ring" className="bg-[#1a1a1a]">pulse-ring</option>
-                            <option value="sparkle" className="bg-[#1a1a1a]">sparkle</option>
-                            <option value="thunder" className="bg-[#1a1a1a]">thunder</option>
-                            <option value="fire" className="bg-[#1a1a1a]">fire</option>
-                            <option value="confetti" className="bg-[#1a1a1a]">confetti</option>
-                            <option value="heart" className="bg-[#1a1a1a]">heart</option>
+                          <optgroup label="에너지" className="bg-black">
+                            <option value="pulse-ring" className="bg-black">pulse-ring</option>
+                            <option value="sparkle" className="bg-black">sparkle</option>
+                            <option value="thunder" className="bg-black">thunder</option>
+                            <option value="fire" className="bg-black">fire</option>
+                            <option value="confetti" className="bg-black">confetti</option>
+                            <option value="heart" className="bg-black">heart</option>
                           </optgroup>
-                          <optgroup label="감성" className="bg-[#1a1a1a]">
-                            <option value="rain" className="bg-[#1a1a1a]">rain</option>
-                            <option value="snow" className="bg-[#1a1a1a]">snow</option>
-                            <option value="stars" className="bg-[#1a1a1a]">stars</option>
+                          <optgroup label="감성" className="bg-black">
+                            <option value="rain" className="bg-black">rain</option>
+                            <option value="snow" className="bg-black">snow</option>
+                            <option value="stars" className="bg-black">stars</option>
                           </optgroup>
-                          <optgroup label="정보" className="bg-[#1a1a1a]">
-                            <option value="chart-up" className="bg-[#1a1a1a]">chart-up</option>
-                            <option value="clock-spin" className="bg-[#1a1a1a]">clock-spin</option>
-                            <option value="magnifier" className="bg-[#1a1a1a]">magnifier</option>
-                            <option value="lock-secure" className="bg-[#1a1a1a]">lock-secure</option>
-                            <option value="camera-flash" className="bg-[#1a1a1a]">camera-flash</option>
-                            <option value="film-roll" className="bg-[#1a1a1a]">film-roll</option>
+                          <optgroup label="정보" className="bg-black">
+                            <option value="chart-up" className="bg-black">chart-up</option>
+                            <option value="clock-spin" className="bg-black">clock-spin</option>
+                            <option value="magnifier" className="bg-black">magnifier</option>
+                            <option value="lock-secure" className="bg-black">lock-secure</option>
+                            <option value="camera-flash" className="bg-black">camera-flash</option>
+                            <option value="film-roll" className="bg-black">film-roll</option>
                           </optgroup>
                         </select>
                         {/* 재생성 */}
@@ -1577,7 +1580,7 @@ export default function DashboardPage() {
                         <div className={`w-full h-full flex flex-col items-center justify-center p-1.5 text-center ${
                           scene.pptTheme === 'simple-modern' ? 'bg-white' :
                           scene.pptTheme === 'colorful' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' :
-                          'bg-[#0d0d0d]'
+                          'bg-[#0f1218]'
                         }`}>
                           <span className={`text-[7px] font-bold leading-tight ${scene.pptTheme === 'simple-modern' ? 'text-gray-800' : 'text-white'}`}>
                             {scene.slideData.title?.slice(0, 12) || 'SLIDE'}
@@ -1700,7 +1703,7 @@ export default function DashboardPage() {
                 <div className="flex items-end gap-2 mb-4">
                   <span
                     className="text-[42px] font-black tabular-nums leading-none"
-                    style={{ color: '#22c55e', textShadow: '0 0 28px rgba(34,197,94,0.45)', letterSpacing: '-0.04em' }}
+                    style={{ color: '#4f8ef7', textShadow: '0 0 28px rgba(56,189,248,0.45)', letterSpacing: '-0.04em' }}
                   >
                     {Math.round(renderProgress * 100)}
                   </span>
@@ -1722,8 +1725,8 @@ export default function DashboardPage() {
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
                     style={{
                       width: `${renderProgress * 100}%`,
-                      background: 'linear-gradient(90deg, #15803d 0%, #22c55e 100%)',
-                      boxShadow: '0 0 12px rgba(34,197,94,0.7)',
+                      background: 'linear-gradient(90deg, #15803d 0%, #4f8ef7 100%)',
+                      boxShadow: '0 0 12px rgba(56,189,248,0.7)',
                     }}
                   />
                   {/* 글로우 펄스 */}
@@ -1733,7 +1736,7 @@ export default function DashboardPage() {
                       style={{
                         left: `${Math.max(0, renderProgress * 100 - 6)}%`,
                         width: '6%',
-                        background: 'rgba(34,197,94,0.5)',
+                        background: 'rgba(56,189,248,0.5)',
                         filter: 'blur(3px)',
                       }}
                     />
@@ -1744,10 +1747,10 @@ export default function DashboardPage() {
 
             {/* 캐러셀 패널 (preview 단계) */}
             {showCarousel && status === 'preview' && (
-              <div className="mt-6 border-t border-white/5 pt-6">
+              <div className="mt-6 border-t border-[rgba(79,142,247,0.12)] pt-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
                     <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
                       캐러셀 {carouselTopic && `— ${carouselTopic}`}
                     </span>
@@ -1779,14 +1782,14 @@ export default function DashboardPage() {
                             <ul className="space-y-0.5 mt-0.5 w-fit text-left">
                               {card.bullets.slice(0, 2).map((b, bi) => (
                                 <li key={bi} className="text-white/60 text-[10px] flex items-start gap-1">
-                                  <span className="text-[#22c55e]">▸</span>{b}
+                                  <span className="text-[#4f8ef7]">▸</span>{b}
                                 </li>
                               ))}
                             </ul>
                           )}
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="w-1 h-1 rounded-full bg-[#22c55e]" />
+                          <span className="w-1 h-1 rounded-full bg-[#4f8ef7]" />
                           <span className="text-white/15 text-[9px] font-mono">Clipflow</span>
                         </div>
                       </div>
@@ -1802,7 +1805,7 @@ export default function DashboardPage() {
         {status === 'done' && videoUrl && (
           <div className="mt-2 flex flex-col items-center">
             {/* 헤더 */}
-            <div className="w-full flex items-center justify-between pb-3 border-b border-white/5 mb-5">
+            <div className="w-full flex items-center justify-between pb-3 border-b border-[rgba(79,142,247,0.12)] mb-5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                 <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">완성 영상</span>
@@ -1851,10 +1854,10 @@ export default function DashboardPage() {
               <button
                 onClick={handleGenerateCarousel}
                 disabled={carouselStatus === 'loading'}
-                className="flex items-center gap-2 border border-[#22c55e]/40 hover:border-[#22c55e]/80 text-[#22c55e]/70 hover:text-[#22c55e] text-[13px] font-bold tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
+                className="flex items-center gap-2 border border-[#4f8ef7]/40 hover:border-[#4f8ef7]/80 text-[#4f8ef7]/70 hover:text-[#4f8ef7] text-[13px] font-bold tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
               >
                 {carouselStatus === 'loading' ? (
-                  <><span className="w-2.5 h-2.5 border border-[#22c55e] border-t-transparent rounded-full animate-spin inline-block" /> 캐러셀 생성 중</>
+                  <><span className="w-2.5 h-2.5 border border-[#4f8ef7] border-t-transparent rounded-full animate-spin inline-block" /> 캐러셀 생성 중</>
                 ) : '⊞ 캐러셀'}
               </button>
               <button
@@ -1870,7 +1873,7 @@ export default function DashboardPage() {
               <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : format === 'square' ? 'max-w-sm' : 'max-w-2xl'} mt-6`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
                     <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
                       캐러셀 — {carouselTopic}
                     </span>
@@ -1929,7 +1932,7 @@ export default function DashboardPage() {
                             <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
                               {card.bullets.map((b, bi) => (
                                 <li key={bi} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                                  <span style={{ color: '#22c55e', marginTop: '1px' }}>▸</span>
+                                  <span style={{ color: '#4f8ef7', marginTop: '1px' }}>▸</span>
                                   {b}
                                 </li>
                               ))}
@@ -1939,7 +1942,7 @@ export default function DashboardPage() {
 
                         {/* 하단 브랜드 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#4f8ef7', display: 'inline-block' }} />
                           <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'monospace' }}>Clipflow</span>
                         </div>
                       </div>
@@ -1957,7 +1960,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── 오른쪽: 설정 패널 (w-56, 왼쪽 nav와 동일 너비) ─── */}
-      <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
+      <aside className="w-96 shrink-0 flex flex-col overflow-y-auto" style={{ borderLeft: '1px solid var(--border)', background: 'var(--sidebar)' }}>
         <div className="flex-1 px-4 py-5 space-y-0">
 
           {/* 입력 단계 설정 */}
@@ -1972,7 +1975,7 @@ export default function DashboardPage() {
                       disabled={isProcessing}
                       className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                         imageStyle === s.id
-                          ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
+                          ? 'border-[#4f8ef7]/60 text-white bg-[#4f8ef7]/10'
                           : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                       }`}
                     >
@@ -1984,7 +1987,7 @@ export default function DashboardPage() {
                     disabled={isProcessing}
                     className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                       imageStyle === 'none'
-                        ? 'border-[#22c55e]/60 text-white bg-[#22c55e]/10'
+                        ? 'border-[#4f8ef7]/60 text-white bg-[#4f8ef7]/10'
                         : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
                     }`}
                   >
@@ -2043,7 +2046,7 @@ export default function DashboardPage() {
                         { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
                       ] as const).map(t => (
                         <button key={t.id} onClick={() => setPptTheme(t.id)}
-                          className={`flex flex-col items-start px-3 py-2 border rounded-xl text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#22c55e]/60 bg-[#22c55e]/10' : 'border-white/8 hover:border-white/20'}`}>
+                          className={`flex flex-col items-start px-3 py-2 border rounded-xl text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#4f8ef7]/60 bg-[#4f8ef7]/10' : 'border-white/8 hover:border-white/20'}`}>
                           <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-white' : 'text-white/55'}`}>{t.label}</span>
                           <span className="text-[10px] text-white/30 mt-0.5">{t.desc}</span>
                         </button>

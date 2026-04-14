@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
+import { LayoutTemplate } from 'lucide-react';
 
 type CarouselCard = {
   index: number;
@@ -98,16 +99,15 @@ export default function CarouselLibraryPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <span className="w-1 h-7 bg-[#22c55e]" />
-          <div>
-            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 캐러셀</h1>
-            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">CAROUSEL LIBRARY</p>
-          </div>
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <LayoutTemplate size={13} strokeWidth={1.8} />
+          </span>
+          <span className="text-sm font-semibold text-white">내 캐러셀</span>
         </div>
         {!loading && carousels.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
-            <span className="text-[13px] font-black font-mono text-[#22c55e]">{carousels.length}</span>
+            <span className="text-[13px] font-black font-mono text-[#4f8ef7]">{carousels.length}</span>
           </div>
         )}
       </div>
@@ -128,7 +128,7 @@ export default function CarouselLibraryPage() {
           </div>
           <div className="text-center">
             <p className="text-[13px] text-white/30 font-mono">저장된 캐러셀이 없습니다</p>
-            <a href="/dashboard/video" className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors mt-1 block font-mono">
+            <a href="/dashboard/video" className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors mt-1 block font-mono">
               영상 만들기에서 캐러셀을 생성해보세요 →
             </a>
           </div>
@@ -148,7 +148,7 @@ export default function CarouselLibraryPage() {
                   onClick={() => setSelectedId(carousel.id)}
                   className={`group cursor-pointer rounded-lg border transition-all duration-150 overflow-hidden ${
                     isActive
-                      ? 'border-[#22c55e]/40 bg-[#22c55e]/5'
+                      ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/5'
                       : 'border-white/6 hover:border-white/15 bg-white/[0.02] hover:bg-white/[0.04]'
                   }`}
                 >
@@ -207,7 +207,7 @@ export default function CarouselLibraryPage() {
                   <button
                     onClick={() => handleDownload(selected)}
                     disabled={downloading === selected.id}
-                    className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
+                    className="flex items-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
                   >
                     {downloading === selected.id ? (
                       <><span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> 다운로드 중</>

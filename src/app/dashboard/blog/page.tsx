@@ -2,11 +2,24 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw, Settings } from 'lucide-react';
+import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw, Settings, Sparkles, Bot, BarChart2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 type Platform = 'wordpress' | 'naver' | 'nextblog';
 type Tone = 'friendly' | 'professional' | 'casual' | 'educational';
 type Length = 'short' | 'medium' | 'long';
+
+const BLOG_LLM_MODELS = [
+  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
+  { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
+  { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
+  { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
+  { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가' },
+  { id: 'qwen3.5-plus',              name: 'Qwen 3.5 Plus',       provider: 'Alibaba',   price: '합리적' },
+  { id: 'qwen3.6-plus',              name: 'Qwen 3.6 Plus',       provider: 'Alibaba',   price: '고지능' },
+];
+const BLOG_LLM_PROVIDERS = ['Google', 'Anthropic', 'Alibaba'] as const;
 
 type CrawlResult = {
   title: string;
@@ -58,6 +71,17 @@ export default function BlogPage() {
   const [writeError, setWriteError] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
+  const [llmModelId, setLlmModelId] = useState('gemini-2.5-flash');
+  const [modelOpen, setModelOpen] = useState(false);
+  const [writeMode, setWriteMode] = useState<'standard' | 'agent'>('standard');
+  const [evaluation, setEvaluation] = useState<{
+    totalScore: number; grade: string; passed: boolean;
+    suggestions: string[];
+    dimensions: { nameKo: string; score: number; reason: string; suggestion: string }[];
+  } | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [agentSteps, setAgentSteps] = useState<{ agent: string; status: string; summary: string }[]>([]);
+
   const [copied, setCopied] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wordpress');
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus>({ wordpress: false, naver: false, nextblog: false });
@@ -107,26 +131,46 @@ export default function BlogPage() {
     }
   }
 
+  async function runEvaluate(content: string) {
+    if (!content.trim()) return;
+    setEvaluating(true);
+    setEvaluation(null);
+    try {
+      const res = await fetch('/api/blog/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, llmModelId }),
+      });
+      const data = await res.json();
+      if (res.ok) setEvaluation(data);
+    } catch { /* 채점 실패는 조용히 */ }
+    finally { setEvaluating(false); }
+  }
+
   async function handleWrite() {
     setWriting(true);
     setWriteError('');
+    setEvaluation(null);
+    setAgentSteps([]);
     try {
-      const res = await fetch('/api/blog/write', {
+      const endpoint = writeMode === 'agent' ? '/api/blog/write-agent' : '/api/blog/write';
+      const body = writeMode === 'agent'
+        ? { content: crawlResult?.content || customPrompt || '', title: crawlResult?.title || '', tone, length, llmModelId }
+        : { content: crawlResult?.content || '', title: crawlResult?.title || '', tone, length, customPrompt: customPrompt.trim() || undefined, llmModelId };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: crawlResult?.content || '',
-          title: crawlResult?.title || '',
-          tone,
-          length,
-          customPrompt: customPrompt.trim() || undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '작성 실패');
       setBlogContent(data.content);
       setBlogTitle(data.title);
+      if (data.steps) setAgentSteps(data.steps);
       setActiveTab('edit');
+      // 작성 완료 후 자동 채점
+      await runEvaluate(data.content);
     } catch (err: unknown) {
       setWriteError(err instanceof Error ? err.message : '블로그 작성 중 오류 발생');
     } finally {
@@ -181,11 +225,10 @@ export default function BlogPage() {
     <div className="max-w-6xl mx-auto">
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-6">
-        <span className="w-1 h-7 bg-[#22c55e]" />
-        <div>
-          <h1 className="text-[18px] font-black tracking-tight text-white uppercase">블로그 작성</h1>
-          <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">BLOG WRITER & PUBLISHER</p>
-        </div>
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <FileText size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-sm font-semibold text-white">블로그 작성</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">
@@ -203,7 +246,7 @@ export default function BlogPage() {
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCrawl()}
                 placeholder="https://example.com/article"
-                className="flex-1 bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-[#22c55e]/40 rounded-lg px-3 py-2 text-[13px] text-white/80 placeholder-white/20 outline-none transition-colors font-mono"
+                className="flex-1 bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[13px] text-white/80 placeholder-white/25 outline-none transition-colors font-mono"
               />
               <button
                 onClick={handleCrawl}
@@ -303,7 +346,7 @@ export default function BlogPage() {
               <p className="text-[13px] text-white/30 font-mono">URL을 입력하거나 직접 작성을 시작하세요</p>
               <button
                 onClick={() => { setBlogContent('# 블로그 제목\n\n여기에 내용을 작성하세요...'); setBlogTitle('블로그 제목'); }}
-                className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors font-mono"
+                className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors font-mono"
               >
                 빈 문서로 시작 →
               </button>
@@ -315,9 +358,80 @@ export default function BlogPage() {
         <div className="space-y-4">
           {/* AI 블로그 작성 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-              <Wand2 size={12} />AI 블로그 작성
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <Wand2 size={12} />AI 블로그 작성
+              </p>
+              {/* 모드 토글 */}
+              <div className="flex gap-0.5 bg-white/[0.04] rounded-lg p-0.5 border border-white/8">
+                <button
+                  onClick={() => setWriteMode('standard')}
+                  className={`flex items-center gap-1 text-[10px] font-mono px-2.5 py-1 rounded-md transition-colors ${
+                    writeMode === 'standard' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
+                  }`}
+                >
+                  <Wand2 size={9} />표준
+                </button>
+                <button
+                  onClick={() => setWriteMode('agent')}
+                  className={`flex items-center gap-1 text-[10px] font-mono px-2.5 py-1 rounded-md transition-colors ${
+                    writeMode === 'agent' ? 'bg-[#4f8ef7]/20 text-[#4f8ef7]' : 'text-white/30 hover:text-white/60'
+                  }`}
+                >
+                  <Bot size={9} />전문작가
+                </button>
+              </div>
+            </div>
+            {writeMode === 'agent' && (
+              <div className="flex items-center gap-2 bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-lg px-3 py-2">
+                <Sparkles size={11} className="text-[#4f8ef7]/60 shrink-0" />
+                <p className="text-[11px] font-mono text-white/40">리서처 → 작가 → 편집장 3단계 멀티에이전트</p>
+              </div>
+            )}
+
+            {/* AI 모델 선택 */}
+            <div>
+              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">AI 모델</p>
+              <button
+                onClick={() => setModelOpen(v => !v)}
+                className="w-full flex items-center justify-between bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] rounded-lg px-3 py-2 transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-[12px] font-mono text-white/70">
+                    {BLOG_LLM_MODELS.find(m => m.id === llmModelId)?.name ?? llmModelId}
+                  </p>
+                  <p className="text-[10px] font-mono text-white/25">
+                    {BLOG_LLM_MODELS.find(m => m.id === llmModelId)?.provider}
+                    {' · '}
+                    {BLOG_LLM_MODELS.find(m => m.id === llmModelId)?.price}
+                  </p>
+                </div>
+                {modelOpen ? <ChevronUp size={12} className="text-white/30" /> : <ChevronDown size={12} className="text-white/30" />}
+              </button>
+              {modelOpen && (
+                <div className="mt-1 rounded-lg border border-white/8 bg-black overflow-hidden">
+                  {BLOG_LLM_PROVIDERS.map(provider => (
+                    <div key={provider}>
+                      <p className="text-[10px] font-mono text-white/20 uppercase tracking-wider px-3 pt-2 pb-1">{provider}</p>
+                      {BLOG_LLM_MODELS.filter(m => m.provider === provider).map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => { setLlmModelId(m.id); setModelOpen(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+                            llmModelId === m.id
+                              ? 'bg-[#4f8ef7]/10 text-white'
+                              : 'text-white/50 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="text-[12px] font-mono">{m.name}</span>
+                          <span className="text-[10px] font-mono text-white/30">{m.price}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div>
               <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">문체</p>
@@ -327,7 +441,7 @@ export default function BlogPage() {
                     key={opt.value}
                     onClick={() => setTone(opt.value)}
                     className={`text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
-                      tone === opt.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      tone === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}
                   >
                     {opt.label}
@@ -344,7 +458,7 @@ export default function BlogPage() {
                     key={opt.value}
                     onClick={() => setLength(opt.value)}
                     className={`flex-1 text-center py-1.5 rounded-lg border transition-colors ${
-                      length === opt.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      length === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}
                   >
                     <span className="text-[12px] font-mono block">{opt.label}</span>
@@ -361,7 +475,7 @@ export default function BlogPage() {
                 onChange={e => setCustomPrompt(e.target.value)}
                 placeholder="예: SEO 최적화, 특정 독자층..."
                 rows={3}
-                className="w-full bg-white/[0.03] border border-white/8 hover:border-white/15 focus:border-[#22c55e]/30 rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/20 outline-none transition-colors font-mono resize-none"
+                className="w-full bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/25 outline-none transition-colors font-mono resize-none"
               />
             </div>
 
@@ -370,17 +484,114 @@ export default function BlogPage() {
             <button
               onClick={handleWrite}
               disabled={writing || (!crawlResult && !customPrompt.trim())}
-              className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors"
             >
               {writing ? (
-                <><Loader2 size={14} className="animate-spin" /> 작성 중...</>
+                <><Loader2 size={14} className="animate-spin" /> {writeMode === 'agent' ? '에이전트 작동 중...' : '작성 중...'}</>
               ) : blogContent ? (
                 <><RefreshCw size={14} /> 다시 작성</>
               ) : (
                 <><Wand2 size={14} /> AI 블로그 작성</>
               )}
             </button>
+
+            {/* 에이전트 단계 표시 */}
+            {(writing && writeMode === 'agent') || agentSteps.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider">에이전트 진행</p>
+                {writing && agentSteps.length === 0 ? (
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-white/30">
+                    <Loader2 size={11} className="animate-spin text-[#4f8ef7]/50" />리서처 분석 중...
+                  </div>
+                ) : (
+                  agentSteps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[11px] font-mono">
+                      {step.status === 'done'
+                        ? <CheckCircle2 size={11} className="text-[#4f8ef7]/70 mt-0.5 shrink-0" />
+                        : <Loader2 size={11} className="animate-spin text-white/30 mt-0.5 shrink-0" />
+                      }
+                      <div>
+                        <span className="text-white/50 font-bold">{step.agent}</span>
+                        {step.summary && <span className="text-white/25 ml-1">— {step.summary}</span>}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : null}
           </div>
+
+          {/* 채점 결과 패널 */}
+          {(evaluating || evaluation) && (
+            <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                  <BarChart2 size={12} />품질 채점
+                </p>
+                {evaluation && (
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-black ${
+                    evaluation.grade === 'S' ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400' :
+                    evaluation.grade === 'A' ? 'border-[#4f8ef7]/30 bg-[#4f8ef7]/10 text-[#4f8ef7]' :
+                    evaluation.grade === 'B' ? 'border-blue-400/30 bg-blue-400/10 text-blue-400' :
+                    'border-orange-400/30 bg-orange-400/10 text-orange-400'
+                  }`}>
+                    {evaluation.grade}등급 {evaluation.totalScore}점
+                  </div>
+                )}
+              </div>
+
+              {evaluating ? (
+                <div className="flex items-center gap-2 text-[11px] font-mono text-white/30">
+                  <Loader2 size={11} className="animate-spin" />AI 채점 중...
+                </div>
+              ) : evaluation ? (
+                <>
+                  {/* 차원별 점수 */}
+                  <div className="space-y-1.5">
+                    {evaluation.dimensions.map((dim, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-white/30 w-20 shrink-0 truncate">{dim.nameKo}</span>
+                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              dim.score >= 8 ? 'bg-[#4f8ef7]/70' : dim.score >= 6 ? 'bg-blue-400/70' : 'bg-orange-400/70'
+                            }`}
+                            style={{ width: `${dim.score * 10}%` }}
+                          />
+                        </div>
+                        <span className={`text-[10px] font-mono w-6 text-right shrink-0 ${
+                          dim.score >= 8 ? 'text-[#4f8ef7]/70' : dim.score >= 6 ? 'text-blue-400/70' : 'text-orange-400/70'
+                        }`}>{dim.score}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 개선 제안 */}
+                  {evaluation.suggestions.length > 0 && (
+                    <div className="bg-white/[0.02] border border-white/8 rounded-lg p-3 space-y-1.5">
+                      <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider flex items-center gap-1">
+                        <AlertCircle size={10} />개선 제안
+                      </p>
+                      {evaluation.suggestions.slice(0, 3).map((s, i) => (
+                        <p key={i} className="text-[11px] font-mono text-white/40 leading-relaxed">• {s}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* AI 개선 버튼 */}
+                  {evaluation.totalScore < 75 && (
+                    <button
+                      onClick={() => { setWriteMode('agent'); handleWrite(); }}
+                      disabled={writing}
+                      className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7]/10 hover:bg-[#4f8ef7]/20 border border-[#4f8ef7]/20 hover:border-[#4f8ef7]/40 text-[#4f8ef7]/80 hover:text-[#4f8ef7] text-[12px] font-bold py-2 rounded-lg transition-colors"
+                    >
+                      <Sparkles size={12} />전문작가 에이전트로 개선 ({evaluation.totalScore}점 → 목표 75점)
+                    </button>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
 
           {/* 발행 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
@@ -460,7 +671,7 @@ export default function BlogPage() {
             {/* 결과 메시지 */}
             {publishResult && (
               <div className={`text-[12px] font-mono p-3 rounded-lg border ${
-                publishResult.success ? 'text-[#22c55e]/80 border-[#22c55e]/20 bg-[#22c55e]/5' : 'text-red-400/80 border-red-500/20 bg-red-500/5'
+                publishResult.success ? 'text-[#4f8ef7]/80 border-[#4f8ef7]/20 bg-[#4f8ef7]/5' : 'text-red-400/80 border-red-500/20 bg-red-500/5'
               }`}>
                 {publishResult.message}
                 {publishResult.link && (

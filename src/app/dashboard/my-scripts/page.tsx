@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ScrollText } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 
 type Script = {
@@ -110,15 +111,14 @@ export default function MyScriptsPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <span className="w-1 h-7 bg-[#22c55e]" />
-          <div>
-            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 대본</h1>
-            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">SCRIPT LIBRARY</p>
-          </div>
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <ScrollText size={13} strokeWidth={1.8} />
+          </span>
+          <span className="text-sm font-semibold text-white">내 대본</span>
         </div>
         <button
           onClick={() => router.push('/dashboard/script')}
-          className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
+          className="bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
         >
           + 새 대본 만들기
         </button>
@@ -133,7 +133,7 @@ export default function MyScriptsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="대본 검색..."
-            className="w-full bg-white/[0.03] border border-white/8 hover:border-white/15 focus:border-[#22c55e]/40 rounded-lg pl-8 pr-3 py-1.5 text-[12px] text-white/70 placeholder-white/20 outline-none transition-colors font-mono"
+            className="w-full bg-white/[0.03] border border-white/8 hover:border-white/15 focus:border-[#4f8ef7]/40 rounded-lg pl-8 pr-3 py-1.5 text-[12px] text-white/70 placeholder-white/20 outline-none transition-colors font-mono"
           />
         </div>
         <div className="flex items-center gap-1 ml-auto">
@@ -165,7 +165,7 @@ export default function MyScriptsPage() {
               {search ? '검색 결과가 없습니다' : '저장된 대본이 없습니다'}
             </p>
             {!search && (
-              <button onClick={() => router.push('/dashboard/script')} className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors mt-1 font-mono">
+              <button onClick={() => router.push('/dashboard/script')} className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors mt-1 font-mono">
                 새 대본 만들기 →
               </button>
             )}
@@ -235,7 +235,7 @@ export default function MyScriptsPage() {
                       </button>
                       <button
                         onClick={() => handleUseScript(script)}
-                        className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded-md transition-colors"
+                        className="bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded-md transition-colors"
                       >
                         영상 제작 →
                       </button>

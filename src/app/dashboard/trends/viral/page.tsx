@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Video, Zap, ArrowUpDown, PenLine, CalendarPlus } from 'lucide-react';
+import { Video, Zap, ArrowUpDown, PenLine, CalendarPlus, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type ViralSort = 'hourly' | 'views' | 'publishedAt';
@@ -168,18 +168,16 @@ export default function ViralPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>
-            🔥 급상승 영상
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            시간당 조회수 증가량이 급격히 높은 영상
+        <div className="flex items-center gap-3">
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <TrendingUp size={13} strokeWidth={1.8} />
+          </span>
+          <div>
+            <span className="text-sm font-semibold text-white">급상승 영상</span>
             {lastUpdated && (
-              <span className="ml-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
-                최종 갱신: {lastUpdated}
-              </span>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>
             )}
-          </p>
+          </div>
         </div>
       </div>
 
@@ -188,8 +186,8 @@ export default function ViralPage() {
         <div
           className="rounded-xl overflow-hidden text-sm"
           style={{
-            background: collectStatus.ok ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
-            border: `1px solid ${collectStatus.ok ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+            background: collectStatus.ok ? 'rgba(56,189,248,0.06)' : 'rgba(239,68,68,0.06)',
+            border: `1px solid ${collectStatus.ok ? 'rgba(56,189,248,0.25)' : 'rgba(239,68,68,0.25)'}`,
           }}
         >
           <div className="flex items-center justify-between px-4 py-3">
@@ -197,13 +195,13 @@ export default function ViralPage() {
               <span
                 className="flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold shrink-0"
                 style={{
-                  background: collectStatus.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                  color: collectStatus.ok ? '#22c55e' : '#ef4444',
+                  background: collectStatus.ok ? 'rgba(56,189,248,0.15)' : 'rgba(239,68,68,0.15)',
+                  color: collectStatus.ok ? '#4f8ef7' : '#ef4444',
                 }}
               >
                 {collectStatus.ok ? '✓' : '✗'}
               </span>
-              <span style={{ color: collectStatus.ok ? '#22c55e' : '#ef4444' }}>{collectStatus.msg}</span>
+              <span style={{ color: collectStatus.ok ? '#4f8ef7' : '#ef4444' }}>{collectStatus.msg}</span>
             </div>
 
             {/* 카운트다운 프로그레스 */}
@@ -212,19 +210,19 @@ export default function ViralPage() {
                 {/* 원형 카운트다운 */}
                 <div className="relative w-9 h-9">
                   <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(34,197,94,0.12)" strokeWidth="2.5" />
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(56,189,248,0.12)" strokeWidth="2.5" />
                     <circle
                       cx="18" cy="18" r="15" fill="none"
-                      stroke="#22c55e" strokeWidth="2.5"
+                      stroke="#4f8ef7" strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 15}`}
                       strokeDashoffset={`${2 * Math.PI * 15 * (1 - countdown / 30)}`}
-                      style={{ transition: 'stroke-dashoffset 1s linear', filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.6))' }}
+                      style={{ transition: 'stroke-dashoffset 1s linear', filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.6))' }}
                     />
                   </svg>
                   <span
                     className="absolute inset-0 flex items-center justify-center text-[11px] font-bold"
-                    style={{ color: '#22c55e' }}
+                    style={{ color: '#4f8ef7' }}
                   >
                     {countdown}
                   </span>
@@ -240,8 +238,8 @@ export default function ViralPage() {
                         className="w-1.5 rounded-full transition-all duration-500"
                         style={{
                           height: i % 3 === 1 ? '14px' : '10px',
-                          background: filled ? '#22c55e' : 'rgba(34,197,94,0.15)',
-                          boxShadow: filled ? '0 0 5px rgba(34,197,94,0.5)' : 'none',
+                          background: filled ? '#4f8ef7' : 'rgba(56,189,248,0.15)',
+                          boxShadow: filled ? '0 0 5px rgba(56,189,248,0.5)' : 'none',
                         }}
                       />
                     );
@@ -253,13 +251,13 @@ export default function ViralPage() {
 
           {/* 하단 씬 프로그레스 라인 */}
           {collectStatus.ok && countdown > 0 && (
-            <div className="h-[2px] w-full" style={{ background: 'rgba(34,197,94,0.1)' }}>
+            <div className="h-[2px] w-full" style={{ background: 'rgba(56,189,248,0.1)' }}>
               <div
                 className="h-full"
                 style={{
                   width: `${(countdown / 30) * 100}%`,
-                  background: 'linear-gradient(90deg, #16a34a, #22c55e)',
-                  boxShadow: '0 0 8px rgba(34,197,94,0.6)',
+                  background: 'linear-gradient(90deg, #16a34a, #4f8ef7)',
+                  boxShadow: '0 0 8px rgba(56,189,248,0.6)',
                   transition: 'width 1s linear',
                 }}
               />
@@ -285,9 +283,9 @@ export default function ViralPage() {
               style={
                 period === val
                   ? {
-                      background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                      background: 'linear-gradient(135deg, #4f8ef7, #16a34a)',
                       color: '#fff',
-                      boxShadow: '0 0 10px rgba(34,197,94,0.35)',
+                      boxShadow: '0 0 10px rgba(56,189,248,0.35)',
                     }
                   : { color: 'var(--text-faint)' }
               }
@@ -315,7 +313,7 @@ export default function ViralPage() {
             onClick={triggerCollect}
             disabled={collecting || loading}
             className="px-3 py-1.5 rounded-lg text-xs transition-colors ml-2"
-            style={{ border: '1px solid #22c55e', color: collecting ? 'var(--text-faint)' : '#22c55e', background: 'transparent' }}
+            style={{ border: '1px solid #4f8ef7', color: collecting ? 'var(--text-faint)' : '#4f8ef7', background: 'transparent' }}
           >
             {collecting ? '수집 중...' : '지금 수집'}
           </button>
@@ -348,7 +346,7 @@ export default function ViralPage() {
         <span className="text-xs shrink-0" style={{ color: 'var(--text-faint)' }}>국가</span>
         <button
           onClick={() => setSelectedRegion('')}
-          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === '' ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]' : ''}`}
+          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === '' ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]' : ''}`}
           style={selectedRegion !== '' ? { border: '1px solid var(--border)', color: 'var(--text-muted)' } : {}}
         >
           전체
@@ -357,7 +355,7 @@ export default function ViralPage() {
           <button
             key={code}
             onClick={() => setSelectedRegion(code)}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === code ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]' : ''}`}
+            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === code ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]' : ''}`}
             style={selectedRegion !== code ? { border: '1px solid var(--border)', color: 'var(--text-muted)' } : {}}
           >
             {r.label}
@@ -372,7 +370,7 @@ export default function ViralPage() {
           onClick={() => setSelectedCategory('')}
           className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
             selectedCategory === ''
-              ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]'
+              ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]'
               : ''
           }`}
           style={
@@ -389,7 +387,7 @@ export default function ViralPage() {
             onClick={() => setSelectedCategory(key)}
             className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
               selectedCategory === key
-                ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]'
+                ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]'
                 : ''
             }`}
             style={
@@ -412,7 +410,7 @@ export default function ViralPage() {
         </div>
       ) : signals.length === 0 && (collecting || countdown > 0) ? (
         /* 수집 중 모던 UI */
-        <div className="relative rounded-xl overflow-hidden py-16 flex flex-col items-center gap-6" style={{ border: '1px solid rgba(34,197,94,0.2)', background: 'radial-gradient(ellipse at 50% 0%, rgba(34,197,94,0.06) 0%, transparent 70%)' }}>
+        <div className="relative rounded-xl overflow-hidden py-16 flex flex-col items-center gap-6" style={{ border: '1px solid rgba(56,189,248,0.2)', background: 'radial-gradient(ellipse at 50% 0%, rgba(56,189,248,0.06) 0%, transparent 70%)' }}>
           {/* 오비트 애니메이션 */}
           <div className="relative w-16 h-16">
             <style>{`
@@ -422,13 +420,13 @@ export default function ViralPage() {
               @keyframes pulse-ring { 0%,100% { opacity:0.15; transform:scale(1); } 50% { opacity:0.4; transform:scale(1.15); } }
             `}</style>
             {/* 중심 원 */}
-            <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', animation: 'pulse-ring 2s ease-in-out infinite' }} />
-            <div className="absolute inset-[6px] rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.18)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }}>
-              <div className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ boxShadow: '0 0 8px #22c55e' }} />
+            <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(56,189,248,0.12)', animation: 'pulse-ring 2s ease-in-out infinite' }} />
+            <div className="absolute inset-[6px] rounded-full flex items-center justify-center" style={{ background: 'rgba(56,189,248,0.18)', boxShadow: '0 0 20px rgba(56,189,248,0.3)' }}>
+              <div className="w-2 h-2 rounded-full bg-[#4f8ef7]" style={{ boxShadow: '0 0 8px #4f8ef7' }} />
             </div>
             {/* 오비트 점들 */}
             {[
-              { anim: 'orbit 1.8s linear infinite', color: '#22c55e' },
+              { anim: 'orbit 1.8s linear infinite', color: '#4f8ef7' },
               { anim: 'orbit2 1.8s linear infinite', color: '#86efac' },
               { anim: 'orbit3 1.8s linear infinite', color: '#4ade80' },
             ].map((o, i) => (
@@ -439,14 +437,14 @@ export default function ViralPage() {
           </div>
           {/* 텍스트 */}
           <div className="text-center space-y-1.5">
-            <p className="text-sm font-medium tracking-wide" style={{ color: '#22c55e' }}>YouTube 데이터 수집 중</p>
+            <p className="text-sm font-medium tracking-wide" style={{ color: '#4f8ef7' }}>YouTube 데이터 수집 중</p>
             <p className="text-xs" style={{ color: 'var(--text-faint)' }}>급상승 영상을 분석하고 있습니다. 잠시만 기다려주세요.</p>
           </div>
           {/* 스캔 라인 */}
-          <div className="w-48 h-[1px] relative overflow-hidden rounded-full" style={{ background: 'rgba(34,197,94,0.12)' }}>
-            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #22c55e, transparent)', animation: 'orbit 1.5s linear infinite', animationName: 'scanline' }} />
+          <div className="w-48 h-[1px] relative overflow-hidden rounded-full" style={{ background: 'rgba(56,189,248,0.12)' }}>
+            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #4f8ef7, transparent)', animation: 'orbit 1.5s linear infinite', animationName: 'scanline' }} />
             <style>{`@keyframes scanline { 0% { left: -4rem; } 100% { left: 100%; } }`}</style>
-            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #22c55e, transparent)', animation: 'scanline 1.5s linear infinite' }} />
+            <div className="absolute inset-y-0 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, #4f8ef7, transparent)', animation: 'scanline 1.5s linear infinite' }} />
           </div>
         </div>
       ) : signals.length === 0 ? (
@@ -465,7 +463,7 @@ export default function ViralPage() {
                 <button key={s.key} onClick={() => setSortKey(s.key)}
                   className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
                   style={sortKey === s.key
-                    ? { background: 'var(--sidebar)', color: '#22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
+                    ? { background: 'var(--sidebar)', color: '#4f8ef7', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
                     : { color: 'var(--text-faint)' }}>
                   {s.label}
                 </button>
@@ -502,7 +500,7 @@ export default function ViralPage() {
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>
+                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#4f8ef7' : 'var(--text-faint)' }}>
                     #{idx + 1}
                   </span>
                   <a
@@ -518,7 +516,7 @@ export default function ViralPage() {
                       <div className="w-[72px] h-[40px] rounded-lg shrink-0" style={{ background: 'var(--hover-bg)' }} />
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-medium truncate group-hover:text-[#22c55e] transition-colors" style={{ color: 'var(--text)' }}>
+                      <p className="text-xs font-medium truncate group-hover:text-[#4f8ef7] transition-colors" style={{ color: 'var(--text)' }}>
                         {video.title}
                       </p>
                       {video.category && (
@@ -534,7 +532,7 @@ export default function ViralPage() {
                       <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>평균 {formatViews(channel.avg_views)}회</p>
                     ) : null}
                   </div>
-                  <p className="text-xs font-bold text-right text-[#22c55e]">{formatHourlyRate(signal.growth_rate_hourly)}</p>
+                  <p className="text-xs font-bold text-right text-[#4f8ef7]">{formatHourlyRate(signal.growth_rate_hourly)}</p>
                   <p className="text-xs text-right font-medium" style={{ color: 'var(--text)' }}>{formatViews(signal.current_views)}회</p>
                   <p className="text-xs text-right" style={{ color: 'var(--text-faint)' }}>{timeAgo(video.published_at)}</p>
                   {/* 액션 버튼 */}
@@ -546,7 +544,7 @@ export default function ViralPage() {
                         router.push(`/dashboard/script?${params.toString()}`);
                       }}
                       className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all opacity-0 group-hover:opacity-100"
-                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+                      style={{ background: 'rgba(56,189,248,0.15)', color: '#4f8ef7', border: '1px solid rgba(56,189,248,0.3)' }}
                     >
                       <PenLine size={10} />대본
                     </button>

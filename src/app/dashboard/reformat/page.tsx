@@ -158,21 +158,20 @@ export default function ReformatPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <span className="w-1 h-7 bg-[#22c55e]" />
-        <div>
-          <h1 className="text-[18px] font-black tracking-tight text-white uppercase">멀티채널 배포</h1>
-          <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">ONE SOURCE → MULTI CHANNEL</p>
-        </div>
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <Repeat2 size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-sm font-semibold text-white">멀티채널 배포</span>
       </div>
 
       {/* 대본 연동 배너 */}
       {fromScript && (
-        <div className="mb-5 rounded-xl border border-[#22c55e]/20 bg-[#22c55e]/5 p-4">
+        <div className="mb-5 rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/5 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <FileText size={14} className="text-[#22c55e] shrink-0 mt-0.5" />
+              <FileText size={14} className="text-[#4f8ef7] shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="text-[12px] font-bold text-[#22c55e] mb-0.5">대본에서 불러옴</p>
+                <p className="text-[12px] font-bold text-[#4f8ef7] mb-0.5">대본에서 불러옴</p>
                 <p className="text-[11px] font-mono text-white/40 truncate">{fromScriptTitle || '대본 내용 로드됨'}</p>
               </div>
             </div>
@@ -211,7 +210,7 @@ export default function ReformatPage() {
                 onChange={e => setManualContent(e.target.value)}
                 placeholder="변환할 대본 내용을 붙여넣으세요..."
                 rows={fromScript ? 5 : 8}
-                className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#22c55e]/30 placeholder-white/20"
+                className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#4f8ef7]/30 placeholder-white/20"
               />
             ) : (
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -225,7 +224,7 @@ export default function ReformatPage() {
                     onClick={() => { setSelectedScript(s); setBlogTitle(s.title || ''); }}
                     className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
                       selectedScript?.id === s.id
-                        ? 'border-[#22c55e]/40 bg-[#22c55e]/8 text-white'
+                        ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/8 text-white'
                         : 'border-white/6 text-white/50 hover:text-white/70 hover:border-white/12'
                     }`}
                   >
@@ -264,7 +263,7 @@ export default function ReformatPage() {
                     <p className="text-[10px] font-mono text-white/25">{meta.desc}</p>
                   </div>
                   <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    selectedFormats.has(key) ? 'border-[#22c55e] bg-[#22c55e]' : 'border-white/20'
+                    selectedFormats.has(key) ? 'border-[#4f8ef7] bg-[#4f8ef7]' : 'border-white/20'
                   }`}>
                     {selectedFormats.has(key) && <Check size={9} className="text-black" />}
                   </div>
@@ -277,7 +276,7 @@ export default function ReformatPage() {
             <button
               onClick={handleConvert}
               disabled={converting || !sourceContent.trim()}
-              className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[13px] uppercase py-2.5 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[13px] uppercase py-2.5 rounded-lg transition-colors"
             >
               {converting ? (
                 <><Loader2 size={14} className="animate-spin" />변환 중 ({selectedFormats.size}개)...</>
@@ -292,7 +291,7 @@ export default function ReformatPage() {
         <div className="space-y-3">
           {converting && (
             <div className="rounded-xl border border-white/8 bg-white/[0.02] flex items-center justify-center py-16 gap-3">
-              <Loader2 size={18} className="animate-spin text-[#22c55e]/60" />
+              <Loader2 size={18} className="animate-spin text-[#4f8ef7]/60" />
               <p className="text-[13px] text-white/40 font-mono">AI가 {selectedFormats.size}개 채널 형식으로 변환 중...</p>
             </div>
           )}
@@ -395,7 +394,7 @@ export default function ReformatPage() {
                                   disabled={!!publishingPlatform || !blogTitle.trim() || state === 'done'}
                                   className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-[12px] font-bold transition-all ${
                                     state === 'done'
-                                      ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e]'
+                                      ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]'
                                       : state === 'error'
                                       ? 'border-red-500/40 bg-red-500/10 text-red-400'
                                       : 'border-white/15 hover:border-[#a855f7]/40 hover:bg-[#a855f7]/10 text-white/60 hover:text-white/90'
@@ -411,7 +410,7 @@ export default function ReformatPage() {
                                 </button>
                                 {result?.link && (
                                   <a href={result.link} target="_blank" rel="noopener noreferrer"
-                                    className="text-[11px] font-mono text-[#22c55e]/60 hover:text-[#22c55e] transition-colors flex items-center gap-1"
+                                    className="text-[11px] font-mono text-[#4f8ef7]/60 hover:text-[#4f8ef7] transition-colors flex items-center gap-1"
                                   >
                                     <ExternalLink size={11} />보기
                                   </a>

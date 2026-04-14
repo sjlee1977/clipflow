@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Zap } from 'lucide-react';
 import { TREND_CATEGORIES, SEARCH_REGIONS } from '@/lib/youtube-trends';
 
 type OutlierSort = 'multiplier' | 'views' | 'publishedAt';
@@ -114,7 +114,7 @@ export default function OutliersPage() {
   }
 
   function multiplierColor(x: number) {
-    if (x >= 10) return '#22c55e';
+    if (x >= 10) return '#4f8ef7';
     if (x >= 5) return '#f59e0b';
     return '#64748b';
   }
@@ -123,18 +123,16 @@ export default function OutliersPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>
-            ⚡ 채널 이상치 영상
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            채널 평균 조회수 대비 이례적으로 높은 영상
+        <div className="flex items-center gap-3">
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <Zap size={13} strokeWidth={1.8} />
+          </span>
+          <div>
+            <span className="text-sm font-semibold text-white">채널 이상치 영상</span>
             {lastUpdated && (
-              <span className="ml-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
-                최종 갱신: {lastUpdated}
-              </span>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>
             )}
-          </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -142,8 +140,8 @@ export default function OutliersPage() {
             disabled={collecting || loading}
             className="px-2.5 py-1 rounded-lg text-xs transition-colors"
             style={{
-              border: '1px solid #22c55e',
-              color: collecting ? 'var(--text-faint)' : '#22c55e',
+              border: '1px solid #4f8ef7',
+              color: collecting ? 'var(--text-faint)' : '#4f8ef7',
               background: 'transparent',
             }}
           >
@@ -169,9 +167,9 @@ export default function OutliersPage() {
               style={
                 period === val
                   ? {
-                      background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                      background: 'linear-gradient(135deg, #4f8ef7, #16a34a)',
                       color: '#fff',
-                      boxShadow: '0 0 10px rgba(34,197,94,0.35)',
+                      boxShadow: '0 0 10px rgba(56,189,248,0.35)',
                     }
                   : { color: 'var(--text-faint)' }
               }
@@ -217,7 +215,7 @@ export default function OutliersPage() {
         <span className="text-xs shrink-0" style={{ color: 'var(--text-faint)' }}>국가</span>
         <button
           onClick={() => setSelectedRegion('')}
-          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === '' ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]' : ''}`}
+          className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === '' ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]' : ''}`}
           style={selectedRegion !== '' ? { border: '1px solid var(--border)', color: 'var(--text-muted)' } : {}}
         >
           전체
@@ -226,7 +224,7 @@ export default function OutliersPage() {
           <button
             key={code}
             onClick={() => setSelectedRegion(code)}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === code ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]' : ''}`}
+            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedRegion === code ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]' : ''}`}
             style={selectedRegion !== code ? { border: '1px solid var(--border)', color: 'var(--text-muted)' } : {}}
           >
             {r.label}
@@ -241,7 +239,7 @@ export default function OutliersPage() {
           onClick={() => setSelectedCategory('')}
           className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
             selectedCategory === ''
-              ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]'
+              ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]'
               : ''
           }`}
           style={
@@ -258,7 +256,7 @@ export default function OutliersPage() {
             onClick={() => setSelectedCategory(key)}
             className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
               selectedCategory === key
-                ? 'bg-[#22c55e]/10 border border-[#22c55e]/60 text-[#22c55e]'
+                ? 'bg-[#4f8ef7]/10 border border-[#4f8ef7]/60 text-[#4f8ef7]'
                 : ''
             }`}
             style={
@@ -295,7 +293,7 @@ export default function OutliersPage() {
                 <button key={s.key} onClick={() => setSortKey(s.key)}
                   className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
                   style={sortKey === s.key
-                    ? { background: 'var(--sidebar)', color: '#22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
+                    ? { background: 'var(--sidebar)', color: '#4f8ef7', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
                     : { color: 'var(--text-faint)' }}>
                   {s.label}
                 </button>
@@ -335,7 +333,7 @@ export default function OutliersPage() {
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--hover-bg)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#22c55e' : 'var(--text-faint)' }}>#{idx + 1}</span>
+                  <span className="text-sm font-bold" style={{ color: idx < 3 ? '#4f8ef7' : 'var(--text-faint)' }}>#{idx + 1}</span>
                   <div className="flex items-center gap-3 min-w-0">
                     {video.thumbnail ? (
                       <img src={video.thumbnail} alt={video.title ?? ''} className="w-[72px] h-[40px] rounded-lg object-cover shrink-0" />
@@ -343,7 +341,7 @@ export default function OutliersPage() {
                       <div className="w-[72px] h-[40px] rounded-lg shrink-0" style={{ background: 'var(--hover-bg)' }} />
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-medium truncate group-hover:text-[#22c55e] transition-colors" style={{ color: 'var(--text)' }}>{video.title}</p>
+                      <p className="text-xs font-medium truncate group-hover:text-[#4f8ef7] transition-colors" style={{ color: 'var(--text)' }}>{video.title}</p>
                       {video.category && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ border: '1px solid var(--border)', color: 'var(--text-faint)' }}>
                           {TREND_CATEGORIES[video.category]?.label ?? video.category}

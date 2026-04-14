@@ -14,37 +14,37 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
   {
     group: '만들기',
     items: [
-      { href: '/dashboard/prompt', label: '대본 요청 스크립트', icon: FileText },
-      { href: '/dashboard/script', label: '대본 만들기', icon: PenLine },
-      { href: '/dashboard/video', label: '영상 만들기', icon: Video },
-      { href: '/dashboard/blog', label: '블로그 작성', icon: BookOpen },
-      { href: '/dashboard/auto-blog', label: '자동 블로그 생성', icon: Zap },
+      { href: '/dashboard/prompt',    label: '대본 요청 스크립트', icon: FileText },
+      { href: '/dashboard/script',    label: '대본 만들기',         icon: PenLine },
+      { href: '/dashboard/video',     label: '영상 만들기',         icon: Video },
+      { href: '/dashboard/blog',      label: '블로그 작성',         icon: BookOpen },
+      { href: '/dashboard/auto-blog', label: '자동 블로그 생성',    icon: Zap },
     ],
   },
   {
     group: '발행',
     items: [
-      { href: '/dashboard/calendar', label: '콘텐츠 캘린더', icon: CalendarDays },
-      { href: '/dashboard/reformat', label: '멀티포맷 변환', icon: Repeat2 },
-      { href: '/dashboard/thumbnail', label: '썸네일 생성', icon: Image },
+      { href: '/dashboard/calendar',  label: '콘텐츠 캘린더', icon: CalendarDays },
+      { href: '/dashboard/reformat',  label: '멀티포맷 변환', icon: Repeat2 },
+      { href: '/dashboard/thumbnail', label: '썸네일 생성',   icon: Image },
     ],
   },
   {
     group: '분석',
     items: [
-      { href: '/dashboard/trends/viral', label: '급상승 영상', icon: TrendingUp },
-      { href: '/dashboard/trends/outliers', label: '채널 이상치', icon: Zap },
-      { href: '/dashboard/trends/subscriber', label: '구독자 분석', icon: Users },
-      { href: '/dashboard/keyword', label: '키워드 분석', icon: BarChart2 },
+      { href: '/dashboard/trends/viral',      label: '급상승 영상',   icon: TrendingUp },
+      { href: '/dashboard/trends/outliers',   label: '채널 이상치',   icon: Zap },
+      { href: '/dashboard/trends/subscriber', label: '구독자 분석',   icon: Users },
+      { href: '/dashboard/keyword',           label: '키워드 분석',   icon: BarChart2 },
     ],
   },
   {
     group: '라이브러리',
     items: [
-      { href: '/dashboard/history', label: '내 영상', icon: Film },
-      { href: '/dashboard/my-scripts', label: '내 대본', icon: ScrollText },
-      { href: '/dashboard/carousel', label: '내 캐러셀', icon: LayoutTemplate },
-      { href: '/dashboard/my-thumbnails', label: '내 썸네일', icon: Images },
+      { href: '/dashboard/history',       label: '내 영상',    icon: Film },
+      { href: '/dashboard/my-scripts',    label: '내 대본',    icon: ScrollText },
+      { href: '/dashboard/carousel',      label: '내 캐러셀',  icon: LayoutTemplate },
+      { href: '/dashboard/my-thumbnails', label: '내 썸네일',  icon: Images },
     ],
   },
   {
@@ -55,13 +55,67 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
   },
 ];
 
+// 사이드바 네비게이션 링크
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  badge,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  badge?: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm"
+      style={{
+        background: active ? 'linear-gradient(135deg, rgba(79,142,247,0.18) 0%, rgba(79,142,247,0.10) 100%)' : 'transparent',
+        border: active ? '1px solid rgba(79,142,247,0.30)' : '1px solid transparent',
+        color: active ? 'var(--text)' : 'var(--text-muted)',
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {/* 아이콘 박스 — 활성: 초록 채움 / 비활성: 파랑 테두리 */}
+      <span
+        className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0 transition-all"
+        style={active ? {
+          background: 'rgba(34,197,94,0.15)',
+          border: '1px solid rgba(34,197,94,0.45)',
+          color: '#4ade80',
+          boxShadow: '0 0 10px rgba(34,197,94,0.22), inset 0 0 6px rgba(34,197,94,0.06)',
+        } : {
+          background: 'rgba(79,142,247,0.06)',
+          border: '1px solid rgba(79,142,247,0.22)',
+          color: '#4f8ef7',
+        }}
+      >
+        <Icon size={13} strokeWidth={active ? 2.2 : 1.8} />
+      </span>
+
+      <span className="truncate">{label}</span>
+
+      {badge !== undefined && badge > 0 && (
+        <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-white text-[9px] font-black px-1"
+          style={{ background: '#ef4444' }}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isDark } = useTheme();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [credits, setCredits] = useState<number | null>(null);
+  useTheme();
+  const [userEmail, setUserEmail]     = useState<string | null>(null);
+  const [userName, setUserName]       = useState<string | null>(null);
+  const [credits, setCredits]         = useState<number | null>(null);
   const [newTrendCount, setNewTrendCount] = useState(0);
 
   useEffect(() => {
@@ -78,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (data) setCredits(data.credits_remaining);
       }
     });
-    // 새 트렌드 수 확인 (최근 3시간 이내)
+
     const checkTrends = async () => {
       try {
         const since = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
@@ -101,109 +155,140 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-      {/* 사이드바 */}
-      <aside className="w-[240px] shrink-0 flex flex-col" style={{ background: 'var(--sidebar)', borderRight: '1px solid var(--border)' }}>
+
+      {/* ── 사이드바 ── */}
+      <aside
+        className="w-[248px] shrink-0 flex flex-col"
+        style={{
+          background: 'var(--sidebar)',
+          borderRight: '1px solid var(--border)',
+          boxShadow: '1px 0 20px rgba(79,142,247,0.05)',
+        }}
+      >
         {/* 로고 */}
-        <div className="flex items-center gap-2 px-[26px] h-[52px]" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="w-3 h-3 bg-[#22c55e] shrink-0" />
-          <Link href="/" className="font-medium text-[15px] tracking-normal uppercase hover:opacity-80 transition-opacity" style={{ fontFamily: "'Montserrat', sans-serif", color: 'var(--text)' }}>
+        <div
+          className="flex items-center gap-2.5 px-5 h-[56px] shrink-0"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          {/* 로고 아이콘 — 테두리만 */}
+          <div
+            className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(79,142,247,0.55)',
+              boxShadow: '0 0 10px rgba(79,142,247,0.25), inset 0 0 8px rgba(79,142,247,0.06)',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7 L6 3 L10 7 L6 11 Z" stroke="#4f8ef7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+              <path d="M7 4 L11 8" stroke="#4f8ef7" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+            </svg>
+          </div>
+          <Link
+            href="/"
+            className="font-semibold text-[15px] tracking-wide uppercase hover:opacity-80 transition-opacity"
+            style={{ fontFamily: "'Montserrat', sans-serif", color: 'var(--text)' }}
+          >
             ClipFlow
           </Link>
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-          {/* 대시보드 단독 아이템 */}
-          <div>
-            {(() => {
-              const item = DASHBOARD_ITEM;
-              const active = pathname === '/dashboard';
-              return (
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-colors text-sm font-medium ${
-                    active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10' : 'hover:bg-[var(--hover-bg)]'
-                  }`}
-                  style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
-                >
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-xl shrink-0 ${
-                    active ? 'bg-[#22c55e]/80 text-white' : ''
-                  }`}><item.icon size={14} /></span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })()}
-          </div>
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
 
-          {/* 구분선 */}
-          <div style={{ borderTop: '1px solid var(--border)' }} className="-mx-3" />
+          {/* 대시보드 단독 */}
+          <NavLink
+            href={DASHBOARD_ITEM.href}
+            label={DASHBOARD_ITEM.label}
+            icon={DASHBOARD_ITEM.icon}
+            active={pathname === '/dashboard'}
+          />
 
           {NAV_ITEMS.map((group) => (
-            <div key={group.group}>
-              <p className="text-[11px] font-semibold tracking-widest uppercase px-2 mb-1.5" style={{ color: 'var(--text-ultra)' }}>{group.group}</p>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const active = pathname === item.href;
-                  return (
-                    <div key={item.href} className="relative">
-                      {'soon' in item && item.soon ? (
-                        <div className="flex items-center gap-2.5 px-3 py-2 cursor-not-allowed select-none rounded-xl" style={{ color: 'var(--text-faint)' }}>
-                          <span className="w-4 flex items-center justify-center"><item.icon size={14} /></span>
-                          <span className="text-sm">{item.label}</span>
-                          <span className="ml-auto text-[11px] px-1.5 py-0.5 rounded" style={{ border: '1px solid var(--border-md)', color: 'var(--text-faint)' }}>SOON</span>
-                        </div>
-                      ) : (
-                        <Link
-                          href={item.href}
-                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors text-sm ${
-                            active ? 'border border-[#22c55e]/60 bg-[#22c55e]/10 font-medium' : 'hover:bg-[var(--hover-bg)]'
-                          }`}
-                          style={{ color: active ? 'var(--text)' : 'var(--text-muted)' }}
-                        >
-                          <span className={`w-6 h-6 flex items-center justify-center rounded-xl shrink-0 ${
-                            active ? 'bg-[#22c55e]/80 text-white' : ''
-                          }`}><item.icon size={14} /></span>
-                          <span>{item.label}</span>
-                          {/* 트렌드 알림 배지 */}
-                          {item.href.includes('/trends/viral') && newTrendCount > 0 && (
-                            <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500/90 text-white text-[9px] font-black px-1">
-                              {newTrendCount > 99 ? '99+' : newTrendCount}
-                            </span>
-                          )}
-                        </Link>
-                      )}
-                    </div>
-                  );
-                })}
+            <div key={group.group} className="space-y-0.5">
+              {/* 그룹 레이블 */}
+              <p
+                className="text-[10px] font-bold tracking-[0.12em] uppercase px-3 pb-1.5"
+                style={{ color: 'var(--text-ultra)' }}
+              >
+                {group.group}
+              </p>
 
-              </div>
+              {group.items.map((item) => {
+                const active = pathname === item.href;
+                const badge = item.href.includes('/trends/viral') ? newTrendCount : undefined;
+                return (
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                    icon={item.icon}
+                    active={active}
+                    badge={badge}
+                  />
+                );
+              })}
             </div>
           ))}
         </nav>
 
-        {/* 하단 */}
-        <div className="px-4 py-4 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
+        {/* 하단 사용자 정보 */}
+        <div
+          className="px-4 py-4 space-y-2"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          {/* 크레딧 바 */}
           {credits !== null && (
-            <div className="flex items-center gap-2 px-1 mb-2">
-              <span className="text-[#22c55e] text-xs">⊙</span>
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1"
+              style={{ background: 'rgba(79,142,247,0.08)', border: '1px solid rgba(79,142,247,0.15)' }}
+            >
+              <span style={{ color: '#4f8ef7' }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                  <circle cx="6" cy="6" r="5" fillOpacity="0.3" />
+                  <circle cx="6" cy="6" r="3" />
+                </svg>
+              </span>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>크레딧</span>
-              <span className="ml-auto text-[#22c55e] text-sm font-semibold">{credits.toLocaleString()}</span>
+              <span className="ml-auto text-sm font-semibold" style={{ color: '#4f8ef7' }}>{credits.toLocaleString()}</span>
             </div>
           )}
+
+          {/* 사용자 이름 + 배지 */}
           {userName && (
-            <div className="flex items-center gap-2">
-              <p className="text-sm truncate" style={{ color: 'var(--text-muted)' }}>{userName}</p>
-              <span className="text-[10px] px-1.5 py-0.5 rounded border border-green-500/30 text-green-500/60 shrink-0">ADMIN</span>
+            <div className="flex items-center gap-2 px-1">
+              <div
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(79,142,247,0.45)',
+                  color: '#4f8ef7',
+                  boxShadow: '0 0 6px rgba(79,142,247,0.20)',
+                }}
+              >
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <p className="text-sm truncate font-medium" style={{ color: 'var(--text-muted)' }}>{userName}</p>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded-md shrink-0 font-semibold"
+                style={{ background: 'rgba(79,142,247,0.15)', color: '#4f8ef7', border: '1px solid rgba(79,142,247,0.25)' }}
+              >
+                ADMIN
+              </span>
             </div>
           )}
           {userEmail && (
-            <p className="text-xs truncate" style={{ color: 'var(--text-faint)' }}>{userEmail}</p>
+            <p className="text-[11px] truncate px-1" style={{ color: 'var(--text-faint)' }}>{userEmail}</p>
           )}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs" style={{ color: 'var(--text-ultra)' }}>v1.0.0</span>
+
+          <div className="flex items-center justify-between pt-1 px-1">
+            <span className="text-[10px]" style={{ color: 'var(--text-ultra)' }}>v1.0.0</span>
             <button
               onClick={handleLogout}
-              className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
+              className="text-xs transition-colors"
+              style={{ color: 'rgba(239,68,68,0.5)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}
             >
               로그아웃
             </button>
@@ -211,17 +296,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* 콘텐츠 영역 */}
+      {/* ── 콘텐츠 ── */}
       <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-        {/* 상단 바 */}
-        <div className="sticky top-0 z-10 flex items-center justify-end px-6 h-[52px] backdrop-blur-sm" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-topbar)' }}>
+        {/* 상단바 */}
+        <div
+          className="sticky top-0 z-10 flex items-center justify-end px-6 h-[56px] backdrop-blur-md"
+          style={{
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-topbar)',
+            boxShadow: '0 1px 12px rgba(0,0,0,0.3)',
+          }}
+        >
           <div className="flex items-center gap-3">
-            {/* 테마 토글 - LIVE 왼쪽 */}
             <ThemeToggle />
-
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-green-400/70 text-xs tracking-widest">LIVE</span>
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
+            >
+              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              <span className="text-[11px] font-semibold tracking-widest" style={{ color: '#6ee7b7' }}>LIVE</span>
             </div>
           </div>
         </div>

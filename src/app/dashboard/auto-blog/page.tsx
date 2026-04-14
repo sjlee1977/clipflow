@@ -83,8 +83,8 @@ const LENGTH_OPTIONS = [
 // ─── Step 상태 아이콘 ─────────────────────────────────────────────────────────
 function StatusIcon({ status }: { status: StepStatus }) {
   switch (status) {
-    case 'running':  return <Loader2      size={14} className="animate-spin text-[#22c55e]" />;
-    case 'done':     return <CheckCircle2 size={14} className="text-[#22c55e]" />;
+    case 'running':  return <Loader2      size={14} className="animate-spin text-[#4f8ef7]" />;
+    case 'done':     return <CheckCircle2 size={14} className="text-[#4f8ef7]" />;
     case 'error':    return <XCircle      size={14} className="text-red-400" />;
     case 'skipped':  return <SkipForward  size={14} className="text-white/25" />;
     default:         return <Clock        size={14} className="text-white/20" />;
@@ -94,7 +94,7 @@ function StatusIcon({ status }: { status: StepStatus }) {
 // ─── SEO Score Ring ───────────────────────────────────────────────────────────
 function SeoScoreRing({ score }: { score: number }) {
   const r = 22, circ = 2 * Math.PI * r;
-  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
+  const color = score >= 80 ? '#4f8ef7' : score >= 60 ? '#f59e0b' : '#ef4444';
   return (
     <svg width={56} height={56} viewBox="0 0 56 56">
       <circle cx={28} cy={28} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={5} />
@@ -163,16 +163,10 @@ export default function AutoBlogPage() {
     <div>
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-6">
-        <span className="w-1 h-7 bg-[#22c55e]" />
-        <div>
-          <h1 className="text-[18px] font-black tracking-tight text-white uppercase flex items-center gap-2">
-            <Zap size={16} className="text-[#22c55e]" />
-            자동 블로그 생성
-          </h1>
-          <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">
-            TREND → TOPIC → KEYWORD → CRAWL → WRITE → PUBLISH
-          </p>
-        </div>
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <Zap size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-sm font-semibold text-white">자동 블로그 생성</span>
       </div>
 
       {/* 실행 전: 중앙 단일 컬럼 / 실행 후: 2컬럼 */}
@@ -189,7 +183,7 @@ export default function AutoBlogPage() {
                 {GEO_OPTIONS.map(o => (
                   <button key={o.v} onClick={() => setGeo(o.v)}
                     className={`flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
-                      geo === o.v ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      geo === o.v ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {o.l}
                   </button>
@@ -204,7 +198,7 @@ export default function AutoBlogPage() {
                 {(['naver', 'google'] as SeoPlatform[]).map(p => (
                   <button key={p} onClick={() => setSeoPlatform(p)}
                     className={`flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
-                      seoPlatform === p ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {p === 'naver' ? '네이버' : '구글'}
                   </button>
@@ -219,7 +213,7 @@ export default function AutoBlogPage() {
                 {TONE_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setTone(o.value)}
                     className={`text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
-                      tone === o.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      tone === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {o.label}
                   </button>
@@ -234,7 +228,7 @@ export default function AutoBlogPage() {
                 {LENGTH_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setMinLength(o.value)}
                     className={`flex-1 text-center py-1.5 rounded-lg border transition-colors ${
-                      minLength === o.value ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      minLength === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     <span className="text-[12px] font-mono block">{o.label}</span>
                     <span className="text-[9px] font-mono text-white/25">{o.desc}</span>
@@ -251,7 +245,7 @@ export default function AutoBlogPage() {
               </div>
               <button
                 onClick={() => setAutoPublish(!autoPublish)}
-                className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${autoPublish ? 'bg-[#22c55e]' : 'bg-white/15'}`}
+                className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${autoPublish ? 'bg-[#4f8ef7]' : 'bg-white/15'}`}
               >
                 <span className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform ${autoPublish ? 'translate-x-[18px]' : 'translate-x-0'}`} />
               </button>
@@ -264,7 +258,7 @@ export default function AutoBlogPage() {
                   {['wordpress', 'naver', 'nextblog'].map(p => (
                     <button key={p} onClick={() => setPublishPlatform(p)}
                       className={`flex-1 text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${
-                        publishPlatform === p ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
+                        publishPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
                       }`}>
                       {p === 'wordpress' ? 'WP' : p === 'naver' ? 'Naver' : 'Next'}
                     </button>
@@ -278,7 +272,7 @@ export default function AutoBlogPage() {
           <button
             onClick={handleRun}
             disabled={running}
-            className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-black text-[14px] tracking-tight uppercase py-3 rounded-xl transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-50 text-black font-black text-[14px] tracking-tight uppercase py-3 rounded-xl transition-colors"
           >
             {running
               ? <><Loader2 size={15} className="animate-spin" /> 파이프라인 실행 중...</>
@@ -358,7 +352,7 @@ export default function AutoBlogPage() {
 
           {/* 결과 카드 */}
           {result?.post && (
-            <div className="rounded-xl border border-[#22c55e]/20 bg-[#22c55e]/[0.03] overflow-hidden">
+            <div className="rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/[0.03] overflow-hidden">
               <div className="flex items-center gap-4 px-4 py-4 border-b border-white/6">
                 <SeoScoreRing score={result.post.seoScore} />
                 <div className="flex-1 min-w-0">
@@ -407,8 +401,8 @@ export default function AutoBlogPage() {
               {/* 발행 결과 */}
               {result.publishResult?.success && (
                 <div className="px-4 py-3 border-b border-white/6 flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-[#22c55e]" />
-                  <p className="text-[12px] font-mono text-[#22c55e]/80 flex-1">초안 발행 완료</p>
+                  <CheckCircle2 size={13} className="text-[#4f8ef7]" />
+                  <p className="text-[12px] font-mono text-[#4f8ef7]/80 flex-1">초안 발행 완료</p>
                   {result.publishResult.link && (
                     <a href={result.publishResult.link} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors">
@@ -422,7 +416,7 @@ export default function AutoBlogPage() {
               <div className="px-4 py-3 flex gap-2">
                 <button
                   onClick={goToEdit}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-black text-[12px] tracking-tight uppercase py-2 rounded-lg transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] tracking-tight uppercase py-2 rounded-lg transition-colors"
                 >
                   <FileText size={13} />에디터에서 편집
                 </button>
@@ -525,7 +519,7 @@ function StepDetail({ id, data }: { id: string; data: unknown }) {
         </p>
         <p className="text-[11px] font-mono text-white/60">
           <span className="text-white/25">키워드: </span>
-          <span className="text-[#22c55e]/70">#{String(d.keyword ?? '')}</span>
+          <span className="text-[#4f8ef7]/70">#{String(d.keyword ?? '')}</span>
         </p>
         <div className="flex flex-wrap gap-1 mt-1">
           {((d.relatedKeywords as string[]) ?? []).map((k, i) => (

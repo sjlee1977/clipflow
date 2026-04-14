@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, Plus, X, Wand2, Loader2,
-  PenLine, BookOpen, ExternalLink, Trash2,
+  PenLine, BookOpen, ExternalLink, Trash2, CalendarDays,
 } from 'lucide-react';
 
 // ─── 타입 ───────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ type ContentSeries = {
 // ─── 상수 ───────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<ContentType, { label: string; color: string; bg: string; border: string }> = {
   video:    { label: '영상',   color: '#3b82f6', bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.35)' },
-  short:    { label: '쇼츠',   color: '#22c55e', bg: 'rgba(34,197,94,0.15)',   border: 'rgba(34,197,94,0.35)' },
+  short:    { label: '쇼츠',   color: '#4f8ef7', bg: 'rgba(56,189,248,0.15)',   border: 'rgba(56,189,248,0.35)' },
   blog:     { label: '블로그', color: '#a855f7', bg: 'rgba(168,85,247,0.15)',  border: 'rgba(168,85,247,0.35)' },
   carousel: { label: '캐러셀', color: '#f97316', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.35)' },
   reel:     { label: '릴스',   color: '#ec4899', bg: 'rgba(236,72,153,0.15)',  border: 'rgba(236,72,153,0.35)' },
@@ -68,7 +68,7 @@ const STATUS_ORDER: PlanStatus[] = ['idea', 'writing', 'editing', 'scheduled', '
 
 const PLATFORM_META: Record<Platform, { label: string; icon: string; color: string }> = {
   youtube:   { label: 'YouTube',   icon: '▶', color: '#FF0000' },
-  blog:      { label: 'Blog',      icon: '✎', color: '#22c55e' },
+  blog:      { label: 'Blog',      icon: '✎', color: '#4f8ef7' },
   linkedin:  { label: 'LinkedIn',  icon: 'in', color: '#0A66C2' },
   instagram: { label: 'Instagram', icon: '◈', color: '#E1306C' },
   tiktok:    { label: 'TikTok',    icon: '♪', color: '#FF0050' },
@@ -232,11 +232,10 @@ function CalendarPageInner() {
       {/* ─── 헤더 ─── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="w-1 h-7 bg-[#22c55e]" />
-          <div>
-            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">콘텐츠 캘린더</h1>
-            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">CONTENT CALENDAR & SERIES</p>
-          </div>
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <CalendarDays size={13} strokeWidth={1.8} />
+          </span>
+          <span className="text-sm font-semibold text-white">콘텐츠 캘린더</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { setActivePanel('new-series'); setSelectedPlan(null); }}
@@ -244,7 +243,7 @@ function CalendarPageInner() {
             <BookOpen size={13} />시리즈 기획
           </button>
           <button onClick={() => { setActivePanel('new-plan'); setSelectedDate(today.toISOString().split('T')[0]); setSelectedPlan(null); }}
-            className="flex items-center gap-1.5 bg-[#22c55e] hover:bg-[#16a34a] text-black font-black text-[12px] px-3 py-1.5 rounded-lg transition-colors">
+            className="flex items-center gap-1.5 bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] px-3 py-1.5 rounded-lg transition-colors">
             <Plus size={13} />콘텐츠 추가
           </button>
         </div>
@@ -301,12 +300,12 @@ function CalendarPageInner() {
                   <div
                     key={cellIdx}
                     onClick={() => { if (isCurrentMonth) { setSelectedDate(dateStr); setSelectedPlan(null); setActivePanel('detail'); } }}
-                    className={`min-h-[88px] p-1.5 transition-colors cursor-pointer ${isCurrentMonth ? 'bg-[#0c0c0c] hover:bg-white/[0.03]' : 'bg-black/30'} ${isSelected ? 'ring-1 ring-inset ring-[#22c55e]/40' : ''}`}
+                    className={`min-h-[88px] p-1.5 transition-colors cursor-pointer ${isCurrentMonth ? 'bg-[#0b0e14] hover:bg-white/[0.03]' : 'bg-black/30'} ${isSelected ? 'ring-1 ring-inset ring-[#4f8ef7]/40' : ''}`}
                   >
                     {isCurrentMonth && (
                       <>
                         <div className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full mb-1 ${
-                          isToday ? 'bg-[#22c55e] text-black' : isWeekend ? (cellIdx % 7 === 0 ? 'text-red-400/50' : 'text-blue-400/50') : 'text-white/40'
+                          isToday ? 'bg-[#4f8ef7] text-black' : isWeekend ? (cellIdx % 7 === 0 ? 'text-red-400/50' : 'text-blue-400/50') : 'text-white/40'
                         }`}>{dayNum}</div>
                         <div className="space-y-0.5">
                           {dayPlans.slice(0, 3).map(plan => {
@@ -373,7 +372,7 @@ function CalendarPageInner() {
                       )}
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         selectedPlan.status === 'published'
-                          ? 'border-[#22c55e]/40 text-[#22c55e] bg-[#22c55e]/10'
+                          ? 'border-[#4f8ef7]/40 text-[#4f8ef7] bg-[#4f8ef7]/10'
                           : selectedPlan.status === 'scheduled'
                           ? 'border-blue-400/40 text-blue-400 bg-blue-400/10'
                           : selectedPlan.status === 'editing'
@@ -397,7 +396,7 @@ function CalendarPageInner() {
                       </span>
                       {selectedPlan.source_trend_url && (
                         <a href={selectedPlan.source_trend_url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[10px] font-mono text-[#22c55e]/50 hover:text-[#22c55e] transition-colors">
+                          className="flex items-center gap-1 text-[10px] font-mono text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors">
                           <ExternalLink size={9} />원본 트렌드
                         </a>
                       )}
@@ -446,9 +445,9 @@ function CalendarPageInner() {
                               className="flex-1 text-center text-[10px] font-bold py-1.5 px-1 rounded-lg transition-all border truncate"
                               style={
                                 isCurrent
-                                  ? { background: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.5)', color: '#22c55e' }
+                                  ? { background: 'rgba(56,189,248,0.15)', borderColor: 'rgba(56,189,248,0.5)', color: '#4f8ef7' }
                                   : isDone
-                                  ? { background: 'rgba(34,197,94,0.06)', borderColor: 'rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.5)' }
+                                  ? { background: 'rgba(56,189,248,0.06)', borderColor: 'rgba(56,189,248,0.2)', color: 'rgba(56,189,248,0.5)' }
                                   : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.25)' }
                               }
                             >
@@ -469,7 +468,7 @@ function CalendarPageInner() {
                   <div className="grid grid-cols-2 gap-2 px-4 pb-4">
                     <button
                       onClick={() => { const params = new URLSearchParams({ topic: selectedPlan.title }); router.push(`/dashboard/script?${params}`); }}
-                      className="flex items-center justify-center gap-1.5 bg-[#22c55e] hover:bg-[#16a34a] text-black font-black text-[12px] py-2 rounded-lg transition-colors"
+                      className="flex items-center justify-center gap-1.5 bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] py-2 rounded-lg transition-colors"
                     >
                       <PenLine size={12} />대본 생성 →
                     </button>
@@ -510,7 +509,7 @@ function CalendarPageInner() {
                     </p>
                     {selectedDate && (
                       <button onClick={() => setActivePanel('new-plan')}
-                        className="flex items-center gap-1 text-[11px] font-mono text-[#22c55e]/60 hover:text-[#22c55e] transition-colors">
+                        className="flex items-center gap-1 text-[11px] font-mono text-[#4f8ef7]/60 hover:text-[#4f8ef7] transition-colors">
                         <Plus size={11} />추가
                       </button>
                     )}
@@ -520,7 +519,7 @@ function CalendarPageInner() {
                       <p className="text-[12px] text-white/20 font-mono">{selectedDate ? '예정된 콘텐츠가 없습니다' : '달력에서 날짜를 클릭하세요'}</p>
                       {selectedDate && (
                         <button onClick={() => setActivePanel('new-plan')}
-                          className="text-[11px] text-[#22c55e]/40 hover:text-[#22c55e] transition-colors mt-2 block mx-auto font-mono">
+                          className="text-[11px] text-[#4f8ef7]/40 hover:text-[#4f8ef7] transition-colors mt-2 block mx-auto font-mono">
                           + 콘텐츠 추가
                         </button>
                       )}
@@ -566,19 +565,19 @@ function CalendarPageInner() {
                 <div>
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">날짜</p>
                   <input type="date" value={selectedDate ?? ''} onChange={e => setSelectedDate(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#22c55e]/40" />
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40" />
                 </div>
                 <div>
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">제목</p>
                   <input type="text" value={newPlan.title} onChange={e => setNewPlan(p => ({ ...p, title: e.target.value }))}
                     placeholder="콘텐츠 제목..."
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#22c55e]/40 placeholder-white/20" />
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">유형</p>
                     <select value={newPlan.content_type} onChange={e => setNewPlan(p => ({ ...p, content_type: e.target.value as ContentType }))}
-                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#22c55e]/40">
+                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       {(Object.entries(TYPE_CONFIG) as [ContentType, typeof TYPE_CONFIG[ContentType]][]).map(([t, c]) => (
                         <option key={t} value={t}>{c.label}</option>
                       ))}
@@ -587,7 +586,7 @@ function CalendarPageInner() {
                   <div>
                     <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">플랫폼</p>
                     <select value={newPlan.platform} onChange={e => setNewPlan(p => ({ ...p, platform: e.target.value as Platform }))}
-                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#22c55e]/40">
+                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       {(Object.keys(PLATFORM_META) as Platform[]).map(pl => <option key={pl} value={pl}>{PLATFORM_META[pl].label}</option>)}
                     </select>
                   </div>
@@ -596,7 +595,7 @@ function CalendarPageInner() {
                   <div>
                     <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">시리즈 연결</p>
                     <select value={newPlan.series_id} onChange={e => setNewPlan(p => ({ ...p, series_id: e.target.value }))}
-                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#22c55e]/40">
+                      className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       <option value="">없음</option>
                       {series.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                     </select>
@@ -606,10 +605,10 @@ function CalendarPageInner() {
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">메모</p>
                   <textarea value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))}
                     placeholder="키워드, 레퍼런스..." rows={2}
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#22c55e]/40 placeholder-white/20" />
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <button onClick={handleSavePlan} disabled={savingPlan || !newPlan.title.trim()}
-                  className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[12px] uppercase py-2 rounded-lg transition-colors">
+                  className="w-full bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[12px] uppercase py-2 rounded-lg transition-colors">
                   {savingPlan ? <Loader2 size={13} className="animate-spin inline" /> : '저장'}
                 </button>
               </div>
@@ -621,7 +620,7 @@ function CalendarPageInner() {
             <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/6">
                 <div className="flex items-center gap-2">
-                  <Wand2 size={13} className="text-[#22c55e]/70" />
+                  <Wand2 size={13} className="text-[#4f8ef7]/70" />
                   <p className="text-[13px] font-bold text-white">AI 시리즈 기획</p>
                 </div>
                 <button onClick={() => setActivePanel('detail')} className="text-white/30 hover:text-white/70"><X size={14} /></button>
@@ -631,13 +630,13 @@ function CalendarPageInner() {
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">시리즈명</p>
                   <input type="text" value={newSeries.title} onChange={e => setNewSeries(s => ({ ...s, title: e.target.value }))}
                     placeholder="예: AI 툴 완전 정복 시리즈"
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#22c55e]/40 placeholder-white/20" />
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div>
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">핵심 주제</p>
                   <input type="text" value={newSeries.topic} onChange={e => setNewSeries(s => ({ ...s, topic: e.target.value }))}
                     placeholder="예: 직장인을 위한 AI 생산성 툴"
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#22c55e]/40 placeholder-white/20" />
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div>
                   <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">에피소드 수</p>
@@ -645,20 +644,20 @@ function CalendarPageInner() {
                     {[3, 5, 7, 10].map(n => (
                       <button key={n} onClick={() => setNewSeries(s => ({ ...s, episode_count: n }))}
                         className={`flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
-                          newSeries.episode_count === n ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                          newSeries.episode_count === n ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                         }`}>{n}편</button>
                     ))}
                   </div>
                 </div>
-                <div className="bg-[#22c55e]/5 border border-[#22c55e]/15 rounded-lg p-3">
+                <div className="bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Wand2 size={11} className="text-[#22c55e]/60" />
-                    <span className="text-[11px] font-bold text-[#22c55e]/70">AI 에피소드 자동 구성</span>
+                    <Wand2 size={11} className="text-[#4f8ef7]/60" />
+                    <span className="text-[11px] font-bold text-[#4f8ef7]/70">AI 에피소드 자동 구성</span>
                   </div>
                   <p className="text-[10px] font-mono text-white/30">{newSeries.episode_count}편의 에피소드 제목, 설명, 키워드를 AI가 자동으로 기획합니다.</p>
                 </div>
                 <button onClick={handleSaveSeries} disabled={savingSeries || !newSeries.title.trim() || !newSeries.topic.trim()}
-                  className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[12px] uppercase py-2.5 rounded-lg transition-colors">
+                  className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[12px] uppercase py-2.5 rounded-lg transition-colors">
                   {generatingOutline ? <><Loader2 size={13} className="animate-spin" />AI 기획 중...</> : <><Wand2 size={13} />AI로 시리즈 기획</>}
                 </button>
               </div>
@@ -720,7 +719,7 @@ function CalendarPageInner() {
                       const heights = ['h-3', 'h-4', 'h-5', 'h-6', 'h-5', 'h-7', 'h-4', 'h-6', 'h-5', 'h-4'];
                       const h = heights[i % heights.length];
                       const colors: Record<string, string> = {
-                        published: '#22c55e',
+                        published: '#4f8ef7',
                         scheduled: '#3b82f6',
                         editing:   '#f97316',
                         writing:   '#eab308',

@@ -122,23 +122,22 @@ export default function ThumbnailPage() {
     <div className="max-w-5xl mx-auto">
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-6">
-        <span className="w-1 h-7 bg-[#22c55e]" />
-        <div>
-          <h1 className="text-[18px] font-black tracking-tight text-white uppercase">썸네일 생성</h1>
-          <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">AI THUMBNAIL GENERATOR</p>
-        </div>
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <FileText size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-sm font-semibold text-white">썸네일 생성</span>
       </div>
 
       {/* 대본 연동 배너 */}
       {fromScript && (
-        <div className="mb-5 rounded-xl border border-[#22c55e]/20 bg-[#22c55e]/5 p-4">
+        <div className="mb-5 rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/5 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <FileText size={14} className="text-[#22c55e] shrink-0 mt-0.5" />
+              <FileText size={14} className="text-[#4f8ef7] shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="text-[12px] font-bold text-[#22c55e] mb-1">대본 기반 생성 모드</p>
+                <p className="text-[12px] font-bold text-[#4f8ef7] mb-1">대본 기반 생성 모드</p>
                 <p className="text-[11px] font-mono text-white/40 leading-relaxed truncate">{scriptPreview}</p>
-                <p className="text-[10px] font-mono text-[#22c55e]/50 mt-1.5">
+                <p className="text-[10px] font-mono text-[#4f8ef7]/50 mt-1.5">
                   AI가 대본 전체를 분석해 분위기·핵심 비주얼·감정 키워드를 자동 추출합니다
                 </p>
               </div>
@@ -165,7 +164,7 @@ export default function ThumbnailPage() {
                   key={opt.value}
                   onClick={() => { setThumbnailType(opt.value); setStyle(opt.value === 'youtube' ? 'youtube_bold' : 'blog_clean'); }}
                   className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
-                    thumbnailType === opt.value ? 'border-[#22c55e]/40 bg-[#22c55e]/8 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                    thumbnailType === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/8 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                   }`}
                 >
                   <span className="text-xl">{opt.icon}</span>
@@ -185,7 +184,7 @@ export default function ThumbnailPage() {
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder={fromScript ? '대본 분석 후 자동 입력됩니다' : '예: 2026년 AI 툴 TOP 10 완벽 정리'}
-                className="w-full bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-[#22c55e]/40 rounded-lg px-3 py-2 text-[13px] text-white/80 placeholder-white/20 outline-none transition-colors"
+                className="w-full bg-white/[0.04] border border-white/10 hover:border-white/20 focus:border-[#4f8ef7]/40 rounded-lg px-3 py-2 text-[13px] text-white/80 placeholder-white/20 outline-none transition-colors"
               />
             </div>
 
@@ -198,7 +197,7 @@ export default function ThumbnailPage() {
                     key={s.value}
                     onClick={() => setStyle(s.value)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-left ${
-                      style === s.value ? 'border-[#22c55e]/40 bg-[#22c55e]/8 text-white' : 'border-white/6 text-white/50 hover:text-white/70 hover:border-white/12'
+                      style === s.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/8 text-white' : 'border-white/6 text-white/50 hover:text-white/70 hover:border-white/12'
                     }`}
                   >
                     <span className="text-[12px] font-bold">{s.label}</span>
@@ -215,7 +214,7 @@ export default function ThumbnailPage() {
                   <p className="text-[10px] font-mono text-white/30 uppercase tracking-wider">직접 프롬프트 입력</p>
                   <button
                     onClick={() => setUseCustom(v => !v)}
-                    className={`text-[10px] font-mono transition-colors ${useCustom ? 'text-[#22c55e]' : 'text-white/30'}`}
+                    className={`text-[10px] font-mono transition-colors ${useCustom ? 'text-[#4f8ef7]' : 'text-white/30'}`}
                   >
                     {useCustom ? 'ON' : 'OFF'}
                   </button>
@@ -226,7 +225,7 @@ export default function ThumbnailPage() {
                     onChange={e => setCustomPrompt(e.target.value)}
                     placeholder="영어로 직접 프롬프트를 입력하세요..."
                     rows={3}
-                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#22c55e]/30 placeholder-white/20"
+                    className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#4f8ef7]/30 placeholder-white/20"
                   />
                 )}
               </div>
@@ -237,7 +236,7 @@ export default function ThumbnailPage() {
             <button
               onClick={handleGenerate}
               disabled={generating || (!title.trim() && !customPrompt.trim() && !fromScript)}
-              className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[13px] uppercase py-2.5 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[13px] uppercase py-2.5 rounded-lg transition-colors"
             >
               {generating ? (
                 <><Loader2 size={14} className="animate-spin" />{fromScript ? '대본 분석 중...' : '생성 중...'}</>
@@ -278,7 +277,7 @@ export default function ThumbnailPage() {
                 '마음에 드는 이미지 다운로드 후 텍스트 오버레이 추가',
               ].map((step, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <span className="text-[9px] font-black text-[#22c55e]/50 mt-0.5 shrink-0">{i + 1}</span>
+                  <span className="text-[9px] font-black text-[#4f8ef7]/50 mt-0.5 shrink-0">{i + 1}</span>
                   <p className="text-[11px] font-mono text-white/30">{step}</p>
                 </div>
               ))}
@@ -291,8 +290,8 @@ export default function ThumbnailPage() {
           {generating && (
             <div className="rounded-xl border border-white/8 bg-white/[0.02] flex flex-col items-center justify-center py-24 gap-4">
               <div className="relative w-12 h-12">
-                <div className="absolute inset-0 rounded-full border-2 border-[#22c55e]/20 animate-ping" />
-                <div className="absolute inset-2 rounded-full border-2 border-[#22c55e]/40 border-t-[#22c55e] animate-spin" />
+                <div className="absolute inset-0 rounded-full border-2 border-[#4f8ef7]/20 animate-ping" />
+                <div className="absolute inset-2 rounded-full border-2 border-[#4f8ef7]/40 border-t-[#4f8ef7] animate-spin" />
               </div>
               <div className="text-center">
                 <p className="text-[13px] font-bold text-white/60">
@@ -344,7 +343,7 @@ export default function ThumbnailPage() {
                         {thumbnailType === 'youtube' ? 'YouTube' : 'Blog'} · {SIZE_LABEL}
                       </span>
                       {fromScript && (
-                        <span className="bg-[#22c55e]/20 text-[#22c55e]/80 text-[10px] font-mono px-2 py-0.5 rounded">
+                        <span className="bg-[#4f8ef7]/20 text-[#4f8ef7]/80 text-[10px] font-mono px-2 py-0.5 rounded">
                           대본 기반
                         </span>
                       )}
@@ -368,7 +367,7 @@ export default function ThumbnailPage() {
                     key={idx}
                     onClick={() => setSelectedIdx(idx)}
                     className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedIdx === idx ? 'border-[#22c55e]/60' : 'border-white/8 hover:border-white/25'
+                      selectedIdx === idx ? 'border-[#4f8ef7]/60' : 'border-white/8 hover:border-white/25'
                     }`}
                   >
                     <div className={`w-full ${ASPECT}`}>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, ExternalLink, Wand2, Loader2, RefreshCw } from 'lucide-react';
+import { Download, ExternalLink, Wand2, Loader2, RefreshCw, Bot, Sparkles, CheckCircle2, ChevronDown, ChevronUp, BarChart2, Lightbulb, TrendingUp, X, PenLine } from 'lucide-react';
 
 const SCRIPT_LLM_MODELS = [
   { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
@@ -92,7 +92,7 @@ function OptionItem({ active, onClick, children, sub }: {
 }) {
   return (
     <button onClick={onClick} className={`sidebar-btn w-full flex items-center justify-between px-2 py-2 text-[12.5px] font-bold border-l-2 transition-colors ${
-      active ? 'border-green-500 text-green-500 bg-green-500/5' : 'border-transparent text-white/65 hover:text-white hover:border-white/30 hover:bg-white/5'
+      active ? 'border-[#4f8ef7] text-[#4f8ef7] bg-[#4f8ef7]/5' : 'border-transparent text-white/65 hover:text-white hover:border-white/30 hover:bg-white/5'
     }`}>
       <span>{children}</span>
       <PriceBadge price={sub} />
@@ -202,7 +202,7 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
               onClick={() => setThumbStyle(s.value)}
               className={`py-1.5 px-2 text-[11px] font-mono rounded-xl border transition-all ${
                 thumbStyle === s.value
-                  ? 'border-[#22c55e]/50 bg-[#22c55e]/10 text-white'
+                  ? 'border-[#4f8ef7]/50 bg-[#4f8ef7]/10 text-white'
                   : 'border-white/8 text-white/40 hover:text-white/60 hover:border-white/15'
               }`}
             >
@@ -294,8 +294,8 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
           {/* 저장 상태 */}
           {savedIds.length > 0 && (
             <div className="flex items-center gap-1.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-              <span className="text-[#22c55e] text-[11px] font-mono">내 썸네일에 자동 저장됨</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4f8ef7]" />
+              <span className="text-[#4f8ef7] text-[11px] font-mono">내 썸네일에 자동 저장됨</span>
             </div>
           )}
 
@@ -306,7 +306,7 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
                 key={idx}
                 onClick={() => setSelectedIdx(idx)}
                 className={`relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all ${
-                  selectedIdx === idx ? 'border-[#22c55e]/60' : 'border-white/8 hover:border-white/25'
+                  selectedIdx === idx ? 'border-[#4f8ef7]/60' : 'border-white/8 hover:border-white/25'
                 }`}
               >
                 <div className="aspect-video">
@@ -314,7 +314,7 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
                 </div>
                 {savedIds[idx] && (
                   <div className="absolute bottom-1 right-1 bg-black/60 rounded px-1 py-0.5">
-                    <span className="text-[#22c55e] text-[9px] font-mono">저장됨</span>
+                    <span className="text-[#4f8ef7] text-[9px] font-mono">저장됨</span>
                   </div>
                 )}
               </div>
@@ -398,7 +398,7 @@ function ErrorModal({ raw, onClose, onRetry }: { raw: string; onClose: () => voi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-md rounded-2xl bg-[#161616] border border-white/10 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md rounded-2xl bg-black border border-white/10 shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* 상단 색상 바 */}
@@ -444,7 +444,7 @@ function ErrorModal({ raw, onClose, onRetry }: { raw: string; onClose: () => voi
             )}
             <button
               onClick={() => { onClose(); onRetry(); }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/25 hover:border-[#22c55e]/45 text-[#22c55e] text-[12px] font-bold transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4f8ef7]/10 hover:bg-[#4f8ef7]/20 border border-[#4f8ef7]/25 hover:border-[#4f8ef7]/45 text-[#4f8ef7] text-[12px] font-bold transition-all"
             >
               다시 시도
             </button>
@@ -522,29 +522,93 @@ function ScriptPageInner() {
   const [imageModelOpen, setImageModelOpen] = useState(false);
   const scriptOutputRef = useRef<HTMLDivElement>(null);
 
+  const [scriptMode, setScriptMode] = useState<'standard' | 'agent'>('standard');
+  const [agentSteps, setAgentSteps] = useState<{ agent: string; status: string; summary: string }[]>([]);
+  const [seoPackage, setSeoPackage] = useState<{
+    titles: string[]; thumbnailText: string; description: string; hashtags: string[]; searchKeywords: string[];
+  } | null>(null);
+  const [directorStrategy, setDirectorStrategy] = useState('');
+  const [seoExpanded, setSeoExpanded] = useState(true);
+
+  // 주제 추천
+  type TopicSuggestion = { title: string; angle: string; type: string; whyNow: string; hook: string };
+  const [suggestions, setSuggestions] = useState<TopicSuggestion[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
+  const [trendSource, setTrendSource] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  async function handleSuggest() {
+    if (!topic.trim()) return;
+    setSuggesting(true);
+    setSuggestError('');
+    setSuggestions([]);
+    try {
+      const res = await fetch('/api/suggest-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: topic.trim(), category, model: llmModelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '주제 추천 실패');
+      setSuggestions(data.suggestions ?? []);
+      setTrendSource(data.trendSource ?? '');
+      setShowSuggestions(true);
+    } catch (err: unknown) {
+      setSuggestError(err instanceof Error ? err.message : '오류 발생');
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  function selectSuggestion(s: TopicSuggestion) {
+    setTopic(s.title);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }
+
   async function handleGenerate() {
     if (!topic.trim()) return;
     setStatus('loading');
     setScript('');
     setError('');
     setSaveWarning('');
+    setAgentSteps([]);
+    setSeoPackage(null);
+    setDirectorStrategy('');
     try {
-      const res = await fetch('/api/generate-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, tone, category, keywords, targetAudience, videoLength, llmModelId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.needsKey) { setError(`__KEY__${data.error}`); }
-        else { throw new Error(data.error || '대본 생성 실패'); }
+      if (scriptMode === 'agent') {
+        const res = await fetch('/api/generate-script-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, tone, category, model: llmModelId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '에이전트 대본 생성 실패');
+        setScript(data.script);
+        if (data.steps) setAgentSteps(data.steps);
+        if (data.seo) setSeoPackage(data.seo);
+        if (data.strategy) setDirectorStrategy(
+          typeof data.strategy === 'string' ? data.strategy : JSON.stringify(data.strategy, null, 2)
+        );
+      } else {
+        const res = await fetch('/api/generate-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, tone, category, keywords, targetAudience, videoLength, llmModelId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.needsKey) { setError(`__KEY__${data.error}`); }
+          else { throw new Error(data.error || '대본 생성 실패'); }
+          setStatus('error');
+          return;
+        }
+        setScript(data.script);
+        if (data.saveError) setSaveWarning(`대본 저장 실패: ${data.saveError}`);
       }
-      setScript(data.script);
       setStatus('done');
       setTimeout(() => scriptOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-      if (data.saveError) {
-        setSaveWarning(`대본 저장 실패: ${data.saveError}`);
-      }
       window.dispatchEvent(new Event('clipflow_script_updated'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '대본 생성에 실패했습니다.');
@@ -573,23 +637,52 @@ function ScriptPageInner() {
   const selectedTone = TONES.find(t => t.id === tone);
 
   return (
-    <div className="flex gap-0 -m-6 min-h-full">
+    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
       {/* ─── 좌측: 입력 / 대본 ─── */}
-      <div className="flex-1 min-w-0 p-6 border-r border-white/8 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
 
         {/* ── 입력 폼 (항상 표시) ── */}
         <div className="relative mt-4 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-            <span className="text-green-500 text-sm font-semibold">대본 만들기</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+                <PenLine size={13} strokeWidth={1.8} />
+              </span>
+              <span className="text-sm font-semibold text-white">대본 만들기</span>
+            </div>
+            {/* 모드 토글 */}
+            <div className="flex gap-0.5 bg-white/[0.04] rounded-lg p-0.5 border border-white/8">
+              <button
+                onClick={() => setScriptMode('standard')}
+                className={`flex items-center gap-1 text-[10px] font-mono px-2.5 py-1 rounded-md transition-colors ${
+                  scriptMode === 'standard' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/60'
+                }`}
+              >
+                <Wand2 size={9} />표준
+              </button>
+              <button
+                onClick={() => setScriptMode('agent')}
+                className={`flex items-center gap-1 text-[10px] font-mono px-2.5 py-1 rounded-md transition-colors ${
+                  scriptMode === 'agent' ? 'bg-[#4f8ef7]/20 text-[#4f8ef7]' : 'text-white/30 hover:text-white/60'
+                }`}
+              >
+                <Bot size={9} />멀티에이전트
+              </button>
+            </div>
           </div>
+          {scriptMode === 'agent' && (
+            <div className="flex items-center gap-2 bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-xl px-3 py-2 mb-3">
+              <Sparkles size={11} className="text-[#4f8ef7]/60 shrink-0" />
+              <p className="text-[11px] font-mono text-white/40">감독 → 작가 → 토론 → 프로듀서 → SEO 5단계 파이프라인</p>
+            </div>
+          )}
           <div
-            className={`relative flex flex-col border transition-colors duration-200 bg-[#161616] rounded-xl ${topicFocused ? 'border-green-500/50' : 'border-white/8'}`}
+            className={`relative flex flex-col border transition-colors duration-200 bg-black rounded-xl ${topicFocused ? 'border-[#4f8ef7]/50' : 'border-[rgba(79,142,247,0.15)]'}`}
             onMouseEnter={() => setTopicFocused(true)}
             onMouseLeave={() => setTopicFocused(false)}
           >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-              <span className="text-white/35 text-xs font-medium uppercase tracking-wide">Script Input</span>
+            <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(79,142,247,0.5)' }}>Script Input</span>
               <span className="text-white/25 text-xs tabular-nums">{topic.length}자</span>
             </div>
             <textarea
@@ -599,19 +692,99 @@ function ScriptPageInner() {
               className="w-full h-40 bg-transparent text-white border-0 focus:outline-none resize-none text-[13px] leading-relaxed placeholder:text-white/20 px-4 pt-3 pb-2"
               disabled={status === 'loading'}
             />
-            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-              <span className="text-white/25 text-xs">주제 · 키워드 · 문장 모두 가능</span>
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-white/25 text-xs">주제 · 키워드 · 문장 모두 가능</span>
+                {/* 주제 추천 버튼 — 단어/짧은 키워드 입력 시 */}
+                {topic.trim().length > 0 && topic.trim().length <= 20 && status !== 'loading' && (
+                  <button
+                    onClick={handleSuggest}
+                    disabled={suggesting}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-[#4f8ef7]/25 bg-[#4f8ef7]/8 hover:bg-[#4f8ef7]/15 text-[#4f8ef7]/80 hover:text-[#4f8ef7] transition-colors disabled:opacity-50"
+                  >
+                    {suggesting
+                      ? <><Loader2 size={10} className="animate-spin" />추천 중...</>
+                      : <><Lightbulb size={10} />주제 7개 추천</>
+                    }
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleGenerate}
                 disabled={!topic.trim() || status === 'loading'}
-                className="inline-flex items-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-white/8 disabled:cursor-not-allowed text-black disabled:text-white/25 font-bold text-[13px] rounded-xl transition-colors shadow-[0_0_16px_rgba(34,197,94,0.35)] disabled:shadow-none"
+                className="inline-flex items-center gap-2 px-5 py-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:bg-white/8 disabled:cursor-not-allowed text-black disabled:text-white/25 font-bold text-[13px] rounded-xl transition-colors shadow-[0_0_16px_rgba(56,189,248,0.35)] disabled:shadow-none"
               >
                 {status === 'loading' ? (
-                  <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />생성 중...</>
-                ) : '대본 생성 →'}
+                  <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  {scriptMode === 'agent' ? '에이전트 작동 중...' : '생성 중...'}</>
+                ) : scriptMode === 'agent' ? <><Bot size={13} />에이전트 대본 생성 →</> : '대본 생성 →'}
               </button>
             </div>
           </div>
+
+          {/* 주제 추천 에러 */}
+          {suggestError && (
+            <p className="text-red-400/70 text-[12px] font-mono px-1">{suggestError}</p>
+          )}
+
+          {/* 주제 추천 결과 카드 */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/[0.03] overflow-hidden">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={13} className="text-[#4f8ef7]/70" />
+                  <span className="text-[12px] font-bold text-white/60">트렌드 기반 주제 추천</span>
+                  {trendSource && (
+                    <span className="text-[10px] font-mono bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2 py-0.5 rounded-full text-[#4f8ef7]/60">
+                      {trendSource}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => setShowSuggestions(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+
+              {/* 카드 목록 */}
+              <div className="divide-y divide-white/5">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => selectSuggestion(s)}
+                    className="w-full text-left px-4 py-3 hover:bg-white/[0.03] transition-colors group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-[11px] font-mono text-white/20 mt-0.5 w-4 shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors leading-snug">
+                            {s.title}
+                          </p>
+                          <span className={`shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                            s.type === '충격'   ? 'border-red-400/25 text-red-400/60 bg-red-400/5' :
+                            s.type === '비교'   ? 'border-blue-400/25 text-blue-400/60 bg-blue-400/5' :
+                            s.type === '예측'   ? 'border-purple-400/25 text-purple-400/60 bg-purple-400/5' :
+                            s.type === '인사이더' ? 'border-amber-400/25 text-amber-400/60 bg-amber-400/5' :
+                            s.type === '스토리' ? 'border-pink-400/25 text-pink-400/60 bg-pink-400/5' :
+                            s.type === '논쟁'   ? 'border-orange-400/25 text-orange-400/60 bg-orange-400/5' :
+                            'border-white/15 text-white/30 bg-white/3'
+                          }`}>{s.type}</span>
+                        </div>
+                        <p className="text-[11px] text-white/30 font-mono leading-snug">{s.whyNow}</p>
+                        {s.hook && (
+                          <p className="text-[11px] text-white/20 font-mono mt-1 italic leading-snug">
+                            &ldquo;{s.hook.slice(0, 60)}{s.hook.length > 60 ? '...' : ''}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-mono text-[#4f8ef7]/40 group-hover:text-[#4f8ef7] transition-colors shrink-0 mt-0.5">선택 →</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── 에러 모달 ── */}
@@ -627,15 +800,41 @@ function ScriptPageInner() {
         {status === 'done' && (
           <>
             {saveWarning && (
-              <div className="mb-4 px-3 py-2 border-l-2 border-[#22c55e] bg-[#22c55e]/5 rounded-r-lg">
-                <p className="text-[#22c55e] text-xs font-mono">{saveWarning}</p>
+              <div className="mb-4 px-3 py-2 border-l-2 border-[#4f8ef7] bg-[#4f8ef7]/5 rounded-r-lg">
+                <p className="text-[#4f8ef7] text-xs font-mono">{saveWarning}</p>
+              </div>
+            )}
+
+            {/* ── 에이전트 단계 + 감독 전략 (멀티에이전트 모드) ── */}
+            {scriptMode === 'agent' && agentSteps.length > 0 && (
+              <div className="mb-4 bg-white/[0.02] border border-white/8 rounded-xl px-4 py-3 space-y-1.5">
+                <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-2">파이프라인 완료</p>
+                {agentSteps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2 text-[11px] font-mono">
+                    <CheckCircle2 size={11} className="text-[#4f8ef7]/70 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-white/50 font-bold">{step.agent}</span>
+                      {step.summary && <span className="text-white/25 ml-1.5">— {step.summary}</span>}
+                    </div>
+                  </div>
+                ))}
+                {directorStrategy && (
+                  <details className="mt-2">
+                    <summary className="text-[10px] font-mono text-white/20 cursor-pointer hover:text-white/40 transition-colors">
+                      감독 전략 보기 ▸
+                    </summary>
+                    <pre className="mt-2 text-[10px] font-mono text-white/30 leading-relaxed whitespace-pre-wrap bg-black/20 rounded-lg p-2 max-h-40 overflow-y-auto">
+                      {directorStrategy}
+                    </pre>
+                  </details>
+                )}
               </div>
             )}
 
             {/* ── 완료 메시지 ── */}
             <div ref={scriptOutputRef} className="flex items-center gap-3 mb-5 mt-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#4f8ef7] bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full animate-pulse" />
                 완성
               </span>
               {category && (
@@ -665,7 +864,7 @@ function ScriptPageInner() {
                   onClick={handleCopy}
                   className={`sidebar-btn flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-lg border transition-all ${
                     copied
-                      ? 'border-[#22c55e]/50 text-[#22c55e] bg-[#22c55e]/10'
+                      ? 'border-[#4f8ef7]/50 text-[#4f8ef7] bg-[#4f8ef7]/10'
                       : 'border-white/10 text-white/35 hover:border-white/25 hover:text-white/70 hover:bg-white/5'
                   }`}
                 >
@@ -688,7 +887,7 @@ function ScriptPageInner() {
             <div className="pb-10 flex justify-end gap-2">
               <button
                 onClick={handleUseScript}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#22c55e]/10 hover:bg-[#22c55e]/16 border border-[#22c55e]/25 hover:border-[#22c55e]/45 text-[#22c55e] text-[12px] font-bold tracking-wide transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#4f8ef7]/10 hover:bg-[#4f8ef7]/16 border border-[#4f8ef7]/25 hover:border-[#4f8ef7]/45 text-[#4f8ef7] text-[12px] font-bold tracking-wide transition-all"
               >
                 영상 만들기 →
               </button>
@@ -704,7 +903,7 @@ function ScriptPageInner() {
       </div>
 
       {/* ─── 우측 사이드바 ─── */}
-      <aside className="w-96 shrink-0 flex flex-col border-l border-white/8 overflow-y-auto bg-[#0d0d0d]">
+      <aside className="w-96 shrink-0 flex flex-col overflow-y-auto" style={{ borderLeft: '1px solid var(--border)', background: 'var(--sidebar)' }}>
         <div className="flex-1 px-5 py-5 space-y-6">
 
           {/* 대본 완성 → 썸네일 패널로 전환 */}
@@ -734,11 +933,75 @@ function ScriptPageInner() {
                 </div>
               </PanelAccordion>
 
+              {/* SEO 패키지 (에이전트 모드) */}
+              {scriptMode === 'agent' && seoPackage && (
+                <div>
+                  <button
+                    onClick={() => setSeoExpanded(v => !v)}
+                    className="w-full flex items-center justify-between mb-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
+                      <span className="text-[#4f8ef7] text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                        <BarChart2 size={11} />SEO 패키지
+                      </span>
+                    </div>
+                    {seoExpanded ? <ChevronUp size={12} className="text-white/30" /> : <ChevronDown size={12} className="text-white/30" />}
+                  </button>
+                  {seoExpanded && (
+                    <div className="space-y-3">
+                      {/* 제목 3안 */}
+                      <div>
+                        <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1.5">제목 후보</p>
+                        {seoPackage.titles.map((t, i) => (
+                          <div key={i} className="flex items-start gap-2 py-1.5 border-b border-white/5 last:border-0">
+                            <span className="text-[10px] font-mono text-white/20 mt-0.5 w-3 shrink-0">{i + 1}</span>
+                            <p className="text-[12px] text-white/70 leading-snug">{t}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* 썸네일 텍스트 */}
+                      {seoPackage.thumbnailText && (
+                        <div className="bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-lg px-3 py-2">
+                          <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1">썸네일 텍스트</p>
+                          <p className="text-[14px] font-black text-[#4f8ef7]">{seoPackage.thumbnailText}</p>
+                        </div>
+                      )}
+                      {/* 해시태그 */}
+                      {seoPackage.hashtags?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1.5">해시태그</p>
+                          <div className="flex flex-wrap gap-1">
+                            {seoPackage.hashtags.map((h, i) => (
+                              <span key={i} className="text-[10px] font-mono bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded-full text-white/40">{h}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* 썸네일로 전달 버튼 */}
+                      <button
+                        onClick={() => {
+                          if (seoPackage.thumbnailText) {
+                            sessionStorage.setItem('clipflow_thumb_text', seoPackage.thumbnailText);
+                            sessionStorage.setItem('clipflow_thumb_title', seoPackage.titles[0] ?? topic);
+                          }
+                          sessionStorage.setItem('clipflow_script', script);
+                          window.location.href = '/dashboard/thumbnail';
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 text-[11px] font-bold bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white/50 hover:text-white/80 py-2 rounded-lg transition-colors"
+                      >
+                        <Sparkles size={11} />SEO 데이터로 썸네일 생성 →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 썸네일 생성 */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="w-1.5 h-1.5 bg-[#22c55e] rounded-full" />
-                  <span className="text-[#22c55e] text-[11px] font-bold uppercase tracking-widest">썸네일 생성</span>
+                  <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
+                  <span className="text-[#4f8ef7] text-[11px] font-bold uppercase tracking-widest">썸네일 생성</span>
                 </div>
                 <p className="text-[11px] font-mono text-white/30 mb-4 leading-relaxed">
                   대본 전체를 AI가 분석해 분위기·핵심 비주얼을 추출하고 썸네일을 자동 생성합니다
@@ -770,7 +1033,7 @@ function ScriptPageInner() {
                         disabled={status === 'loading'}
                         className={`sidebar-btn py-1.5 rounded-lg border text-[12px] font-mono transition-colors disabled:opacity-40 ${
                           tone === t.id
-                            ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e]'
+                            ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]'
                             : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                         }`}
                       >
@@ -802,7 +1065,7 @@ function ScriptPageInner() {
                           disabled={status === 'loading'}
                           className={`sidebar-btn py-1.5 rounded-lg border text-[12px] font-mono transition-colors disabled:opacity-40 ${
                             videoLength === o.value
-                              ? 'border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e]'
+                              ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]'
                               : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                           }`}
                         >
@@ -814,12 +1077,12 @@ function ScriptPageInner() {
                   <div>
                     <label className="block text-white/40 text-xs font-medium mb-1.5">핵심 키워드</label>
                     <input value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="예: 성능, 배터리, 카메라"
-                      className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-xl placeholder:text-white/25" disabled={status === 'loading'} />
+                      className="w-full bg-black text-white/70 px-3 py-2 border border-[rgba(79,142,247,0.15)] focus:border-[rgba(79,142,247,0.40)] focus:outline-none text-sm rounded-xl placeholder:text-white/25" disabled={status === 'loading'} />
                   </div>
                   <div>
                     <label className="block text-white/40 text-xs font-medium mb-1.5">타겟 시청자</label>
                     <input value={targetAudience} onChange={e => setTargetAudience(e.target.value)} placeholder="예: 20~30대 직장인"
-                      className="w-full bg-[#1a1a1a] text-white/70 px-3 py-2 border border-white/10 focus:border-white/25 focus:outline-none text-sm rounded-xl placeholder:text-white/25" disabled={status === 'loading'} />
+                      className="w-full bg-black text-white/70 px-3 py-2 border border-[rgba(79,142,247,0.15)] focus:border-[rgba(79,142,247,0.40)] focus:outline-none text-sm rounded-xl placeholder:text-white/25" disabled={status === 'loading'} />
                   </div>
                 </div>
               </div>

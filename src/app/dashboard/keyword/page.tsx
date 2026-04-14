@@ -45,7 +45,7 @@ function fmt(n: number): string {
 }
 
 const COMP_COLOR: Record<CompIdx, string> = {
-  '낮음': '#22c55e',
+  '낮음': '#4f8ef7',
   '중간': '#facc15',
   '높음': '#ef4444',
 };
@@ -64,7 +64,7 @@ const TIMEUNIT_OPTIONS: { value: TimeUnit; label: string }[] = [
 ];
 
 // ─── 미니 라인차트 (SVG) ──────────────────────────────────────────────────────
-function SparkLine({ data, color = '#22c55e', height = 40 }: { data: TrendPoint[]; color?: string; height?: number }) {
+function SparkLine({ data, color = '#4f8ef7', height = 40 }: { data: TrendPoint[]; color?: string; height?: number }) {
   if (!data || data.length < 2) return null;
   const w = 200;
   const h = height;
@@ -100,7 +100,7 @@ function SparkLine({ data, color = '#22c55e', height = 40 }: { data: TrendPoint[
 function TrendChart({ results, height = 180 }: { results: TrendResult[]; height?: number }) {
   if (!results || results.length === 0) return null;
 
-  const COLORS = ['#22c55e', '#60a5fa', '#a78bfa', '#fb923c', '#f87171'];
+  const COLORS = ['#4f8ef7', '#60a5fa', '#a78bfa', '#fb923c', '#f87171'];
   const w = 600;
   const h = height;
   const padL = 36;
@@ -162,7 +162,7 @@ function TrendChart({ results, height = 180 }: { results: TrendResult[]; height?
 
 // ─── 기회 점수 바 ─────────────────────────────────────────────────────────────
 function OpportunityBar({ score }: { score: number }) {
-  const color = score >= 70 ? '#22c55e' : score >= 40 ? '#facc15' : '#f87171';
+  const color = score >= 70 ? '#4f8ef7' : score >= 40 ? '#facc15' : '#f87171';
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
@@ -318,15 +318,11 @@ export default function KeywordPage() {
       {/* ── 헤더 ── */}
       <div className="shrink-0 px-8 pt-7 pb-5 border-b border-white/8">
         <div className="flex items-end justify-between mb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-1 h-1 bg-white/40 rounded-full" />
-              <span className="text-white/40 text-[11px] font-mono tracking-widest uppercase">SEO Keyword Research</span>
-            </div>
-            <h1 className="text-white text-[22px] font-bold tracking-tight">키워드 리서치</h1>
-            <p className="text-white/35 text-[12px] font-mono mt-1">
-              네이버·구글 검색량 · 트렌드 · 쇼핑인사이트로 정확한 주제를 선정하세요
-            </p>
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+              <BarChart2 size={13} strokeWidth={1.8} />
+            </span>
+            <span className="text-sm font-semibold text-white">키워드 리서치</span>
           </div>
         </div>
 
@@ -352,7 +348,7 @@ export default function KeywordPage() {
           <button
             onClick={handleSearch}
             disabled={!keyword.trim() || (volumeLoading || trendLoading || shoppingLoading || googleLoading)}
-            className="w-[52px] flex items-center justify-center border border-white/15 hover:border-[#22c55e]/50 hover:bg-[#22c55e]/10 disabled:border-white/8 disabled:cursor-not-allowed text-white/50 hover:text-[#22c55e] disabled:text-white/20 transition-all"
+            className="w-[52px] flex items-center justify-center border border-white/15 hover:border-[#4f8ef7]/50 hover:bg-[#4f8ef7]/10 disabled:border-white/8 disabled:cursor-not-allowed text-white/50 hover:text-[#4f8ef7] disabled:text-white/20 transition-all"
           >
             {(volumeLoading || trendLoading || shoppingLoading || googleLoading)
               ? <Loader2 size={15} className="animate-spin" />
@@ -371,10 +367,10 @@ export default function KeywordPage() {
               key={t.id}
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-2 px-5 py-3 text-[12px] font-mono border-b-2 transition-colors ${
-                activeTab === t.id ? 'border-[#22c55e] text-white' : 'border-transparent text-white/35 hover:text-white/65 hover:border-white/20'
+                activeTab === t.id ? 'border-[#4f8ef7] text-white' : 'border-transparent text-white/35 hover:text-white/65 hover:border-white/20'
               }`}
             >
-              <span className={activeTab === t.id ? 'text-[#22c55e]' : 'text-white/30'}>{t.icon}</span>
+              <span className={activeTab === t.id ? 'text-[#4f8ef7]' : 'text-white/30'}>{t.icon}</span>
               <span className="font-semibold">{t.label}</span>
               <span className={`text-[10px] ${activeTab === t.id ? 'text-white/40' : 'text-white/15'}`}>{t.desc}</span>
             </button>
@@ -474,7 +470,7 @@ export default function KeywordPage() {
                             mainItem.monthlyTotal >= 50000  ? 4 :
                             mainItem.monthlyTotal >= 10000  ? 3 :
                             mainItem.monthlyTotal >= 1000   ? 2 : 1
-                          ) ? '#22c55e' : 'rgba(255,255,255,0.08)'
+                          ) ? '#4f8ef7' : 'rgba(255,255,255,0.08)'
                         }} />
                       ))}
                     </div>
@@ -500,7 +496,7 @@ export default function KeywordPage() {
                   <div className="flex-1 px-6 py-5">
                     <p className="text-[12px] font-medium text-white/50 mb-2">SEO 기회 점수</p>
                     <p className="text-[28px] font-black tracking-tight leading-none" style={{
-                      color: mainItem.opportunity >= 70 ? '#22c55e' : mainItem.opportunity >= 40 ? '#facc15' : '#f87171'
+                      color: mainItem.opportunity >= 70 ? '#4f8ef7' : mainItem.opportunity >= 40 ? '#facc15' : '#f87171'
                     }}>
                       {mainItem.opportunity}
                       <span className="text-[14px] text-white/35 ml-1">/100</span>
@@ -511,7 +507,7 @@ export default function KeywordPage() {
                     </p>
                     <button
                       onClick={() => goToWrite(mainItem.keyword, mainItem.monthlyTotal)}
-                      className="mt-3 flex items-center gap-1.5 text-[12px] text-[#22c55e]/70 hover:text-[#22c55e] transition-colors"
+                      className="mt-3 flex items-center gap-1.5 text-[12px] text-[#4f8ef7]/70 hover:text-[#4f8ef7] transition-colors"
                     >
                       <PenLine size={12} />이 키워드로 글쓰기 →
                     </button>
@@ -523,7 +519,7 @@ export default function KeywordPage() {
                   <div className="border border-white/8 bg-white/[0.02] p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <TrendingUp size={13} className="text-[#22c55e]" />
+                        <TrendingUp size={13} className="text-[#4f8ef7]" />
                         <p className="text-[13px] font-semibold text-white/60">네이버 검색 트렌드</p>
                         <span className="text-[12px] text-white/40">({trendData?.startDate} ~ {trendData?.endDate})</span>
                       </div>
@@ -583,7 +579,7 @@ export default function KeywordPage() {
                           <div className="flex justify-end">
                             <button
                               onClick={() => goToWrite(item.keyword, item.monthlyTotal)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-[#22c55e]/40 text-white/40 hover:text-[#22c55e] text-[12px] transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-[#4f8ef7]/40 text-white/40 hover:text-[#4f8ef7] text-[12px] transition-colors"
                             >
                               <PenLine size={11} />글쓰기
                             </button>
@@ -774,7 +770,7 @@ export default function KeywordPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => { setKeyword(item.title); goToWrite(item.title); }}
-                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 border border-white/10 hover:border-[#22c55e]/40 text-white/30 hover:text-[#22c55e] text-[10px] font-mono transition-all"
+                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 border border-white/10 hover:border-[#4f8ef7]/40 text-white/30 hover:text-[#4f8ef7] text-[10px] font-mono transition-all"
                           >
                             <PenLine size={10} />글쓰기
                           </button>

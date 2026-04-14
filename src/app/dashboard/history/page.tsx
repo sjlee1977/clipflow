@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Film } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 const supabase = createClient();
 
@@ -170,11 +171,10 @@ export default function HistoryPage() {
     return (
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <span className="w-1 h-7 bg-[#22c55e]" />
-          <div>
-            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 영상</h1>
-            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">VIDEO LIBRARY</p>
-          </div>
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <Film size={13} strokeWidth={1.8} />
+          </span>
+          <span className="text-sm font-semibold text-white">내 영상</span>
         </div>
         <div className="flex flex-col items-center justify-center py-32 gap-5">
           <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function HistoryPage() {
           </div>
           <div className="text-center">
             <p className="text-[13px] text-white/30 font-mono">아직 생성된 영상이 없습니다</p>
-            <a href="/dashboard/video" className="text-[12px] text-[#22c55e]/50 hover:text-[#22c55e] transition-colors mt-1 block font-mono">
+            <a href="/dashboard/video" className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors mt-1 block font-mono">
               영상 만들기 →
             </a>
           </div>
@@ -196,15 +196,14 @@ export default function HistoryPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <span className="w-1 h-7 bg-[#22c55e]" />
-          <div>
-            <h1 className="text-[18px] font-black tracking-tight text-white uppercase">내 영상</h1>
-            <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">VIDEO LIBRARY</p>
-          </div>
+          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+            <Film size={13} strokeWidth={1.8} />
+          </span>
+          <span className="text-sm font-semibold text-white">내 영상</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
-          <span className="text-[13px] font-black font-mono text-[#22c55e]">{videos.length}</span>
+          <span className="text-[13px] font-black font-mono text-[#4f8ef7]">{videos.length}</span>
         </div>
       </div>
 
@@ -224,7 +223,7 @@ export default function HistoryPage() {
             <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2.5">
 
               {/* 순위 */}
-              <span className={`text-[13px] font-black font-mono tabular-nums ${i < 3 ? 'text-[#22c55e]' : 'text-white/25'}`}>
+              <span className={`text-[13px] font-black font-mono tabular-nums ${i < 3 ? 'text-[#4f8ef7]' : 'text-white/25'}`}>
                 #{i + 1}
               </span>
 
@@ -322,7 +321,7 @@ export default function HistoryPage() {
                     setDownloading(null);
                   }}
                   disabled={downloading === v.id}
-                  className="bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded transition-colors"
+                  className="bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded transition-colors"
                 >
                   {downloading === v.id ? '...' : '↓ MP4'}
                 </button>
