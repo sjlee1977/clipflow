@@ -52,18 +52,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
         {/* 로고 */}
         <div className="flex items-center justify-center mb-10">
           <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-3 h-3 bg-[#22c55e] shrink-0" />
+            <div className="w-3 h-3 bg-[#4f8ef7] shrink-0" />
             <span className="text-white font-medium text-[15px] tracking-normal uppercase" style={{ fontFamily: "'Montserrat', sans-serif" }}>ClipFlow</span>
           </a>
         </div>
 
-        <div className="bg-[#161616] border border-white/8 rounded-2xl p-8">
+        <div className="bg-[#151b28] border border-white/8 rounded-2xl p-8">
           <h1 className="text-white font-bold text-xl mb-1">
             {mode === 'login' ? '로그인' : '회원가입'}
           </h1>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-[#1a1a1a] text-white px-3 py-2.5 border border-white/10 focus:border-white/30 focus:outline-none text-sm rounded-lg"
+                className="w-full bg-[#151b28] text-white px-3 py-2.5 border border-white/10 focus:border-white/30 focus:outline-none text-sm rounded-lg"
                 placeholder="you@example.com"
               />
             </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full bg-[#1a1a1a] text-white px-3 py-2.5 border border-white/10 focus:border-white/30 focus:outline-none text-sm rounded-lg"
+                className="w-full bg-[#151b28] text-white px-3 py-2.5 border border-white/10 focus:border-white/30 focus:outline-none text-sm rounded-lg"
                 placeholder="••••••••"
               />
             </div>
@@ -128,7 +128,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+              className="w-full bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
             >
               {loading ? '처리 중...' : mode === 'login' ? '로그인' : '가입하기'}
             </button>
@@ -138,7 +138,7 @@ export default function LoginPage() {
             {mode === 'login' ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}{' '}
             <button
               onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage(''); }}
-              className="text-[#22c55e] hover:text-[#16a34a] transition-colors"
+              className="text-[#4f8ef7] hover:text-[#16a34a] transition-colors"
             >
               {mode === 'login' ? '회원가입' : '로그인'}
             </button>

@@ -60,9 +60,9 @@ export default function DateRangePicker({ dateFrom, dateTo, isActive, onApply }:
         style={
           isActive
             ? {
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                background: 'linear-gradient(135deg, #4f8ef7, #16a34a)',
                 color: '#fff',
-                boxShadow: '0 0 10px rgba(34,197,94,0.35)',
+                boxShadow: '0 0 10px rgba(56,189,248,0.35)',
               }
             : {
                 border: '1px solid var(--border)',
@@ -91,11 +91,11 @@ export default function DateRangePicker({ dateFrom, dateTo, isActive, onApply }:
         >
           <style>{`
             .rdp-root {
-              --rdp-accent-color: #22c55e;
+              --rdp-accent-color: #4f8ef7;
               --rdp-accent-background-color: rgba(34, 197, 94, 0.15);
               --rdp-range_middle-background-color: rgba(34, 197, 94, 0.1);
-              --rdp-range_start-background: linear-gradient(135deg, #22c55e, #16a34a);
-              --rdp-range_end-background: linear-gradient(135deg, #22c55e, #16a34a);
+              --rdp-range_start-background: linear-gradient(135deg, #4f8ef7, #16a34a);
+              --rdp-range_end-background: linear-gradient(135deg, #4f8ef7, #16a34a);
               --rdp-selected-border: none;
               --rdp-day-width: 36px;
               --rdp-day-height: 36px;
@@ -106,18 +106,18 @@ export default function DateRangePicker({ dateFrom, dateTo, isActive, onApply }:
               color: var(--text);
             }
             .rdp-day_button:hover:not([disabled]) {
-              background: rgba(34,197,94,0.12) !important;
-              color: #22c55e !important;
+              background: rgba(56,189,248,0.12) !important;
+              color: #4f8ef7 !important;
             }
             .rdp-selected .rdp-day_button {
-              box-shadow: 0 0 10px rgba(34,197,94,0.35);
+              box-shadow: 0 0 10px rgba(56,189,248,0.35);
             }
             .rdp-nav button {
               color: var(--text-muted);
             }
             .rdp-nav button:hover {
-              color: #22c55e;
-              background: rgba(34,197,94,0.1);
+              color: #4f8ef7;
+              background: rgba(56,189,248,0.1);
             }
             .rdp-month_caption {
               color: var(--text);
@@ -136,7 +136,7 @@ export default function DateRangePicker({ dateFrom, dateTo, isActive, onApply }:
               opacity: 0.3;
             }
             .rdp-today:not(.rdp-selected) .rdp-day_button {
-              color: #22c55e;
+              color: #4f8ef7;
               font-weight: 700;
             }
           `}</style>
@@ -176,9 +176,9 @@ export default function DateRangePicker({ dateFrom, dateTo, isActive, onApply }:
               onClick={handleApply}
               className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
               style={{
-                background: range?.from ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'var(--hover-bg)',
+                background: range?.from ? 'linear-gradient(135deg, #4f8ef7, #16a34a)' : 'var(--hover-bg)',
                 color: range?.from ? '#fff' : 'var(--text-faint)',
-                boxShadow: range?.from ? '0 0 10px rgba(34,197,94,0.3)' : 'none',
+                boxShadow: range?.from ? '0 0 10px rgba(56,189,248,0.3)' : 'none',
               }}
             >
               적용

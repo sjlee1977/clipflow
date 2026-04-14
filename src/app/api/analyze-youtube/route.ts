@@ -3,6 +3,112 @@ import { YoutubeTranscript } from '@/lib/youtube';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase-server';
 
+// ── Provider 감지 ──────────────────────────────────────────────────────────────
+function getProvider(modelId: string): 'gemini' | 'claude' | 'qwen' {
+  if (modelId.startsWith('gemini')) return 'gemini';
+  if (modelId.startsWith('claude')) return 'claude';
+  return 'qwen';
+}
+
+// ── 마크다운 코드블록 제거 후 JSON 추출 ──────────────────────────────────────────
+function extractJSON(text: string): string {
+  let s = text.trim();
+  const match = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (match) s = match[1].trim();
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start !== -1 && end !== -1) return s.slice(start, end + 1);
+  return s;
+}
+
+// ── 에러 메시지 파싱 ────────────────────────────────────────────────────────────
+function parseAIError(err: unknown): string {
+  if (!(err instanceof Error)) return '분석 중 오류가 발생했습니다';
+  try {
+    const parsed = JSON.parse(err.message);
+    const code = parsed?.error?.code ?? parsed?.error?.status;
+    const msg: string = parsed?.error?.message ?? '';
+    if (code === 429 || msg.includes('spending cap') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+      return 'API 월간 사용량이 초과됐습니다. 해당 서비스에서 한도를 확인해주세요.';
+    }
+    if (code === 401 || code === 403) return 'API 키가 올바르지 않습니다. 설정 페이지에서 확인해주세요.';
+    if (msg) return msg;
+  } catch { /* not JSON */ }
+  const m = err.message;
+  if (m.includes('spending cap') || m.includes('RESOURCE_EXHAUSTED') || m.includes('quota')) {
+    return 'API 월간 사용량이 초과됐습니다. 해당 서비스에서 한도를 확인해주세요.';
+  }
+  if (m.includes('401') || m.includes('403') || m.includes('Unauthorized') || m.includes('Forbidden')) {
+    return 'API 키가 올바르지 않습니다. 설정 페이지에서 확인해주세요.';
+  }
+  return m || '분석 중 오류가 발생했습니다';
+}
+
+// ── 통합 AI 호출 ────────────────────────────────────────────────────────────────
+async function callAI(
+  modelId: string,
+  prompt: string,
+  keys: { gemini?: string; claude?: string; qwen?: string }
+): Promise<string> {
+  const provider = getProvider(modelId);
+
+  if (provider === 'gemini') {
+    if (!keys.gemini) throw new Error('Google Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+    const ai = new GoogleGenAI({ apiKey: keys.gemini });
+    const res = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: { responseMimeType: 'application/json', temperature: 0.3 },
+    });
+    return res.text ?? '';
+  }
+
+  if (provider === 'claude') {
+    if (!keys.claude) throw new Error('Anthropic API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': keys.claude.trim(),
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: modelId,
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message ?? `Claude 오류 (${res.status})`);
+    }
+    const data = await res.json();
+    return extractJSON(data.content?.[0]?.text ?? '');
+  }
+
+  // Qwen (DashScope)
+  if (!keys.qwen) throw new Error('Qwen API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+  const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${keys.qwen.trim()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Qwen 오류 (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  return extractJSON(data.choices?.[0]?.message?.content ?? '');
+}
+
 function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([A-Za-z0-9_-]{11})/,
@@ -154,16 +260,26 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
 
 export async function POST(req: NextRequest) {
   try {
-    const { url, category = 'economy' } = await req.json();
+    const { url, category = 'economy', modelId = 'gemini-2.5-flash' } = await req.json();
     if (!url) return NextResponse.json({ error: 'URL을 입력해주세요' }, { status: 400 });
 
-    // 사용자 Gemini API 키 조회
+    // 사용자 API 키 조회
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const geminiApiKey = user?.user_metadata?.gemini_api_key;
-    if (!geminiApiKey) {
+    const meta = user?.user_metadata ?? {};
+    const keys = {
+      gemini: meta.gemini_api_key as string | undefined,
+      claude: meta.anthropic_api_key as string | undefined,
+      qwen: meta.qwen_api_key as string | undefined,
+    };
+
+    // 선택한 모델에 필요한 키 확인
+    const provider = getProvider(modelId);
+    const keyMap = { gemini: keys.gemini, claude: keys.claude, qwen: keys.qwen };
+    if (!keyMap[provider]) {
+      const names = { gemini: 'Google Gemini', claude: 'Anthropic', qwen: 'Qwen' };
       return NextResponse.json(
-        { error: 'Google Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.' },
+        { error: `${names[provider]} API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.` },
         { status: 403 }
       );
     }
@@ -213,13 +329,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '영상 정보를 가져올 수 없습니다. 비공개 영상이거나 잘못된 URL일 수 있습니다.' }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-
     const contentLabel = transcriptSource === 'description' ? '영상 설명(자막 없음, 설명란으로 대체)' : '자막';
     const transcriptForAI = fullTranscript.slice(0, 8000);
 
     const isAutoMode = category === 'auto';
-    const categoryList = Object.keys(CATEGORY_SCHEMAS).filter(k => k !== 'general').join(', ');
 
     // auto 모드: 먼저 카테고리 감지 후 해당 스키마로 분석
     let resolvedCategory = category;
@@ -232,13 +345,9 @@ export async function POST(req: NextRequest) {
 영상 제목: ${title || '(제목 없음)'}
 ${transcriptForAI ? `내용 요약:\n${transcriptForAI.slice(0, 2000)}` : ''}`;
 
-      const detectRes = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: detectPrompt,
-        config: { responseMimeType: 'application/json', temperature: 0.1 },
-      });
       try {
-        const detected = JSON.parse(detectRes.text ?? '{}');
+        const detectText = await callAI(modelId, detectPrompt, keys);
+        const detected = JSON.parse(extractJSON(detectText));
         resolvedCategory = detected.category && CATEGORY_SCHEMAS[detected.category]
           ? detected.category
           : 'general';
@@ -267,19 +376,10 @@ ${jsonSchema}
 영상 제목: ${title || '(제목 없음)'}
 ${transcriptForAI ? `\n${contentLabel}:\n${transcriptForAI}` : ''}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-      },
-    });
-
-    const content = response.text ?? '';
+    const content = await callAI(modelId, prompt, keys);
     if (!content) throw new Error('AI 응답 없음');
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(extractJSON(content));
     return NextResponse.json({
       ...parsed,
       title,
@@ -291,9 +391,6 @@ ${transcriptForAI ? `\n${contentLabel}:\n${transcriptForAI}` : ''}`;
     if (err instanceof SyntaxError) {
       return NextResponse.json({ error: 'AI 응답 파싱 실패. 다시 시도해주세요.' }, { status: 500 });
     }
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : '분석 중 오류가 발생했습니다' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: parseAIError(err) }, { status: 500 });
   }
 }

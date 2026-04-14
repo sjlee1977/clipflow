@@ -2,6 +2,108 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase-server';
 
+function getProvider(modelId: string): 'gemini' | 'claude' | 'qwen' {
+  if (modelId.startsWith('gemini')) return 'gemini';
+  if (modelId.startsWith('claude')) return 'claude';
+  return 'qwen';
+}
+
+function extractJSON(text: string): string {
+  let s = text.trim();
+  const match = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (match) s = match[1].trim();
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start !== -1 && end !== -1) return s.slice(start, end + 1);
+  return s;
+}
+
+function parseAIError(err: unknown): string {
+  if (!(err instanceof Error)) return '분석 중 오류가 발생했습니다';
+  try {
+    const parsed = JSON.parse(err.message);
+    const code = parsed?.error?.code ?? parsed?.error?.status;
+    const msg: string = parsed?.error?.message ?? '';
+    if (code === 429 || msg.includes('spending cap') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+      return 'API 월간 사용량이 초과됐습니다. 해당 서비스에서 한도를 확인해주세요.';
+    }
+    if (code === 401 || code === 403) return 'API 키가 올바르지 않습니다. 설정 페이지에서 확인해주세요.';
+    if (msg) return msg;
+  } catch { /* not JSON */ }
+  const m = err.message;
+  if (m.includes('spending cap') || m.includes('RESOURCE_EXHAUSTED') || m.includes('quota')) {
+    return 'API 월간 사용량이 초과됐습니다. 해당 서비스에서 한도를 확인해주세요.';
+  }
+  if (m.includes('401') || m.includes('403') || m.includes('Unauthorized') || m.includes('Forbidden')) {
+    return 'API 키가 올바르지 않습니다. 설정 페이지에서 확인해주세요.';
+  }
+  return m || '분석 중 오류가 발생했습니다';
+}
+
+async function callAI(
+  modelId: string,
+  prompt: string,
+  keys: { gemini?: string; claude?: string; qwen?: string }
+): Promise<string> {
+  const provider = getProvider(modelId);
+
+  if (provider === 'gemini') {
+    if (!keys.gemini) throw new Error('Google Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+    const ai = new GoogleGenAI({ apiKey: keys.gemini });
+    const res = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: { responseMimeType: 'application/json', temperature: 0.3 },
+    });
+    return res.text ?? '';
+  }
+
+  if (provider === 'claude') {
+    if (!keys.claude) throw new Error('Anthropic API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': keys.claude.trim(),
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: modelId,
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message ?? `Claude 오류 (${res.status})`);
+    }
+    const data = await res.json();
+    return extractJSON(data.content?.[0]?.text ?? '');
+  }
+
+  // Qwen (DashScope)
+  if (!keys.qwen) throw new Error('Qwen API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+  const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${keys.qwen.trim()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Qwen 오류 (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  return extractJSON(data.choices?.[0]?.message?.content ?? '');
+}
+
 const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<string, string> }> = {
   general: {
     description: '일반 유튜브 채널 대본 요청서',
@@ -100,23 +202,31 @@ const CATEGORY_SCHEMAS: Record<string, { description: string; fields: Record<str
 
 export async function POST(req: NextRequest) {
   try {
-    const { script, category = 'general' } = await req.json();
+    const { script, category = 'general', modelId = 'gemini-2.5-flash' } = await req.json();
     if (!script || typeof script !== 'string' || !script.trim()) {
       return NextResponse.json({ error: '대본을 입력해주세요' }, { status: 400 });
     }
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const geminiApiKey = user?.user_metadata?.gemini_api_key;
-    if (!geminiApiKey) {
+    const meta = user?.user_metadata ?? {};
+    const keys = {
+      gemini: meta.gemini_api_key as string | undefined,
+      claude: meta.anthropic_api_key as string | undefined,
+      qwen: meta.qwen_api_key as string | undefined,
+    };
+
+    const provider = getProvider(modelId);
+    const keyMap = { gemini: keys.gemini, claude: keys.claude, qwen: keys.qwen };
+    if (!keyMap[provider]) {
+      const names = { gemini: 'Google Gemini', claude: 'Anthropic', qwen: 'Qwen' };
       return NextResponse.json(
-        { error: 'Google Gemini API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.' },
+        { error: `${names[provider]} API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.` },
         { status: 403 }
       );
     }
 
     const isAutoMode = category === 'auto';
-    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
     const scriptForAI = script.slice(0, 10000);
 
     let resolvedCategory = category;
@@ -129,13 +239,9 @@ export async function POST(req: NextRequest) {
 대본 일부:
 ${scriptForAI.slice(0, 2000)}`;
 
-      const detectRes = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: detectPrompt,
-        config: { responseMimeType: 'application/json', temperature: 0.1 },
-      });
       try {
-        const detected = JSON.parse(detectRes.text ?? '{}');
+        const detectText = await callAI(modelId, detectPrompt, keys);
+        const detected = JSON.parse(extractJSON(detectText));
         resolvedCategory = detected.category && CATEGORY_SCHEMAS[detected.category]
           ? detected.category
           : 'general';
@@ -163,16 +269,10 @@ ${jsonSchema}
 대본:
 ${scriptForAI}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: { responseMimeType: 'application/json', temperature: 0.3 },
-    });
-
-    const content = response.text ?? '';
+    const content = await callAI(modelId, prompt, keys);
     if (!content) throw new Error('AI 응답 없음');
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(extractJSON(content));
     return NextResponse.json({
       ...parsed,
       detectedCategory: isAutoMode ? resolvedCategory : undefined,
@@ -181,9 +281,6 @@ ${scriptForAI}`;
     if (err instanceof SyntaxError) {
       return NextResponse.json({ error: 'AI 응답 파싱 실패. 다시 시도해주세요.' }, { status: 500 });
     }
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : '분석 중 오류가 발생했습니다' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: parseAIError(err) }, { status: 500 });
   }
 }
