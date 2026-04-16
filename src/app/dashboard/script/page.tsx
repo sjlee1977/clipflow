@@ -342,12 +342,46 @@ function ScriptPageInner() {
   const [copied, setCopied] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
 
+  // 에이전트 모드
+  const [agentMode, setAgentMode] = useState(false);
+  const [agentSteps, setAgentSteps] = useState<{ agent: string; status: 'done' | 'error'; summary: string }[]>([]);
+  const [seoPackage, setSeoPackage] = useState<{
+    titles: string[]; thumbnailText: string; description: string;
+    hashtags: string[]; searchKeywords: string[];
+  } | null>(null);
+
   async function handleGenerate() {
     if (!topic.trim()) return;
     setStatus('loading');
     setScript('');
     setError('');
     setSaveWarning('');
+    setAgentSteps([]);
+    setSeoPackage(null);
+
+    if (agentMode) {
+      // ── 멀티에이전트 모드 ──────────────────────────────────────────────────
+      try {
+        const res = await fetch('/api/generate-script-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, category, model: llmModelId, tone, minLength: 3000 }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '에이전트 대본 생성 실패');
+        setScript(data.script ?? '');
+        setAgentSteps(data.steps ?? []);
+        setSeoPackage(data.seo ?? null);
+        setStatus('done');
+        window.dispatchEvent(new Event('clipflow_script_updated'));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : '에이전트 대본 생성에 실패했습니다.');
+        setStatus('error');
+      }
+      return;
+    }
+
+    // ── 일반 모드 (기존) ───────────────────────────────────────────────────────
     try {
       const res = await fetch('/api/generate-script', {
         method: 'POST',
@@ -415,15 +449,28 @@ function ScriptPageInner() {
                   disabled={status === 'loading'}
                 />
                 <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5">
-                  <span className="text-white/20 text-[10px] font-mono">{topic.length > 0 ? `${topic.length}자` : ''}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/20 text-[10px] font-mono">{topic.length > 0 ? `${topic.length}자` : ''}</span>
+                    {/* 모드 토글 */}
+                    <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5 rounded-full">
+                      <button
+                        onClick={() => { setAgentMode(false); setAgentSteps([]); setSeoPackage(null); }}
+                        className={`px-2 py-0.5 text-[9px] font-mono rounded-full transition-colors ${!agentMode ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50'}`}
+                      >일반</button>
+                      <button
+                        onClick={() => setAgentMode(true)}
+                        className={`px-2 py-0.5 text-[9px] font-mono rounded-full transition-colors ${agentMode ? 'bg-[#22c55e]/20 text-[#22c55e]' : 'text-white/30 hover:text-white/50'}`}
+                      >에이전트</button>
+                    </div>
+                  </div>
                   <button
                     onClick={handleGenerate}
                     disabled={!topic.trim() || status === 'loading'}
                     className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#22c55e]/40 hover:border-[#22c55e]/70 hover:bg-[#22c55e]/8 disabled:border-white/8 disabled:cursor-not-allowed text-[#22c55e] disabled:text-white/20 text-[11px] font-mono tracking-widest uppercase transition-colors"
                   >
                     {status === 'loading' ? (
-                      <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />생성 중</>
-                    ) : '생성 →'}
+                      <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />{agentMode ? '에이전트 작업 중' : '생성 중'}</>
+                    ) : agentMode ? '에이전트 생성 →' : '생성 →'}
                   </button>
                 </div>
               </div>
@@ -449,9 +496,28 @@ function ScriptPageInner() {
                 <p className="text-green-500 text-xs font-mono">{saveWarning}</p>
               </div>
             )}
+
+            {/* 에이전트 스텝 결과 */}
+            {agentMode && agentSteps.length > 0 && (
+              <div className="mb-4 border border-white/6 rounded-lg p-3 bg-white/[0.01] space-y-1.5">
+                <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest mb-2">에이전트 작업 내역</p>
+                {agentSteps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className={`text-[10px] mt-0.5 ${step.status === 'done' ? 'text-[#22c55e]/60' : 'text-red-400/60'}`}>
+                      {step.status === 'done' ? '✓' : '✗'}
+                    </span>
+                    <div>
+                      <span className="text-[11px] font-bold text-white/50">{step.agent}</span>
+                      <span className="text-[10px] text-white/25 font-mono ml-1.5">{step.summary}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
               <span className="text-[white]/70 text-[13px] tracking-widest uppercase font-mono">완성된 대본</span>
-              <button onClick={() => { setStatus('idle'); setScript(''); }} className="text-white/40 hover:text-white/70 text-xs font-mono transition-colors">← 다시 만들기</button>
+              <button onClick={() => { setStatus('idle'); setScript(''); setAgentSteps([]); setSeoPackage(null); }} className="text-white/40 hover:text-white/70 text-xs font-mono transition-colors">← 다시 만들기</button>
             </div>
             <div className="relative group">
               <textarea
@@ -470,6 +536,47 @@ function ScriptPageInner() {
                 </button>
               </div>
             </div>
+            {/* SEO 패키지 (에이전트 모드) */}
+            {agentMode && seoPackage && (
+              <div className="mt-6 border border-[#22c55e]/15 rounded-lg overflow-hidden bg-[#22c55e]/[0.02]">
+                <p className="text-[10px] font-bold text-[#22c55e]/50 uppercase tracking-widest px-4 py-2.5 border-b border-[#22c55e]/10">
+                  SEO 패키지
+                </p>
+                <div className="p-4 space-y-3">
+                  {seoPackage.titles.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest mb-1.5">추천 제목</p>
+                      {seoPackage.titles.slice(0, 3).map((t, i) => (
+                        <p key={i} className="text-[12px] text-white/60 font-mono leading-relaxed">• {t}</p>
+                      ))}
+                    </div>
+                  )}
+                  {seoPackage.thumbnailText && (
+                    <div>
+                      <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest mb-1">썸네일 텍스트</p>
+                      <p className="text-[12px] text-[#22c55e]/70 font-bold">{seoPackage.thumbnailText}</p>
+                    </div>
+                  )}
+                  {seoPackage.description && (
+                    <div>
+                      <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest mb-1">영상 설명</p>
+                      <p className="text-[11px] text-white/45 font-mono leading-relaxed">{seoPackage.description.slice(0, 200)}{seoPackage.description.length > 200 ? '...' : ''}</p>
+                    </div>
+                  )}
+                  {seoPackage.hashtags.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest mb-1.5">해시태그</p>
+                      <div className="flex flex-wrap gap-1">
+                        {seoPackage.hashtags.slice(0, 10).map((h, i) => (
+                          <span key={i} className="text-[10px] font-mono text-[#22c55e]/50 bg-[#22c55e]/5 border border-[#22c55e]/15 px-1.5 py-0.5 rounded">{h}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-8 mt-12 pb-10">
               <button onClick={handleUseScript} className="group flex items-center gap-3 text-green-500 text-[13px] font-bold tracking-[0.15em] font-mono transition-all hover:text-green-400">
                 영상만들기
@@ -479,7 +586,7 @@ function ScriptPageInner() {
                 멀티채널 배포
                 <span className="w-8 h-[1px] bg-white/10 group-hover:w-12 group-hover:bg-white/30 transition-all duration-300" />
               </button>
-              <button onClick={() => { setStatus('idle'); setScript(''); }} className="text-white/20 hover:text-white/50 text-[11px] font-mono tracking-widest uppercase transition-colors">
+              <button onClick={() => { setStatus('idle'); setScript(''); setAgentSteps([]); setSeoPackage(null); }} className="text-white/20 hover:text-white/50 text-[11px] font-mono tracking-widest uppercase transition-colors">
                 새 대본 작성하기
               </button>
             </div>

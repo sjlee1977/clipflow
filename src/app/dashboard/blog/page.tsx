@@ -48,6 +48,17 @@ type WriteResult = {
   platform: string;
 };
 
+type AgentStep = { agent: string; status: 'done' | 'error'; summary: string };
+
+type DimResult = {
+  name: string; nameKo: string; score: number; maxScore: number;
+  reason: string; suggestion: string;
+};
+type EvalResult = {
+  dimensions: DimResult[]; rawScore: number; totalScore: number;
+  grade: 'S' | 'A' | 'B' | 'C' | 'D'; suggestions: string[]; passed: boolean;
+};
+
 const PLATFORM_INFO: Record<Platform, { label: string; color: string; icon: string; desc: string }> = {
   wordpress: { label: 'WordPress', color: '#21759b', icon: 'W', desc: 'REST API' },
   naver:     { label: '네이버 블로그', color: '#03c75a', icon: 'N', desc: 'Open API' },
@@ -128,6 +139,12 @@ function BlogPageInner() {
   const [activeTab,    setActiveTab]    = useState<'edit' | 'preview'>('edit');
   const [seoTab,       setSeoTab]       = useState<'checklist' | 'meta'>('checklist');
 
+  // 에이전트 모드
+  const [agentMode,   setAgentMode]   = useState(false);
+  const [agentSteps,  setAgentSteps]  = useState<AgentStep[]>([]);
+  const [evaluating,  setEvaluating]  = useState(false);
+  const [evalResult,  setEvalResult]  = useState<EvalResult | null>(null);
+
   // Results
   const [writeResult, setWriteResult] = useState<WriteResult | null>(null);
   const [blogContent, setBlogContent] = useState('');
@@ -186,7 +203,35 @@ function BlogPageInner() {
     setWriting(true);
     setWriteError('');
     setWriteResult(null);
+    setAgentSteps([]);
+    setEvalResult(null);
 
+    if (agentMode) {
+      // ── 멀티에이전트 모드 ──────────────────────────────────────────────────
+      try {
+        const content = crawlResult
+          ? `제목: ${crawlResult.title}\n\n${crawlResult.content}`
+          : targetKeyword.trim();
+        const res = await fetch('/api/blog/write-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, title: targetKeyword.trim(), tone, length }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '에이전트 작성 실패');
+        setBlogContent(data.content ?? '');
+        setBlogTitle(data.title ?? targetKeyword);
+        setAgentSteps(data.steps ?? []);
+        setActiveTab('edit');
+      } catch (err: unknown) {
+        setWriteError(err instanceof Error ? err.message : '에이전트 작성 중 오류 발생');
+      } finally {
+        setWriting(false);
+      }
+      return;
+    }
+
+    // ── SEO 모드 (기존) ────────────────────────────────────────────────────────
     const related = relatedKeywords
       .split(/[,，\n]/)
       .map(s => s.trim())
@@ -219,6 +264,27 @@ function BlogPageInner() {
       setWriteError(err instanceof Error ? err.message : '블로그 작성 중 오류 발생');
     } finally {
       setWriting(false);
+    }
+  }
+
+  async function handleEvaluate() {
+    if (!blogContent.trim()) return;
+    setEvaluating(true);
+    setEvalResult(null);
+    setWriteError('');
+    try {
+      const res = await fetch('/api/blog/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: blogContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '평가 실패');
+      setEvalResult(data);
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : '평가 중 오류 발생');
+    } finally {
+      setEvaluating(false);
     }
   }
 
@@ -571,9 +637,22 @@ function BlogPageInner() {
         <div className="space-y-4">
           {/* AI 블로그 작성 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-              <Wand2 size={12} />AI 블로그 작성
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <Wand2 size={12} />AI 블로그 작성
+              </p>
+              {/* 모드 토글 */}
+              <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5 rounded-lg">
+                <button
+                  onClick={() => { setAgentMode(false); setAgentSteps([]); setEvalResult(null); }}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors ${!agentMode ? 'bg-white/10 text-white' : 'text-white/35 hover:text-white/60'}`}
+                >SEO</button>
+                <button
+                  onClick={() => { setAgentMode(true); setWriteResult(null); }}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded transition-colors ${agentMode ? 'bg-[#22c55e]/15 text-[#22c55e]' : 'text-white/35 hover:text-white/60'}`}
+                >에이전트</button>
+              </div>
+            </div>
 
             <div>
               <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">문체</p>
@@ -629,13 +708,95 @@ function BlogPageInner() {
               className="w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors"
             >
               {writing ? (
-                <><Loader2 size={14} className="animate-spin" /> SEO 분석 중...</>
+                <><Loader2 size={14} className="animate-spin" /> {agentMode ? '에이전트 작업 중...' : 'SEO 분석 중...'}</>
               ) : blogContent ? (
                 <><RefreshCw size={14} /> 다시 작성</>
+              ) : agentMode ? (
+                <><Wand2 size={14} /> 멀티에이전트 작성</>
               ) : (
                 <><Wand2 size={14} /> AI SEO 블로그 작성</>
               )}
             </button>
+
+            {/* 에이전트 스텝 진행 상황 */}
+            {agentMode && agentSteps.length > 0 && (
+              <div className="space-y-1.5 border border-white/6 rounded-lg p-3 bg-white/[0.01]">
+                <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">에이전트 작업 내역</p>
+                {agentSteps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    {step.status === 'done'
+                      ? <CheckCircle2 size={12} className="text-[#22c55e]/70 mt-0.5 shrink-0" />
+                      : <XCircle      size={12} className="text-red-400/70 mt-0.5 shrink-0"   />
+                    }
+                    <div>
+                      <span className="text-[11px] font-bold text-white/60">{step.agent}</span>
+                      <span className="text-[10px] text-white/30 font-mono ml-1.5">{step.summary}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 품질 평가 버튼 (에이전트 모드 + 글 있을 때) */}
+            {agentMode && blogContent && (
+              <button
+                onClick={handleEvaluate}
+                disabled={evaluating}
+                className="w-full flex items-center justify-center gap-2 border border-[#22c55e]/30 hover:border-[#22c55e]/60 bg-[#22c55e]/5 hover:bg-[#22c55e]/10 disabled:opacity-40 text-[#22c55e]/80 font-bold text-[12px] tracking-tight py-2 rounded-lg transition-colors"
+              >
+                {evaluating
+                  ? <><Loader2 size={12} className="animate-spin" /> 품질 평가 중...</>
+                  : <><Star size={12} /> LLM 품질 평가</>
+                }
+              </button>
+            )}
+
+            {/* 평가 결과 */}
+            {evalResult && (
+              <div className="border border-white/8 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-white/[0.02]">
+                  <div className="flex items-center gap-2">
+                    <Star size={11} className="text-[#22c55e]/60" />
+                    <span className="text-[11px] font-bold text-white/50">품질 평가</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[18px] font-black ${
+                      evalResult.grade === 'S' ? 'text-yellow-400' :
+                      evalResult.grade === 'A' ? 'text-[#22c55e]' :
+                      evalResult.grade === 'B' ? 'text-blue-400' :
+                      evalResult.grade === 'C' ? 'text-amber-400' : 'text-red-400'
+                    }`}>{evalResult.grade}</span>
+                    <span className="text-[13px] font-black text-white">{evalResult.totalScore}점</span>
+                    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                      evalResult.passed
+                        ? 'text-[#22c55e]/80 border-[#22c55e]/25 bg-[#22c55e]/8'
+                        : 'text-red-400/80 border-red-500/25 bg-red-500/8'
+                    }`}>{evalResult.passed ? '발행 가능' : '개선 필요'}</span>
+                  </div>
+                </div>
+                <div className="p-3 space-y-1.5">
+                  {evalResult.dimensions.map(d => (
+                    <div key={d.name} className="flex items-center gap-2">
+                      <span className="text-[10px] text-white/40 w-16 shrink-0 font-mono">{d.nameKo}</span>
+                      <div className="flex-1 h-1 bg-white/6 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{
+                          width: `${(d.score / d.maxScore) * 100}%`,
+                          backgroundColor: d.score >= 8 ? '#22c55e' : d.score >= 6 ? '#f59e0b' : '#ef4444',
+                        }} />
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40 w-6 text-right shrink-0">{d.score}</span>
+                    </div>
+                  ))}
+                </div>
+                {evalResult.suggestions.length > 0 && (
+                  <div className="px-3 pb-3 space-y-1">
+                    {evalResult.suggestions.slice(0, 3).map((s, i) => (
+                      <p key={i} className="text-[10px] font-mono text-amber-400/60 leading-relaxed">• {s}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 작성 가이드 */}
             {!blogContent && (
