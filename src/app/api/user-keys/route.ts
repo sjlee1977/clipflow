@@ -9,6 +9,7 @@ export async function GET() {
 
     const meta = user.user_metadata ?? {};
     return NextResponse.json({
+      // AI 서비스
       anthropic: meta.anthropic_api_key ? maskKey(meta.anthropic_api_key) : '',
       gemini: meta.gemini_api_key ? maskKey(meta.gemini_api_key) : '',
       minimax: meta.minimax_api_key ? maskKey(meta.minimax_api_key) : '',
@@ -18,6 +19,15 @@ export async function GET() {
       klingSecret: meta.kling_secret_key ? maskKey(meta.kling_secret_key) : '',
       fal: meta.fal_api_key ? maskKey(meta.fal_api_key) : '',
       qwen: meta.qwen_api_key ? maskKey(meta.qwen_api_key) : '',
+      openai: meta.openai_api_key ? maskKey(meta.openai_api_key) : '',
+      // SEO 도구 — Naver DataLab
+      naverClientId: meta.naver_client_id ? maskKey(meta.naver_client_id) : '',
+      naverClientSecret: meta.naver_client_secret ? maskKey(meta.naver_client_secret) : '',
+      // SEO 도구 — Naver Search Ads
+      naverAdsCustomerId: meta.naver_ads_customer_id ? maskKey(meta.naver_ads_customer_id) : '',
+      naverAdsAccessLicense: meta.naver_ads_access_license ? maskKey(meta.naver_ads_access_license) : '',
+      naverAdsSecretKey: meta.naver_ads_secret_key ? maskKey(meta.naver_ads_secret_key) : '',
+      // 연결 여부
       hasAnthropic: !!meta.anthropic_api_key,
       hasGemini: !!meta.gemini_api_key,
       hasMinimax: !!meta.minimax_api_key && !!meta.minimax_group_id,
@@ -25,6 +35,9 @@ export async function GET() {
       hasKling: !!meta.kling_access_key && !!meta.kling_secret_key,
       hasFal: !!meta.fal_api_key,
       hasQwen: !!meta.qwen_api_key,
+      hasOpenAI: !!meta.openai_api_key,
+      hasNaverDataLab: !!meta.naver_client_id && !!meta.naver_client_secret,
+      hasNaverAds: !!meta.naver_ads_customer_id && !!meta.naver_ads_access_license && !!meta.naver_ads_secret_key,
     });
   } catch {
     return NextResponse.json({ error: '키 조회 실패' }, { status: 500 });
@@ -37,7 +50,7 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
 
-    const { provider, apiKey, apiKey2 } = await req.json();
+    const { provider, apiKey, apiKey2, apiKey3 } = await req.json();
     if (!provider || !apiKey) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 
     let updateData: Record<string, string>;
@@ -57,6 +70,18 @@ export async function POST(req: NextRequest) {
       updateData = { fal_api_key: apiKey.trim() };
     } else if (provider === 'qwen') {
       updateData = { qwen_api_key: apiKey.trim() };
+    } else if (provider === 'openai') {
+      updateData = { openai_api_key: apiKey.trim() };
+    } else if (provider === 'naver_datalab') {
+      if (!apiKey2) return NextResponse.json({ error: 'Client Secret이 필요합니다' }, { status: 400 });
+      updateData = { naver_client_id: apiKey.trim(), naver_client_secret: apiKey2.trim() };
+    } else if (provider === 'naver_ads') {
+      if (!apiKey2 || !apiKey3) return NextResponse.json({ error: 'Access License와 Secret Key가 필요합니다' }, { status: 400 });
+      updateData = {
+        naver_ads_customer_id: apiKey.trim(),
+        naver_ads_access_license: apiKey2.trim(),
+        naver_ads_secret_key: apiKey3.trim(),
+      };
     } else {
       return NextResponse.json({ error: '알 수 없는 프로바이더' }, { status: 400 });
     }
@@ -85,6 +110,9 @@ export async function DELETE(req: NextRequest) {
       kling: { kling_access_key: null, kling_secret_key: null },
       fal: { fal_api_key: null },
       qwen: { qwen_api_key: null },
+      openai: { openai_api_key: null },
+      naver_datalab: { naver_client_id: null, naver_client_secret: null },
+      naver_ads: { naver_ads_customer_id: null, naver_ads_access_license: null, naver_ads_secret_key: null },
     };
     await supabase.auth.updateUser({ data: metaMap[provider] ?? {} });
     return NextResponse.json({ ok: true });

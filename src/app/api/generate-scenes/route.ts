@@ -355,6 +355,11 @@ export async function POST(req: NextRequest) {
         console.error('[generate-scenes] Error:', err);
         let errMsg = err instanceof Error ? err.message : '장면 생성 중 오류가 발생했습니다';
         
+        // DashScope 429 Rate Limit 에러 처리
+        if (errMsg.includes('Throttling.RateQuota') || (errMsg.includes('DashScope') && errMsg.includes('429'))) {
+          errMsg = 'DashScope API 요청 한도 초과 (429). 잠시 후 다시 시도해 주세요.';
+        }
+
         // Google Gemini API 503 (High Demand) 에러 처리
         if (errMsg.includes('503') && errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
           errMsg = '구글(Gemini) AI 서버가 현재 전 세계적인 트래픽 과부하로 응답이 지연되고 있습니다 (503). 1~2분 뒤 다시 시도해주세요.';

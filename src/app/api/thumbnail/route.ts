@@ -112,20 +112,45 @@ async function generatePrompts(
 
 // ─── fal.ai 이미지 생성 ───────────────────────────────────────────────────────
 
-async function generateWithFal(prompt: string, apiKey: string, aspectRatio: string) {
-  const { fal } = await import('@fal-ai/client');
-  fal.config({ credentials: apiKey });
+const FAL_BASE = 'https://fal.run';
 
-  const result = await fal.subscribe('fal-ai/flux/schnell', {
-    input: {
-      prompt,
-      image_size: aspectRatio === '16:9' ? 'landscape_16_9' : aspectRatio === '1:1' ? 'square_hd' : 'portrait_4_3',
-      num_inference_steps: 4,
-      num_images: 1,
+const FAL_FLUX_ENDPOINTS: Record<string, string> = {
+  'fal/flux-schnell': 'fal-ai/flux/schnell',
+  'fal/flux-dev':     'fal-ai/flux/dev',
+  'fal/flux-pro':     'fal-ai/flux-pro',
+  'fal/flux-2-pro':   'fal-ai/flux-2-pro',
+};
+
+async function generateWithFal(prompt: string, apiKey: string, aspectRatio: string, falModel = 'fal/flux-schnell') {
+  const endpoint = FAL_FLUX_ENDPOINTS[falModel] ?? 'fal-ai/flux/schnell';
+  const isPro = falModel === 'fal/flux-pro' || falModel === 'fal/flux-2-pro';
+
+  const image_size = aspectRatio === '16:9' ? 'landscape_16_9' : aspectRatio === '1:1' ? 'square_hd' : 'portrait_4_3';
+  const sizeParam = isPro
+    ? { aspect_ratio: aspectRatio === '16:9' ? '16:9' : '1:1' }
+    : { image_size, num_inference_steps: falModel === 'fal/flux-schnell' ? 4 : 28 };
+
+  const res = await fetch(`${FAL_BASE}/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${apiKey}`,
+      'Content-Type': 'application/json',
     },
-  }) as { images?: { url: string }[] };
+    body: JSON.stringify({ prompt, ...sizeParam, num_images: 1 }),
+  });
 
-  return result?.images?.[0]?.url ?? null;
+  const rawText = await res.text();
+  let data: { images?: { url: string }[]; detail?: string; message?: string };
+  try { data = JSON.parse(rawText); } catch {
+    throw new Error(`fal.ai 응답 파싱 실패: ${rawText.slice(0, 200)}`);
+  }
+
+  if (!res.ok) {
+    const detail = data?.detail || data?.message || rawText.slice(0, 200);
+    throw new Error(`fal.ai 오류 [${res.status}]: ${detail}`);
+  }
+
+  return data?.images?.[0]?.url ?? null;
 }
 
 // ─── Gemini 이미지 생성 ───────────────────────────────────────────────────────
@@ -151,7 +176,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     const meta = user?.user_metadata ?? {};
 
-    const { title, style, thumbnailType, imageProvider, customPrompt, script } = await req.json();
+    const { title, style, thumbnailType, imageProvider, customPrompt, script, falModel } = await req.json();
 
     if (!title && !customPrompt && !script) {
       return NextResponse.json({ error: '제목, 프롬프트, 또는 대본이 필요합니다' }, { status: 400 });
@@ -171,31 +196,47 @@ export async function POST(req: NextRequest) {
       : await generatePrompts(effectiveTitle, style ?? 'youtube_bold', thumbnailType ?? 'youtube', scriptAnalysis);
 
     const results: { url: string; prompt: string }[] = [];
+    let lastError = '';
 
     if (imageProvider === 'fal' || (!imageProvider && meta.fal_api_key)) {
       const apiKey = meta.fal_api_key;
-      if (!apiKey) return NextResponse.json({ error: 'fal.ai API 키가 필요합니다' }, { status: 400 });
+      if (!apiKey) return NextResponse.json({ error: 'fal.ai API 키가 설정에 등록되지 않았습니다' }, { status: 400 });
       for (const prompt of prompts.slice(0, 3)) {
         try {
-          const url = await generateWithFal(prompt, apiKey, aspectRatio);
+          const url = await generateWithFal(prompt, apiKey, aspectRatio, falModel);
           if (url) results.push({ url, prompt });
-        } catch (e) { console.error('[thumbnail fal]', e); }
+        } catch (e) {
+          console.error('[thumbnail fal]', e);
+          lastError = e instanceof Error ? e.message : String(e);
+        }
       }
     } else if (imageProvider === 'gemini' || meta.gemini_api_key) {
       const apiKey = meta.gemini_api_key;
-      if (!apiKey) return NextResponse.json({ error: 'Gemini API 키가 필요합니다' }, { status: 400 });
+      if (!apiKey) return NextResponse.json({ error: 'Gemini API 키가 설정에 등록되지 않았습니다' }, { status: 400 });
       for (const prompt of prompts.slice(0, 2)) {
         try {
           const url = await generateWithGemini(prompt, apiKey);
           if (url) results.push({ url, prompt });
-        } catch (e) { console.error('[thumbnail gemini]', e); }
+        } catch (e) {
+          console.error('[thumbnail gemini]', e);
+          lastError = e instanceof Error ? e.message : String(e);
+        }
       }
     } else {
       return NextResponse.json({ error: 'fal.ai 또는 Gemini API 키를 설정에서 등록해주세요' }, { status: 400 });
     }
 
     if (results.length === 0) {
-      return NextResponse.json({ error: '이미지 생성에 실패했습니다' }, { status: 500 });
+      // 원인이 있으면 그대로 노출, 없으면 기본 메시지
+      let msg = '이미지 생성에 실패했습니다';
+      if (lastError.includes('RESOURCE_EXHAUSTED') || lastError.includes('spending cap')) {
+        msg = 'Gemini API 월 사용량을 초과했습니다. fal.ai로 전환하거나 Google AI Studio에서 한도를 확인해주세요.';
+      } else if (lastError.includes('PERMISSION_DENIED') || lastError.includes('API_KEY_INVALID')) {
+        msg = 'Gemini API 키가 유효하지 않습니다. 설정에서 키를 확인해주세요.';
+      } else if (lastError) {
+        msg = lastError;
+      }
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
 
     return NextResponse.json({

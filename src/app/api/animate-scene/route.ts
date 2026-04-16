@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       if (!meta.fal_api_key) {
         return NextResponse.json({ error: 'fal.ai API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.', needsKey: true }, { status: 403 });
       }
-      taskId = await createFalVideoTask(imageUrl, prompt, clipDuration, meta.fal_api_key);
+      taskId = await createFalVideoTask(imageUrl, prompt, clipDuration, meta.fal_api_key, effectiveModelId);
       actualProvider = 'fal';
     } else if (effectiveModelId.startsWith('wan')) {
       const supabase = await createClient();

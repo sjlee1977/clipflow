@@ -30,7 +30,7 @@ const STATUS_META: Record<Plan['status'], { label: string; color: string; icon: 
   writing:   { label: '대본',   color: '#eab308',                icon: <PenLine size={11} /> },
   editing:   { label: '제작중', color: '#f97316',                icon: <FileEdit size={11} /> },
   scheduled: { label: '예약',   color: '#3b82f6',                icon: <Clock size={11} /> },
-  published: { label: '발행',   color: '#4f8ef7',                icon: <CheckCircle2 size={11} /> },
+  published: { label: '발행',   color: '#22c55e',                icon: <CheckCircle2 size={11} /> },
 };
 
 const PIPELINE_ORDER: Plan['status'][] = ['idea', 'writing', 'editing', 'scheduled', 'published'];
@@ -41,7 +41,7 @@ const PLATFORM_COLOR: Record<string, string> = {
 };
 
 const OPPORTUNITY_META: Record<TrendInsight['opportunity'], { label: string; color: string; bg: string }> = {
-  high:  { label: '선점 기회', color: '#4f8ef7',  bg: 'rgba(56,189,248,0.12)' },
+  high:  { label: '선점 기회', color: '#22c55e',  bg: 'rgba(34,197,94,0.12)' },
   medium:{ label: '주목',      color: '#f59e0b',  bg: 'rgba(245,158,11,0.12)' },
   watch: { label: '관찰 중',   color: 'rgba(255,255,255,0.3)', bg: 'rgba(255,255,255,0.04)' },
 };
@@ -98,7 +98,7 @@ function InsightCard({ insight, onScript }: { insight: TrendInsight; onScript: (
         <div className="flex items-center gap-2 mt-2.5">
           <button
             onClick={() => onScript(insight.keyword, insight.category)}
-            className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-[#4f8ef7]/40 bg-[#4f8ef7]/8 text-[#4f8ef7] hover:bg-[#4f8ef7]/15 transition-colors"
+            className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/8 text-[#22c55e] hover:bg-[#22c55e]/15 transition-colors"
           >
             <PenLine size={10} />이 주제로 대본 생성
           </button>
@@ -250,7 +250,7 @@ export default function DashboardHome() {
       {/* ── 헤더 ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="w-1 h-7 bg-[#4f8ef7]" />
+          <span className="w-1 h-7 bg-[#22c55e]" />
           <div>
             <h1 className="text-[18px] font-black tracking-tight text-white uppercase">대시보드</h1>
             <p className="text-[11px] text-white/30 font-mono tracking-widest mt-0.5">
@@ -284,11 +284,11 @@ export default function DashboardHome() {
               const dayPlans = weekPlansMap[key] ?? [];
               return (
                 <div key={key} className={`rounded-lg p-1.5 min-h-[90px] border transition-colors ${
-                  isToday ? 'border-[#4f8ef7]/30 bg-[#4f8ef7]/5' : 'border-white/6 bg-white/[0.01]'
+                  isToday ? 'border-[#22c55e]/30 bg-[#22c55e]/5' : 'border-white/6 bg-white/[0.01]'
                 }`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[9px] font-bold ${isToday ? 'text-[#4f8ef7]' : 'text-white/30'}`}>{DAY_LABELS[i]}</span>
-                    <span className={`text-[9px] font-mono ${isToday ? 'text-[#4f8ef7]' : 'text-white/20'}`}>{d.getDate()}</span>
+                    <span className={`text-[10px] font-bold ${isToday ? 'text-[#22c55e]' : 'text-white/30'}`}>{DAY_LABELS[i]}</span>
+                    <span className={`text-[9px] font-mono ${isToday ? 'text-[#22c55e]' : 'text-white/20'}`}>{d.getDate()}</span>
                   </div>
                   <div className="space-y-0.5">
                     {dayPlans.slice(0, 3).map(p => (
@@ -318,9 +318,9 @@ export default function DashboardHome() {
           </div>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             {PIPELINE_ORDER.map(s => (
-              <div key={s} className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_META[s].color }} />
-                <span className="text-[9px] font-mono text-white/25">{STATUS_META[s].label}</span>
+              <div key={s} className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_META[s].color }} />
+                <span className="text-[10px] font-light tracking-widest text-white/45">{STATUS_META[s].label}</span>
               </div>
             ))}
           </div>
@@ -422,7 +422,7 @@ export default function DashboardHome() {
         <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <TrendingUp size={13} className="text-[#4f8ef7]" />
+              <TrendingUp size={13} className="text-[#22c55e]" />
               <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">최근 발행</p>
             </div>
             <Link href="/dashboard/calendar" className="text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors flex items-center gap-1">
@@ -435,7 +435,7 @@ export default function DashboardHome() {
               <p className="text-[12px] font-mono text-white/20">아직 발행된 콘텐츠가 없습니다</p>
               <button
                 onClick={() => router.push('/dashboard/calendar')}
-                className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 border border-[#4f8ef7]/30 text-[#4f8ef7]/70 hover:border-[#4f8ef7]/60 hover:text-[#4f8ef7] rounded-lg transition-all"
+                className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 border border-[#22c55e]/30 text-[#22c55e]/70 hover:border-[#22c55e]/60 hover:text-[#22c55e] rounded-lg transition-all"
               >
                 <CalendarPlus size={11} />첫 콘텐츠 예약하기
               </button>
@@ -459,7 +459,7 @@ export default function DashboardHome() {
                       )}
                     </div>
                   </div>
-                  <CheckCircle2 size={13} className="text-[#4f8ef7]/50 shrink-0" />
+                  <CheckCircle2 size={13} className="text-[#22c55e]/50 shrink-0" />
                 </div>
               ))}
             </div>

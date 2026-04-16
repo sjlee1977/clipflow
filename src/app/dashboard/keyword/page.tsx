@@ -198,7 +198,13 @@ export default function KeywordPage() {
 
   // 콘텐츠 발행량
   const [contentLoading, setContentLoading] = useState(false);
-  const [contentData, setContentData] = useState<{ blog: number; cafe: number; total: number; saturation: { blog: number; cafe: number; total: number } } | null>(null);
+  const [contentData, setContentData] = useState<{
+    blog: number; cafe: number; total: number;
+    blogHitCeiling: boolean; cafeHitCeiling: boolean;
+    saturation: { blog: number; cafe: number; total: number };
+    contentCompIdx: '낮음' | '중간' | '높음';
+    opportunity: number;
+  } | null>(null);
 
   // 구글 트렌드
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -211,12 +217,12 @@ export default function KeywordPage() {
   const fetchContent = useCallback(async (kw: string, monthlyTotal: number) => {
     setContentLoading(true);
     try {
-      const res = await fetch(`/api/seo/naver-content?keyword=${encodeURIComponent(kw)}&period=${period}&monthlyTotal=${monthlyTotal}`);
+      const res = await fetch(`/api/seo/naver-content?keyword=${encodeURIComponent(kw)}&monthlyTotal=${monthlyTotal}`);
       const data = await res.json();
       if (res.ok) setContentData(data);
     } catch { /* silent */ }
     finally { setContentLoading(false); }
-  }, [period]);
+  }, []);
 
   // 검색량 결과가 나오면 콘텐츠 발행량 자동 조회
   useEffect(() => {
@@ -478,9 +484,6 @@ export default function KeywordPage() {
                   <div className="flex-1 px-6 py-5 border-r border-white/8">
                     <div className="flex items-center gap-2 mb-2">
                       <p className="text-[12px] font-medium text-white/50">월간 총 검색량</p>
-                      {(mainItem as any).estimated && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15', border: '1px solid rgba(250,204,21,0.25)' }}>추정</span>
-                      )}
                     </div>
                     <p className="text-[28px] font-black text-white tracking-tight leading-none">{fmt(mainItem.monthlyTotal)}</p>
                     <div className="flex gap-3 mt-2 text-[13px] text-white/50">
@@ -503,41 +506,70 @@ export default function KeywordPage() {
                   </div>
 
                   {/* 경쟁도 */}
-                  <div className="flex-1 px-6 py-5 border-r border-white/8">
-                    <p className="text-[12px] font-medium text-white/50 mb-2">경쟁도</p>
-                    <p className="text-[28px] font-black tracking-tight leading-none" style={{ color: COMP_COLOR[mainItem.compIdx] }}>
-                      {mainItem.compIdx}
-                    </p>
-                    <p className="text-[13px] text-white/45 mt-2">광고 평균 {mainItem.plAvgDepth}위</p>
-                    <div className="h-0.5 bg-white/8 mt-3 overflow-hidden">
-                      <div className="h-full" style={{
-                        width: mainItem.compIdx === '높음' ? '90%' : mainItem.compIdx === '중간' ? '55%' : '20%',
-                        backgroundColor: COMP_COLOR[mainItem.compIdx],
-                        transition: 'width 0.6s ease',
-                      }} />
-                    </div>
-                  </div>
+                  {(() => {
+                    // 광고 경쟁도(Ads API) 우선, 콘텐츠 데이터가 오면 포화도 기준도 병기
+                    const compIdx = mainItem.compIdx;
+                    return (
+                      <div className="flex-1 px-6 py-5 border-r border-white/8">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-[12px] font-medium text-white/50">경쟁도</p>
+                          <span className="text-[9px] font-mono px-1 py-0.5" style={{
+                            background: 'rgba(79,142,247,0.1)',
+                            color: '#4f8ef7',
+                            border: '1px solid rgba(79,142,247,0.2)',
+                          }}>
+                            광고 기준
+                          </span>
+                        </div>
+                        <p className="text-[28px] font-black tracking-tight leading-none" style={{ color: COMP_COLOR[compIdx] }}>
+                          {compIdx}
+                        </p>
+                        <p className="text-[13px] text-white/45 mt-2">
+                          광고 평균 {mainItem.plAvgDepth}위
+                        </p>
+                        <div className="h-0.5 bg-white/8 mt-3 overflow-hidden">
+                          <div className="h-full" style={{
+                            width: compIdx === '높음' ? '90%' : compIdx === '중간' ? '55%' : '20%',
+                            backgroundColor: COMP_COLOR[compIdx],
+                            transition: 'width 0.6s ease',
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* SEO 기회 점수 */}
-                  <div className="flex-1 px-6 py-5">
-                    <p className="text-[12px] font-medium text-white/50 mb-2">SEO 기회 점수</p>
-                    <p className="text-[28px] font-black tracking-tight leading-none" style={{
-                      color: mainItem.opportunity >= 70 ? '#4f8ef7' : mainItem.opportunity >= 40 ? '#facc15' : '#f87171'
-                    }}>
-                      {mainItem.opportunity}
-                      <span className="text-[14px] text-white/35 ml-1">/100</span>
-                    </p>
-                    <p className="text-[13px] text-white/45 mt-2">
-                      {mainItem.opportunity >= 70 ? '즉시 작성 권장' :
-                       mainItem.opportunity >= 40 ? '차별화 필요' : '롱테일 전략 권장'}
-                    </p>
-                    <button
-                      onClick={() => goToWrite(mainItem.keyword, mainItem.monthlyTotal)}
-                      className="mt-3 flex items-center gap-1.5 text-[12px] text-[#4f8ef7]/70 hover:text-[#4f8ef7] transition-colors"
-                    >
-                      <PenLine size={12} />이 키워드로 글쓰기 →
-                    </button>
-                  </div>
+                  {(() => {
+                    // 콘텐츠 포화도 기반 점수 우선, 없으면 광고 기반 점수
+                    const opp = contentData?.opportunity ?? mainItem.opportunity;
+                    return (
+                      <div className="flex-1 px-6 py-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-[12px] font-medium text-white/50">SEO 기회 점수</p>
+                          {contentData && (
+                            <span className="text-[9px] font-mono px-1 py-0.5" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}>
+                              포화도 기반
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[28px] font-black tracking-tight leading-none" style={{
+                          color: opp >= 70 ? '#4f8ef7' : opp >= 40 ? '#facc15' : '#f87171'
+                        }}>
+                          {opp}
+                          <span className="text-[14px] text-white/35 ml-1">/100</span>
+                        </p>
+                        <p className="text-[13px] text-white/45 mt-2">
+                          {opp >= 70 ? '즉시 작성 권장' : opp >= 40 ? '차별화 필요' : '롱테일 전략 권장'}
+                        </p>
+                        <button
+                          onClick={() => goToWrite(mainItem.keyword, mainItem.monthlyTotal)}
+                          className="mt-3 flex items-center gap-1.5 text-[12px] text-[#4f8ef7]/70 hover:text-[#4f8ef7] transition-colors"
+                        >
+                          <PenLine size={12} />이 키워드로 글쓰기 →
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 트렌드 차트 */}
@@ -564,10 +596,15 @@ export default function KeywordPage() {
                 {/* 콘텐츠 발행량 */}
                 {(contentLoading || contentData) && (
                   <div className="border border-white/8 bg-white/[0.02] p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <BarChart2 size={13} className="text-[#4f8ef7]" />
-                      <p className="text-[13px] font-semibold text-white/60">콘텐츠 발행량</p>
-                      <span className="text-[12px] text-white/40">Naver Search 기준</span>
+                    <div className="flex items-start justify-between gap-2 mb-4">
+                      <div className="flex items-center gap-2">
+                        <BarChart2 size={13} className="text-[#4f8ef7]" />
+                        <p className="text-[13px] font-semibold text-white/60">콘텐츠 발행량</p>
+                        <span className="text-[11px] px-1.5 py-0.5 font-mono" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}>추정치</span>
+                      </div>
+                      <p className="text-[10px] font-mono text-white/20 text-right leading-relaxed shrink-0" style={{ maxWidth: 320 }}>
+                        2024.08.20 네이버 발행량 API 차단으로 인해<br />게시 속도 기반 추정값입니다
+                      </p>
                     </div>
                     {contentLoading ? (
                       <div className="grid grid-cols-3 gap-4">
@@ -576,25 +613,37 @@ export default function KeywordPage() {
                     ) : contentData && (
                       <div className="grid grid-cols-3 gap-4">
                         {([
-                          { label: '블로그', count: contentData.blog, sat: contentData.saturation.blog },
-                          { label: '카페',   count: contentData.cafe, sat: contentData.saturation.cafe },
-                          { label: '전체',   count: contentData.total, sat: contentData.saturation.total },
-                        ] as { label: string; count: number; sat: number }[]).map(({ label, count, sat }) => {
+                          { label: '블로그', count: contentData.blog, sat: contentData.saturation.blog, ceiling: contentData.blogHitCeiling },
+                          { label: '카페',   count: contentData.cafe, sat: contentData.saturation.cafe, ceiling: contentData.cafeHitCeiling },
+                          { label: '전체',   count: contentData.total, sat: contentData.saturation.total, ceiling: contentData.blogHitCeiling || contentData.cafeHitCeiling },
+                        ] as { label: string; count: number; sat: number; ceiling: boolean }[]).map(({ label, count, sat, ceiling }) => {
+                          const hasSat = sat > 0;
+                          const cappedSat = sat >= 500;
                           const satColor = sat >= 100 ? '#ef4444' : sat >= 50 ? '#facc15' : '#4ade80';
                           const satLabel = sat >= 100 ? '매우 높음' : sat >= 50 ? '높음' : sat >= 20 ? '보통' : '낮음';
                           return (
                             <div key={label} className="border border-white/6 bg-white/[0.02] p-4 rounded-lg">
                               <p className="text-[11px] font-medium text-white/40 mb-1">{label}</p>
-                              <p className="text-[22px] font-black text-white tracking-tight">{fmt(count)}</p>
-                              <div className="flex items-center gap-1.5 mt-2">
-                                <span className="text-[11px] font-bold" style={{ color: satColor }}>{sat}%</span>
-                                <span className="text-[10px] text-white/30">포화</span>
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${satColor}18`, color: satColor }}>{satLabel}</span>
-                              </div>
-                              <div className="h-1 bg-white/8 rounded-full mt-2 overflow-hidden">
-                                <div className="h-full rounded-full transition-all duration-700"
-                                  style={{ width: `${Math.min(sat, 100)}%`, backgroundColor: satColor }} />
-                              </div>
+                              <p className="text-[22px] font-black text-white tracking-tight">
+                                {ceiling && <span className="text-white/40">≥ </span>}{fmt(count)}
+                              </p>
+                              {hasSat ? (
+                                <>
+                                  <div className="flex items-center gap-1.5 mt-2">
+                                    <span className="text-[11px] font-bold" style={{ color: satColor }}>
+                                      {cappedSat ? '500%이상' : `${sat}%`}
+                                    </span>
+                                    <span className="text-[10px] text-white/30">포화</span>
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${satColor}18`, color: satColor }}>{satLabel}</span>
+                                  </div>
+                                  <div className="h-1 bg-white/8 rounded-full mt-2 overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-700"
+                                      style={{ width: `${Math.min(sat, 100)}%`, backgroundColor: satColor }} />
+                                  </div>
+                                </>
+                              ) : (
+                                <p className="text-[10px] text-white/20 font-mono mt-2">포화도 미계산 (검색량 0)</p>
+                              )}
                             </div>
                           );
                         })}
