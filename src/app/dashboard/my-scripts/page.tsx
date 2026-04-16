@@ -109,12 +109,12 @@ export default function MyScriptsPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 mt-4">
         <div className="flex items-center gap-3">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <ScrollText size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white">내 대본</span>
+          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 대본</span>
         </div>
         <button
           onClick={() => router.push('/dashboard/script')}
@@ -195,14 +195,14 @@ export default function MyScriptsPage() {
                   {/* 상단: 뱃지 + 시간 */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${theme.badge}`}>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${theme.badge}`}>
                         {theme.label}
                       </span>
-                      <span className="text-[10px] font-mono text-white/20 border border-white/8 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] text-white/20 border border-white/8 px-1.5 py-0.5 rounded">
                         ~{estimateTime(script.content.length)}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono text-white/20">{timeAgo(script.created_at)}</span>
+                    <span className="text-[10px] text-white/20">{timeAgo(script.created_at)}</span>
                   </div>
 
                   {/* 핵심 문장 (큰 텍스트) */}

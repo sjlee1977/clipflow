@@ -198,11 +198,11 @@ export default function HistoryPage() {
   if (videos.length === 0) {
     return (
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-8 mt-4">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <Film size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white">내 영상</span>
+          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 영상</span>
         </div>
         <div className="flex flex-col items-center justify-center py-32 gap-5">
           <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
@@ -222,12 +222,12 @@ export default function HistoryPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 mt-4">
         <div className="flex items-center gap-3">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <Film size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white">내 영상</span>
+          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 영상</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
@@ -267,7 +267,7 @@ export default function HistoryPage() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="w-6 h-6 flex items-center justify-center bg-black/50 rounded-full text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">▶</span>
                     </div>
-                    <span className={`absolute bottom-0.5 left-0.5 text-[8px] font-mono font-bold px-1 rounded-sm ${v.format === 'shorts' ? 'bg-purple-500/80 text-white' : 'bg-blue-500/80 text-white'}`}>
+                    <span className={`absolute bottom-0.5 left-0.5 text-[8px] font-bold px-1 rounded-sm ${v.format === 'shorts' ? 'bg-purple-500/80 text-white' : 'bg-blue-500/80 text-white'}`}>
                       {v.format === 'shorts' ? '9:16' : v.format === 'landscape' ? '16:9' : '1:1'}
                     </span>
                   </div>
@@ -280,31 +280,31 @@ export default function HistoryPage() {
                   onClick={() => setPlaying(playing === v.id ? null : v.id)}
                 >
                   {v.title || '제목 없는 영상'}
-                  <span className={`ml-1.5 text-[10px] font-mono text-white/20 transition-transform inline-block ${playing === v.id ? 'rotate-180' : ''}`}>▾</span>
+                  <span className={`ml-1.5 text-[10px] text-white/20 transition-transform inline-block ${playing === v.id ? 'rotate-180' : ''}`}>▾</span>
                 </p>
                 <div className="flex items-center gap-1 flex-wrap">
                   {v.scene_count > 0 && (
-                    <span className="text-[10px] font-mono text-white/40 bg-white/6 border border-white/10 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-white/40 bg-white/6 border border-white/10 px-1.5 py-0.5 rounded">
                       {v.scene_count}장면
                     </span>
                   )}
                   {v.template_id && (
-                    <span className="text-[10px] font-mono text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
                       {TEMPLATE_LABELS[v.template_id] ?? v.template_id}
                     </span>
                   )}
                   {v.image_style && v.image_style !== 'none' && (
-                    <span className="text-[10px] font-mono text-sky-300/70 bg-sky-500/8 border border-sky-500/15 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-sky-300/70 bg-sky-500/8 border border-sky-500/15 px-1.5 py-0.5 rounded">
                       {IMAGE_STYLE_LABELS[v.image_style] ?? v.image_style}
                     </span>
                   )}
                   {v.image_model && (
-                    <span className="text-[10px] font-mono text-amber-300/60 bg-amber-500/8 border border-amber-500/15 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-amber-300/60 bg-amber-500/8 border border-amber-500/15 px-1.5 py-0.5 rounded">
                       {IMAGE_MODEL_LABELS[v.image_model] ?? v.image_model.split('/').pop()}
                     </span>
                   )}
                   {v.tts_provider && (
-                    <span className="text-[10px] font-mono text-emerald-300/60 bg-emerald-500/8 border border-emerald-500/15 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-emerald-300/60 bg-emerald-500/8 border border-emerald-500/15 px-1.5 py-0.5 rounded">
                       {v.tts_provider === 'google' ? 'Google' : v.tts_provider === 'minimax' ? 'MiniMax' : 'ElevenLabs'}
                       {ALL_VOICES.find(vo => vo.id === v.voice_id) ? ` · ${ALL_VOICES.find(vo => vo.id === v.voice_id)!.name}` : ''}
                     </span>

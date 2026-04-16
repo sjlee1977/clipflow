@@ -51,7 +51,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({ selectedId, on
               }`}>
                 {template.label}
               </h4>
-              <p className={`text-[9px] text-white/25 font-mono leading-tight px-1 line-clamp-1 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
+              <p className={`text-[9px] text-white/25 leading-tight px-1 line-clamp-1 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
                 {template.description}
               </p>
             </div>

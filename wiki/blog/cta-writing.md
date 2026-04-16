@@ -1,3 +1,10 @@
+---
+updated: 2026-04-16
+ttl: 180
+ttl_reason: 플랫폼(네이버/구글) 정책 변화에 따라 CTA 형식이 바뀔 수 있음
+volatile: false
+---
+
 # CTA 작성법 — 독자가 행동하게 만드는 결론
 
 ## CTA란
@@ -30,3 +37,12 @@ Call To Action. 글을 읽은 독자가 다음에 무엇을 해야 하는지 알
 2. 독자에게 주는 가치 재확인
 3. CTA (구체적 행동 1가지)
 ```
+
+---
+
+## 관련 문서
+
+- `structure.md` — CTA가 속하는 5막(해소&CTA) 전체 역할
+- `emotional-flow.md` — 5단계(행동 유도) — CTA가 배치되는 감정 흐름의 마지막 단계
+- `narrative-techniques.md` — 7번 클로징 에코와 CTA의 관계 (에코 직후 CTA)
+- `evaluation-rubric.md` — 6번 CTA 품질 차원 채점 기준

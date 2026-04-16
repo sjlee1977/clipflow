@@ -97,12 +97,12 @@ export default function CarouselLibraryPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 mt-4">
         <div className="flex items-center gap-3">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <LayoutTemplate size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white">내 캐러셀</span>
+          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 캐러셀</span>
         </div>
         {!loading && carousels.length > 0 && (
           <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function CarouselLibraryPage() {
                       <p className={`text-[13px] font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-white/70'}`}>
                         {carousel.topic}
                       </p>
-                      <p className="text-[10px] font-mono text-white/25 mt-0.5 tracking-wide">
+                      <p className="text-[10px] text-white/25 mt-0.5 tracking-wide">
                         카드 {carousel.card_count}장 · {new Date(carousel.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                       </p>
                     </div>
@@ -238,7 +238,7 @@ export default function CarouselLibraryPage() {
                       <div className="relative h-full flex flex-col p-3.5">
                         {/* 상단: 번호 + 이모지 */}
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-white/30 text-[9px] font-mono font-bold tracking-widest">
+                          <span className="text-white/30 text-[9px] font-bold tracking-widest">
                             {String(card.index + 1).padStart(2, '0')}/{String(selected.cards.length).padStart(2, '0')}
                           </span>
                           {card.emoji && (

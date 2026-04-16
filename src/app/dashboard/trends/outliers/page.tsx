@@ -122,13 +122,13 @@ export default function OutliersPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
             <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
               <Zap size={13} strokeWidth={1.8} />
             </span>
-            <span className="text-[19px] font-semibold text-white leading-none mt-0.5">채널 이상치 영상</span>
+            <span className="text-[19px] font-semibold text-white leading-none mt-0.5" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>채널 이상치 영상</span>
           </div>
           {lastUpdated && (
             <p className="text-[11px] pl-10" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>

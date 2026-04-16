@@ -20,6 +20,7 @@ export async function GET() {
       fal: meta.fal_api_key ? maskKey(meta.fal_api_key) : '',
       qwen: meta.qwen_api_key ? maskKey(meta.qwen_api_key) : '',
       openai: meta.openai_api_key ? maskKey(meta.openai_api_key) : '',
+      perplexity: meta.perplexity_api_key ? maskKey(meta.perplexity_api_key) : '',
       // SEO 도구 — Naver DataLab
       naverClientId: meta.naver_client_id ? maskKey(meta.naver_client_id) : '',
       naverClientSecret: meta.naver_client_secret ? maskKey(meta.naver_client_secret) : '',
@@ -36,6 +37,7 @@ export async function GET() {
       hasFal: !!meta.fal_api_key,
       hasQwen: !!meta.qwen_api_key,
       hasOpenAI: !!meta.openai_api_key,
+      hasPerplexity: !!meta.perplexity_api_key,
       hasNaverDataLab: !!meta.naver_client_id && !!meta.naver_client_secret,
       hasNaverAds: !!meta.naver_ads_customer_id && !!meta.naver_ads_access_license && !!meta.naver_ads_secret_key,
     });
@@ -72,6 +74,8 @@ export async function POST(req: NextRequest) {
       updateData = { qwen_api_key: apiKey.trim() };
     } else if (provider === 'openai') {
       updateData = { openai_api_key: apiKey.trim() };
+    } else if (provider === 'perplexity') {
+      updateData = { perplexity_api_key: apiKey.trim() };
     } else if (provider === 'naver_datalab') {
       if (!apiKey2) return NextResponse.json({ error: 'Client Secret이 필요합니다' }, { status: 400 });
       updateData = { naver_client_id: apiKey.trim(), naver_client_secret: apiKey2.trim() };
@@ -111,6 +115,7 @@ export async function DELETE(req: NextRequest) {
       fal: { fal_api_key: null },
       qwen: { qwen_api_key: null },
       openai: { openai_api_key: null },
+      perplexity: { perplexity_api_key: null },
       naver_datalab: { naver_client_id: null, naver_client_secret: null },
       naver_ads: { naver_ads_customer_id: null, naver_ads_access_license: null, naver_ads_secret_key: null },
     };

@@ -343,20 +343,20 @@ export default function KeywordPage() {
   return (
     <div className="h-full flex flex-col -m-6">
       {/* ── 헤더 ── */}
-      <div className="shrink-0 px-8 pt-7 pb-5 border-b border-white/8">
+      <div className="shrink-0 px-8 pt-10 pb-5 border-b border-white/8">
         <div className="flex items-end justify-between mb-5">
           <div className="flex items-center gap-3">
             <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
               <BarChart2 size={13} strokeWidth={1.8} />
             </span>
-            <span className="text-[19px] font-semibold text-white">키워드 리서치</span>
+            <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>키워드 리서치</span>
           </div>
         </div>
 
         {/* 검색 바 */}
         <div className="flex gap-3 mb-5" style={{ maxWidth: 'calc(100% - 380px)' }}>
-          <div className="flex-1 flex items-center gap-3 bg-white/[0.03] border border-white/10 hover:border-white/20 focus-within:border-white/30 px-4 py-3 transition-colors">
-            <Search size={15} className="text-white/25 shrink-0" />
+          <div className="flex-1 flex items-center gap-3 bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus-within:border-[rgba(79,142,247,0.40)] rounded-lg px-4 py-3 transition-colors">
+            <Search size={15} className="text-white/30 shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -364,7 +364,7 @@ export default function KeywordPage() {
               onChange={e => setKeyword(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="키워드를 입력하세요 (예: 홈트레이닝, 다이어트 식단)"
-              className="flex-1 bg-transparent outline-none text-[14px] text-white placeholder-white/20"
+              className="flex-1 bg-transparent outline-none text-[14px] text-white/80 placeholder-white/25"
             />
             {keyword && (
               <button onClick={() => { setKeyword(''); setVolumeData(null); setTrendData(null); setShoppingData(null); setGoogleData(null); }} className="text-white/20 hover:text-white/50 transition-colors">
@@ -375,7 +375,7 @@ export default function KeywordPage() {
           <button
             onClick={handleSearch}
             disabled={!keyword.trim() || (volumeLoading || trendLoading || shoppingLoading || googleLoading)}
-            className="w-[52px] flex items-center justify-center border border-white/15 hover:border-[#4f8ef7]/50 hover:bg-[#4f8ef7]/10 disabled:border-white/8 disabled:cursor-not-allowed text-white/50 hover:text-[#4f8ef7] disabled:text-white/20 transition-all"
+            className="w-[52px] flex items-center justify-center bg-white/8 hover:bg-white/15 disabled:opacity-40 border border-white/10 text-white/70 hover:text-white disabled:cursor-not-allowed rounded-lg transition-colors"
           >
             {(volumeLoading || trendLoading || shoppingLoading || googleLoading)
               ? <Loader2 size={15} className="animate-spin" />
@@ -384,27 +384,50 @@ export default function KeywordPage() {
         </div>
 
         {/* 탭 */}
-        <div className="flex gap-0 border-b border-white/5">
+        <div className="flex items-center gap-2 flex-wrap">
           {([
-            { id: 'naver' as Tab,    icon: <BarChart2 size={13} />,     label: '네이버 검색량',    desc: 'DataLab + Ads' },
-            { id: 'shopping' as Tab, icon: <ShoppingBag size={13} />,   label: '쇼핑인사이트',     desc: 'Naver Shopping' },
-            { id: 'google' as Tab,   icon: <Globe2 size={13} />,        label: '구글 트렌드',      desc: 'Google Trends' },
-          ] as const).map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`cf-filter-btn flex items-center gap-2 px-5 py-3 text-[12px] font-mono border-b-2 transition-colors ${
-                activeTab === t.id ? 'border-[#4f8ef7] text-white' : 'border-transparent text-white/35 hover:text-white/65 hover:border-white/20'
-              }`}
-            >
-              <span className={activeTab === t.id ? 'text-[#4f8ef7]' : 'text-white/30'}>{t.icon}</span>
-              <span className="font-semibold">{t.label}</span>
-              <span className={`text-[10px] ${activeTab === t.id ? 'text-white/40' : 'text-white/15'}`}>{t.desc}</span>
-            </button>
-          ))}
+            { id: 'naver' as Tab,    icon: <BarChart2 size={12} />,   label: '네이버 검색량', rgb: '79,142,247' },
+            { id: 'shopping' as Tab, icon: <ShoppingBag size={12} />, label: '쇼핑인사이트',  rgb: '251,146,60' },
+            { id: 'google' as Tab,   icon: <Globe2 size={12} />,      label: '구글 트렌드',   rgb: '163,230,53' },
+          ] as const).map(t => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                data-active={isActive ? 'true' : undefined}
+                className="cf-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium tracking-wide transition-all duration-200 whitespace-nowrap"
+                style={{
+                  color: isActive ? `rgb(${t.rgb})` : 'rgba(255,255,255,0.28)',
+                  background: isActive ? `rgba(${t.rgb},0.1)` : 'transparent',
+                  border: isActive ? `1px solid rgba(${t.rgb},0.3)` : '1px solid transparent',
+                  '--tab-rgb': t.rgb,
+                } as React.CSSProperties}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    const el = e.currentTarget;
+                    el.style.color = `rgba(${t.rgb},0.8)`;
+                    el.style.background = `rgba(${t.rgb},0.07)`;
+                    el.style.borderColor = `rgba(${t.rgb},0.25)`;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    const el = e.currentTarget;
+                    el.style.color = 'rgba(255,255,255,0.28)';
+                    el.style.background = 'transparent';
+                    el.style.borderColor = 'transparent';
+                  }
+                }}
+              >
+                <span>{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
 
           {/* 우측: 기간 필터 */}
-          <div className="ml-auto flex items-center gap-2 pb-2">
+          <div className="ml-auto flex items-center gap-2">
             {(isNaver || isShopping) && (
               <>
                 <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5">
@@ -513,7 +536,7 @@ export default function KeywordPage() {
                       <div className="flex-1 px-6 py-5 border-r border-white/8">
                         <div className="flex items-center gap-2 mb-2">
                           <p className="text-[12px] font-medium text-white/50">경쟁도</p>
-                          <span className="text-[9px] font-mono px-1 py-0.5" style={{
+                          <span className="text-[9px] px-1 py-0.5" style={{
                             background: 'rgba(79,142,247,0.1)',
                             color: '#4f8ef7',
                             border: '1px solid rgba(79,142,247,0.2)',
@@ -547,7 +570,7 @@ export default function KeywordPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <p className="text-[12px] font-medium text-white/50">SEO 기회 점수</p>
                           {contentData && (
-                            <span className="text-[9px] font-mono px-1 py-0.5" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}>
+                            <span className="text-[9px] px-1 py-0.5" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}>
                               포화도 기반
                             </span>
                           )}
@@ -581,7 +604,7 @@ export default function KeywordPage() {
                         <p className="text-[13px] font-semibold text-white/60">네이버 검색 트렌드</p>
                         <span className="text-[12px] text-white/40">({trendData?.startDate} ~ {trendData?.endDate})</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] font-mono">
+                      <div className="flex items-center gap-2 text-[10px]">
                         <span className="text-white/25">최고</span>
                         <span className="text-white/60">{mainTrend.peak}</span>
                         <span className="text-white/15 mx-1">·</span>
@@ -602,7 +625,7 @@ export default function KeywordPage() {
                         <p className="text-[13px] font-semibold text-white/60">콘텐츠 발행량</p>
                         <span className="text-[11px] px-1.5 py-0.5 font-mono" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.2)' }}>추정치</span>
                       </div>
-                      <p className="text-[10px] font-mono text-white/20 text-right leading-relaxed shrink-0" style={{ maxWidth: 320 }}>
+                      <p className="text-[10px] text-white/20 text-right leading-relaxed shrink-0" style={{ maxWidth: 320 }}>
                         2024.08.20 네이버 발행량 API 차단으로 인해<br />게시 속도 기반 추정값입니다
                       </p>
                     </div>
@@ -642,7 +665,7 @@ export default function KeywordPage() {
                                   </div>
                                 </>
                               ) : (
-                                <p className="text-[10px] text-white/20 font-mono mt-2">포화도 미계산 (검색량 0)</p>
+                                <p className="text-[10px] text-white/20 mt-2">포화도 미계산 (검색량 0)</p>
                               )}
                             </div>
                           );
@@ -878,7 +901,7 @@ export default function KeywordPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="text-[14px] font-medium text-white/85 group-hover:text-white transition-colors">{item.title}</p>
-                            {item.traffic && <span className="text-[10px] font-mono text-[#4285f4]/60 bg-[#4285f4]/8 px-1.5 py-0.5">{item.traffic}</span>}
+                            {item.traffic && <span className="text-[10px] text-[#4285f4]/60 bg-[#4285f4]/8 px-1.5 py-0.5">{item.traffic}</span>}
                           </div>
                           {item.articles.length > 0 && (
                             <p className="text-[12px] text-white/45 truncate">{item.articles[0].title}</p>
@@ -887,7 +910,7 @@ export default function KeywordPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => { setKeyword(item.title); goToWrite(item.title); }}
-                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 border border-white/10 hover:border-[#4f8ef7]/40 text-white/30 hover:text-[#4f8ef7] text-[10px] font-mono transition-all"
+                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 border border-white/10 hover:border-[#4f8ef7]/40 text-white/30 hover:text-[#4f8ef7] text-[10px] transition-all"
                           >
                             <PenLine size={10} />글쓰기
                           </button>
@@ -919,7 +942,7 @@ export default function KeywordPage() {
                                 className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.04] transition-colors group"
                               >
                                 <span className="text-[12px] font-mono text-white/60 group-hover:text-white">{item.query}</span>
-                                <span className="text-[10px] font-mono text-[#4285f4]/60">
+                                <span className="text-[10px] text-[#4285f4]/60">
                                   {item.value >= 5000 ? 'Breakout' : `+${item.value}%`}
                                 </span>
                               </button>
@@ -947,7 +970,7 @@ export default function KeywordPage() {
                                   <div className="w-16 h-1 bg-white/8 rounded-full overflow-hidden">
                                     <div className="h-full bg-white/25 rounded-full" style={{ width: `${item.value}%` }} />
                                   </div>
-                                  <span className="text-[10px] font-mono text-white/30 w-8 text-right">{item.value}</span>
+                                  <span className="text-[10px] text-white/30 w-8 text-right">{item.value}</span>
                                 </div>
                               </button>
                             ))}

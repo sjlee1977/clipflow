@@ -162,11 +162,11 @@ export default function AutoBlogPage() {
   return (
     <div>
       {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 mt-4">
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <Zap size={13} strokeWidth={1.8} />
         </span>
-        <span className="text-[19px] font-semibold text-white">자동 블로그 생성</span>
+        <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>자동 블로그 생성</span>
       </div>
 
       {/* 실행 전: 중앙 단일 컬럼 / 실행 후: 2컬럼 */}
@@ -178,7 +178,7 @@ export default function AutoBlogPage() {
 
             {/* 지역 */}
             <div>
-              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">트렌드 지역</p>
+              <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">트렌드 지역</p>
               <div className="flex gap-1.5">
                 {GEO_OPTIONS.map(o => (
                   <button key={o.v} onClick={() => setGeo(o.v)}
@@ -193,7 +193,7 @@ export default function AutoBlogPage() {
 
             {/* SEO 플랫폼 */}
             <div>
-              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">SEO 최적화</p>
+              <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">SEO 최적화</p>
               <div className="flex gap-1.5">
                 {(['naver', 'google'] as SeoPlatform[]).map(p => (
                   <button key={p} onClick={() => setSeoPlatform(p)}
@@ -208,7 +208,7 @@ export default function AutoBlogPage() {
 
             {/* 문체 */}
             <div>
-              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">문체</p>
+              <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">문체</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {TONE_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setTone(o.value)}
@@ -223,7 +223,7 @@ export default function AutoBlogPage() {
 
             {/* 길이 */}
             <div>
-              <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">글 길이</p>
+              <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">글 길이</p>
               <div className="flex gap-1.5">
                 {LENGTH_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setMinLength(o.value)}
@@ -231,7 +231,7 @@ export default function AutoBlogPage() {
                       minLength === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     <span className="text-[12px] font-mono block">{o.label}</span>
-                    <span className="text-[9px] font-mono text-white/25">{o.desc}</span>
+                    <span className="text-[9px] text-white/25">{o.desc}</span>
                   </button>
                 ))}
               </div>
@@ -241,7 +241,7 @@ export default function AutoBlogPage() {
             <div className="flex items-center justify-between py-2 border-t border-white/6">
               <div>
                 <p className="text-[12px] font-bold text-white/60">자동 발행</p>
-                <p className="text-[10px] font-mono text-white/25">작성 후 초안으로 즉시 발행</p>
+                <p className="text-[10px] text-white/25">작성 후 초안으로 즉시 발행</p>
               </div>
               <button
                 onClick={() => setAutoPublish(!autoPublish)}
@@ -253,7 +253,7 @@ export default function AutoBlogPage() {
 
             {autoPublish && (
               <div>
-                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">발행 플랫폼</p>
+                <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">발행 플랫폼</p>
                 <div className="flex gap-1.5">
                   {['wordpress', 'naver', 'nextblog'].map(p => (
                     <button key={p} onClick={() => setPublishPlatform(p)}
@@ -364,7 +364,7 @@ export default function AutoBlogPage() {
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {result.post.tags.slice(0, 5).map(tag => (
-                      <span key={tag} className="text-[10px] font-mono text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">
+                      <span key={tag} className="text-[10px] text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">
                         #{tag}
                       </span>
                     ))}
@@ -382,7 +382,7 @@ export default function AutoBlogPage() {
               {/* 선정 이유 */}
               {result.topic && (
                 <div className="px-4 py-3 border-b border-white/6">
-                  <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                     <Search size={10} />주제 선정 이유
                   </p>
                   <p className="text-[12px] font-mono text-white/50">{result.topic.reason}</p>
@@ -448,9 +448,9 @@ export default function AutoBlogPage() {
               <div className="divide-y divide-white/4">
                 {result.competitors.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="text-[10px] font-mono text-white/20 w-4 shrink-0">{i + 1}</span>
+                    <span className="text-[10px] text-white/20 w-4 shrink-0">{i + 1}</span>
                     <p className="text-[12px] text-white/60 flex-1 min-w-0 truncate">{c.title || c.url}</p>
-                    <span className="text-[10px] font-mono text-white/20 shrink-0">{c.length.toLocaleString()}자</span>
+                    <span className="text-[10px] text-white/20 shrink-0">{c.length.toLocaleString()}자</span>
                     <a href={c.url} target="_blank" rel="noopener noreferrer"
                       className="text-white/20 hover:text-white/60 transition-colors shrink-0">
                       <ExternalLink size={11} />
@@ -500,12 +500,12 @@ function StepDetail({ id, data }: { id: string; data: unknown }) {
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {(sample ?? []).map((t, i) => (
-          <span key={i} className="text-[10px] font-mono text-white/40 bg-white/5 border border-white/8 px-2 py-0.5 rounded-full">
+          <span key={i} className="text-[10px] text-white/40 bg-white/5 border border-white/8 px-2 py-0.5 rounded-full">
             {t}
           </span>
         ))}
         {(d.count as number) > 5 && (
-          <span className="text-[10px] font-mono text-white/20">+{(d.count as number) - 5}개</span>
+          <span className="text-[10px] text-white/20">+{(d.count as number) - 5}개</span>
         )}
       </div>
     );
@@ -523,7 +523,7 @@ function StepDetail({ id, data }: { id: string; data: unknown }) {
         </p>
         <div className="flex flex-wrap gap-1 mt-1">
           {((d.relatedKeywords as string[]) ?? []).map((k, i) => (
-            <span key={i} className="text-[10px] font-mono text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">
+            <span key={i} className="text-[10px] text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">
               #{k}
             </span>
           ))}
@@ -572,7 +572,7 @@ function StepDetail({ id, data }: { id: string; data: unknown }) {
 function MetricMini({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[9px] font-mono text-white/20 uppercase tracking-wider">{label}</p>
+      <p className="text-[9px] text-white/20 uppercase tracking-wider">{label}</p>
       <p className="text-[13px] font-black text-white/70 mt-0.5">{value}</p>
     </div>
   );
@@ -585,9 +585,9 @@ function MetaLine({ label, value, maxLen }: { label: string; value: string; maxL
     <div className="flex items-start gap-3">
       <div className="flex items-center gap-1.5 shrink-0 w-28">
         <Tag size={10} className="text-white/20" />
-        <p className="text-[10px] font-mono text-white/25">{label}</p>
+        <p className="text-[10px] text-white/25">{label}</p>
         {maxLen && (
-          <span className={`text-[9px] font-mono ${over ? 'text-red-400/60' : 'text-white/15'}`}>
+          <span className={`text-[9px] ${over ? 'text-red-400/60' : 'text-white/15'}`}>
             {value.length}/{maxLen}
           </span>
         )}

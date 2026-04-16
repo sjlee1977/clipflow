@@ -76,6 +76,7 @@ async function callLLM(
 // ─── 플랫폼별 SEO 전략 가이드 ─────────────────────────────────────────────────
 function getSeoGuide(platform: string, targetKeyword: string, relatedKeywords: string[]): string {
   const related = relatedKeywords.slice(0, 8).join(', ');
+  const year = new Date().getFullYear();
 
   if (platform === 'naver') {
     return `
@@ -84,7 +85,7 @@ function getSeoGuide(platform: string, targetKeyword: string, relatedKeywords: s
 ### 제목 규칙
 - 제목 맨 앞에 "**${targetKeyword}**" 포함 (필수)
 - 제목 길이 25~35자 권장
-- 클릭을 유도하는 숫자나 강조 표현 포함 (예: "5가지", "완벽 정리", "2024년 최신")
+- 클릭을 유도하는 숫자나 강조 표현 포함 (예: "5가지", "완벽 정리", "${year}년 최신")
 
 ### 본문 구조 (DIA 알고리즘 핵심)
 - 첫 문단(100자 이내)에 "${targetKeyword}" 자연스럽게 등장
@@ -112,7 +113,7 @@ function getSeoGuide(platform: string, targetKeyword: string, relatedKeywords: s
 ### 제목 규칙 (H1)
 - "${targetKeyword}"를 앞부분에 배치
 - 60자 이내, 클릭률(CTR) 최적화
-- 연도/숫자/형용사로 차별화 (예: "2024년 최신", "완전 정복")
+- 연도/숫자/형용사로 차별화 (예: "${year}년 최신", "완전 정복")
 
 ### 본문 구조 (E-E-A-T)
 - 첫 문단에 "${targetKeyword}" 포함 + 글의 핵심 가치 제시
@@ -302,7 +303,16 @@ export async function POST(req: NextRequest) {
     const relatedKwStr = relatedKeywords.slice(0, 10).join(', ');
 
     // ── 시스템 프롬프트 ───────────────────────────────────────────────────────
+    const today = new Date().toISOString().slice(0, 10);
+    const year  = today.slice(0, 4);
+
     const systemPrompt = `당신은 SEO 전문 블로그 작가입니다. ${platform === 'naver' ? '네이버 블로그' : '구글 검색'} 최상위 노출을 목표로 고품질 콘텐츠를 작성합니다.
+
+⚠ 현재 날짜: ${today}
+- 제목·본문에 연도를 쓸 때 반드시 ${year}년으로 작성하세요
+- "2024년 최신", "2023년 기준" 등 이미 지난 연도 표현 절대 사용 금지
+- 연도가 포함된 예시(예: "2024년 최신")는 ${year}년으로 바꿔 적용하세요
+- 참고 자료에 연도가 명시되지 않은 수치·법령·기준은 본문 끝에 "※ 정확한 수치는 공식 기관에서 확인하세요" 한 줄 안내 포함
 
 ${seoGuide}
 

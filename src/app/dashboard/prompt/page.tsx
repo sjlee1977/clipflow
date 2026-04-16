@@ -577,7 +577,7 @@ const resetAll = () => {
                 <polyline points="10 9 9 9 8 9"/>
               </svg>
             </span>
-            <span className="text-[19px] font-semibold text-white">대본 요청 스크립트</span>
+            <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>대본 요청 스크립트</span>
           </div>
 
           <div className="border rounded-xl cf-card" style={{ borderColor: 'var(--border)' }}>
@@ -944,7 +944,7 @@ const resetAll = () => {
 
       {/* ── 우측 사이드바 ── */}
       <aside
-        className="w-[340px] shrink-0 flex flex-col border-l overflow-y-auto"
+        className="w-96 shrink-0 flex flex-col border-l overflow-y-auto"
         style={{ borderColor: 'var(--border)', background: 'var(--sidebar)' }}
       >
         <div className="flex-1 px-3 py-4 space-y-3">
@@ -1065,7 +1065,7 @@ const resetAll = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 mt-1" style={{ boxShadow: '0 0 6px rgba(74,222,128,0.5)' }} />
                   <div className="min-w-0">
                     <p className="text-green-400 text-[11px] font-medium">분석 완료 — 필드 자동 입력됨</p>
-                    {ytTitle && <p className="text-white/30 text-[10px] font-mono truncate mt-0.5">{ytTitle}</p>}
+                    {ytTitle && <p className="text-white/30 text-[10px] truncate mt-0.5">{ytTitle}</p>}
                   </div>
                 </div>
               )}

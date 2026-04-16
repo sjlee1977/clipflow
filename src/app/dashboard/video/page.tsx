@@ -1286,13 +1286,13 @@ export default function DashboardPage() {
         {(status === 'idle' || (status === 'previewing' && genTotal === 0) || status === 'error') && (
           <div className="flex flex-col">
             {/* 입력 카드 */}
-          <div className="relative mt-6 flex flex-col">
+          <div className="relative mt-4 flex flex-col">
               {/* 카드 헤더 */}
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
                   <Video size={13} strokeWidth={1.8} />
                 </span>
-                <span className="text-[19px] font-semibold text-white">영상 만들기</span>
+                <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>영상 만들기</span>
               </div>
 
               <div className={`flex flex-col border rounded-xl transition-colors duration-200 bg-black ${
@@ -1380,7 +1380,7 @@ export default function DashboardPage() {
                       {genTotal === 0 ? '장면 분석 중...' : `이미지 생성 중 ${genCompleted} / ${genTotal}`}
                     </span>
                   </div>
-                  <span className="text-white/20 text-[10px] font-mono">
+                  <span className="text-white/20 text-[10px]">
                     {genTotal > 0 ? `${Math.round((genCompleted / genTotal) * 100)}%` : ''}
                   </span>
                 </div>
@@ -1749,7 +1749,7 @@ export default function DashboardPage() {
                       {/* 비디오 뱃지 */}
                       {scene.videoUrl && (
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center pb-1">
-                          <span className="text-[8px] font-bold font-mono text-[white] tracking-widest">VIDEO</span>
+                          <span className="text-[8px] font-bold text-[white] tracking-widest">VIDEO</span>
                         </div>
                       )}
                       {scene.isAnimating && (
@@ -1910,7 +1910,7 @@ export default function DashboardPage() {
                         className="relative aspect-square rounded-xl p-3 flex flex-col justify-between border border-white/8 overflow-hidden"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-white/20 text-[10px] font-mono">{card.index + 1}</span>
+                          <span className="text-white/20 text-[10px]">{card.index + 1}</span>
                           {card.emoji && <span className="text-lg">{card.emoji}</span>}
                         </div>
                         <div className="flex-1 flex flex-col justify-center items-center gap-1 py-1 text-center">
@@ -1928,7 +1928,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="w-1 h-1 rounded-full bg-[#4f8ef7]" />
-                          <span className="text-white/15 text-[9px] font-mono">Clipflow</span>
+                          <span className="text-white/15 text-[9px]">Clipflow</span>
                         </div>
                       </div>
                     ))}
@@ -2122,13 +2122,13 @@ export default function DashboardPage() {
                     <p className="text-[10px] text-white/25 uppercase tracking-widest mb-1.5 px-1">이미지 AI</p>
                     <AiModelSelector models={IMAGE_MODELS} providers={['Google', 'fal.ai', 'Alibaba']}
                       selected={imageModelId} onSelect={id => { setImageModelId(id); localStorage.setItem('clipflow_imageModelId', id); }} />
-                    {pptMode && <p className="text-[10px] text-white/25 font-mono mt-1 px-1">PPT 모드 비활성화</p>}
+                    {pptMode && <p className="text-[10px] text-white/25 mt-1 px-1">PPT 모드 비활성화</p>}
                   </div>
                   <div className={pptMode ? 'opacity-40 pointer-events-none select-none' : ''}>
                     <p className="text-[10px] text-white/25 uppercase tracking-widest mb-1.5 px-1">영상 AI</p>
                     <AiModelSelector models={VIDEO_MODELS} providers={['Kling', 'fal.ai']}
                       selected={videoModelId} onSelect={id => setVideoModelId(id)} />
-                    {pptMode && <p className="text-[10px] text-white/25 font-mono mt-1 px-1">PPT 모드 비활성화</p>}
+                    {pptMode && <p className="text-[10px] text-white/25 mt-1 px-1">PPT 모드 비활성화</p>}
                   </div>
                 </div>
               </div>
@@ -2194,7 +2194,7 @@ export default function DashboardPage() {
 
                     {templateId === 'codehike' && (
                       <div className="mt-4 px-2 pb-2">
-                        <p className="text-[white] text-[10px] font-mono tracking-widest uppercase mb-2">Code Snippet</p>
+                        <p className="text-[white] text-[10px] tracking-widest uppercase mb-2">Code Snippet</p>
                         <textarea
                           value={codeSnippet}
                           onChange={(e) => setCodeSnippet(e.target.value)}

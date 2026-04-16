@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     // user_metadata에 tier 필드가 있으면 사용, 없으면 free
-    const tier: Tier = (user.user_metadata?.tier as Tier) ?? 'free';
+    const tier: Tier = (user.user_metadata?.tier as Tier) ?? 'tier1';
 
     return NextResponse.json({
       tier,

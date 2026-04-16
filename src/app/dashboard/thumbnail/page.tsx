@@ -121,11 +121,11 @@ export default function ThumbnailPage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 mt-4">
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <FileText size={13} strokeWidth={1.8} />
         </span>
-        <span className="text-[19px] font-semibold text-white">썸네일 생성</span>
+        <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>썸네일 생성</span>
       </div>
 
       {/* 대본 연동 배너 */}
@@ -137,7 +137,7 @@ export default function ThumbnailPage() {
               <div className="min-w-0">
                 <p className="text-[12px] font-bold text-[#4f8ef7] mb-1">대본 기반 생성 모드</p>
                 <p className="text-[11px] font-mono text-white/40 leading-relaxed truncate">{scriptPreview}</p>
-                <p className="text-[10px] font-mono text-[#4f8ef7]/50 mt-1.5">
+                <p className="text-[10px] text-[#4f8ef7]/50 mt-1.5">
                   AI가 대본 전체를 분석해 분위기·핵심 비주얼·감정 키워드를 자동 추출합니다
                 </p>
               </div>
@@ -169,14 +169,14 @@ export default function ThumbnailPage() {
                 >
                   <span className="text-xl">{opt.icon}</span>
                   <span className="text-[13px] font-bold">{opt.label}</span>
-                  <span className="text-[9px] font-mono text-white/25">{opt.desc}</span>
+                  <span className="text-[9px] text-white/25">{opt.desc}</span>
                 </button>
               ))}
             </div>
 
             {/* 제목 입력 */}
             <div>
-              <p className="text-[10px] font-mono text-white/30 mb-1.5 uppercase tracking-wider">
+              <p className="text-[10px] text-white/30 mb-1.5 uppercase tracking-wider">
                 {fromScript ? '영상 제목 (대본에서 자동 추출)' : '영상/포스트 제목'}
               </p>
               <input
@@ -190,7 +190,7 @@ export default function ThumbnailPage() {
 
             {/* 스타일 선택 */}
             <div>
-              <p className="text-[10px] font-mono text-white/30 mb-1.5 uppercase tracking-wider">스타일</p>
+              <p className="text-[10px] text-white/30 mb-1.5 uppercase tracking-wider">스타일</p>
               <div className="space-y-1.5">
                 {availableStyles.map(s => (
                   <button
@@ -201,7 +201,7 @@ export default function ThumbnailPage() {
                     }`}
                   >
                     <span className="text-[12px] font-bold">{s.label}</span>
-                    <span className="text-[10px] font-mono text-white/30">{s.desc}</span>
+                    <span className="text-[10px] text-white/30">{s.desc}</span>
                   </button>
                 ))}
               </div>
@@ -211,10 +211,10 @@ export default function ThumbnailPage() {
             {!fromScript && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[10px] font-mono text-white/30 uppercase tracking-wider">직접 프롬프트 입력</p>
+                  <p className="text-[10px] text-white/30 uppercase tracking-wider">직접 프롬프트 입력</p>
                   <button
                     onClick={() => setUseCustom(v => !v)}
-                    className={`text-[10px] font-mono transition-colors ${useCustom ? 'text-[#4f8ef7]' : 'text-white/30'}`}
+                    className={`text-[10px] transition-colors ${useCustom ? 'text-[#4f8ef7]' : 'text-white/30'}`}
                   >
                     {useCustom ? 'ON' : 'OFF'}
                   </button>
@@ -259,8 +259,8 @@ export default function ThumbnailPage() {
                 { label: '감정 키워드', value: scriptAnalysis.hook },
               ].map(item => (
                 <div key={item.label} className="flex gap-2">
-                  <span className="text-[10px] font-mono text-white/25 w-20 shrink-0">{item.label}</span>
-                  <span className="text-[10px] font-mono text-white/60">{item.value}</span>
+                  <span className="text-[10px] text-white/25 w-20 shrink-0">{item.label}</span>
+                  <span className="text-[10px] text-white/60">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -339,18 +339,18 @@ export default function ThumbnailPage() {
                       )}
                     </div>
                     <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
-                      <span className="bg-black/60 text-white/60 text-[10px] font-mono px-2 py-0.5 rounded">
+                      <span className="bg-black/60 text-white/60 text-[10px] px-2 py-0.5 rounded">
                         {thumbnailType === 'youtube' ? 'YouTube' : 'Blog'} · {SIZE_LABEL}
                       </span>
                       {fromScript && (
-                        <span className="bg-[#4f8ef7]/20 text-[#4f8ef7]/80 text-[10px] font-mono px-2 py-0.5 rounded">
+                        <span className="bg-[#4f8ef7]/20 text-[#4f8ef7]/80 text-[10px] px-2 py-0.5 rounded">
                           대본 기반
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="px-3 py-2 bg-black/30 flex items-start gap-2">
-                    <p className="text-[10px] font-mono text-white/30 flex-1 leading-relaxed">{images[selectedIdx].prompt}</p>
+                    <p className="text-[10px] text-white/30 flex-1 leading-relaxed">{images[selectedIdx].prompt}</p>
                     <button
                       onClick={() => handleCopyPrompt(images[selectedIdx].prompt, selectedIdx)}
                       className="shrink-0 text-white/30 hover:text-white/60 transition-colors"
@@ -374,7 +374,7 @@ export default function ThumbnailPage() {
                       <img src={img.url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                     </div>
                     <div className="px-2 py-1 bg-black/40 flex items-center justify-between">
-                      <span className="text-[9px] font-mono text-white/30">변형 {idx + 1}</span>
+                      <span className="text-[9px] text-white/30">변형 {idx + 1}</span>
                       <button
                         onClick={e => { e.stopPropagation(); handleDownload(img.url, idx); }}
                         className="text-white/30 hover:text-white/70 transition-colors"

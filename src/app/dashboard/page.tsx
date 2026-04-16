@@ -87,7 +87,7 @@ function InsightCard({ insight, onScript }: { insight: TrendInsight; onScript: (
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
               <span className="text-[11px] font-black text-white">{insight.keyword}</span>
-              <span className="text-[9px] font-mono text-white/25">· {insight.categoryLabel}</span>
+              <span className="text-[9px] text-white/25">· {insight.categoryLabel}</span>
             </div>
             {/* Layer 1: AI 인사이트 한 줄 */}
             <p className="text-[11px] text-white/60 leading-relaxed">{insight.summary}</p>
@@ -104,13 +104,13 @@ function InsightCard({ insight, onScript }: { insight: TrendInsight; onScript: (
           </button>
           <Link
             href={`/dashboard/trends/viral?category=${insight.category}`}
-            className="flex items-center gap-1 text-[10px] font-mono px-2.5 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/60 hover:border-white/20 transition-colors"
+            className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/60 hover:border-white/20 transition-colors"
           >
             <Eye size={10} />영상 보기
           </Link>
           <button
             onClick={() => setExpanded(v => !v)}
-            className="ml-auto flex items-center gap-1 text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors"
+            className="ml-auto flex items-center gap-1 text-[10px] text-white/25 hover:text-white/50 transition-colors"
           >
             {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             <span>{insight.signal_count}개 신호</span>
@@ -133,12 +133,12 @@ function InsightCard({ insight, onScript }: { insight: TrendInsight; onScript: (
                       href={`https://www.youtube.com/watch?v=${v.video_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-[10px] font-mono text-white/50 hover:text-white/80 truncate transition-colors"
+                      className="flex-1 text-[10px] text-white/50 hover:text-white/80 truncate transition-colors"
                     >
                       {v.title}
                     </a>
                     {v.growth_rate_hourly && (
-                      <span className="text-[9px] font-mono text-orange-400/70 shrink-0">
+                      <span className="text-[9px] text-orange-400/70 shrink-0">
                         +{Math.round(v.growth_rate_hourly).toLocaleString()}/h
                       </span>
                     )}
@@ -159,18 +159,18 @@ function InsightCard({ insight, onScript }: { insight: TrendInsight; onScript: (
                       href={`https://www.youtube.com/watch?v=${v.video_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-[10px] font-mono text-white/50 hover:text-white/80 truncate transition-colors"
+                      className="flex-1 text-[10px] text-white/50 hover:text-white/80 truncate transition-colors"
                     >
                       {v.title}
                     </a>
-                    <span className="text-[9px] font-mono text-yellow-400/70 shrink-0">
+                    <span className="text-[9px] text-yellow-400/70 shrink-0">
                       {v.multiplier ? `${v.multiplier.toFixed(1)}×` : ''}
                       {v.subscriber_count ? ` · ${Math.round(v.subscriber_count / 10000)}만ch` : ''}
                     </span>
                   </div>
                 ))}
               </div>
-              <p className="text-[9px] font-mono text-white/20 mt-2">
+              <p className="text-[9px] text-white/20 mt-2">
                 ↑ 작은 채널이 터뜨린 영상 — 주제만 좋으면 구독자 없이도 됩니다
               </p>
             </div>
@@ -273,7 +273,7 @@ export default function DashboardHome() {
         <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">이번 주 일정</p>
-            <span className="text-[10px] font-mono text-white/20">
+            <span className="text-[10px] text-white/20">
               {weekDays[0].getMonth() + 1}/{weekDays[0].getDate()} – {weekDays[6].getMonth() + 1}/{weekDays[6].getDate()}
             </span>
           </div>
@@ -288,7 +288,7 @@ export default function DashboardHome() {
                 }`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-[10px] font-bold ${isToday ? 'text-[#22c55e]' : 'text-white/30'}`}>{DAY_LABELS[i]}</span>
-                    <span className={`text-[9px] font-mono ${isToday ? 'text-[#22c55e]' : 'text-white/20'}`}>{d.getDate()}</span>
+                    <span className={`text-[9px] ${isToday ? 'text-[#22c55e]' : 'text-white/20'}`}>{d.getDate()}</span>
                   </div>
                   <div className="space-y-0.5">
                     {dayPlans.slice(0, 3).map(p => (
@@ -301,7 +301,7 @@ export default function DashboardHome() {
                       />
                     ))}
                     {dayPlans.length > 3 && (
-                      <p className="text-[8px] font-mono text-white/20 text-center">+{dayPlans.length - 3}</p>
+                      <p className="text-[8px] text-white/20 text-center">+{dayPlans.length - 3}</p>
                     )}
                   </div>
                   {dayPlans.length === 0 && (
@@ -356,7 +356,7 @@ export default function DashboardHome() {
 
           {inProgress.length > 0 && (
             <div className="mt-4 space-y-1.5 border-t border-white/6 pt-3">
-              <p className="text-[10px] font-mono text-white/25 mb-2">이어서 작업</p>
+              <p className="text-[10px] text-white/25 mb-2">이어서 작업</p>
               {inProgress.map(p => (
                 <button
                   key={p.id}
@@ -365,7 +365,7 @@ export default function DashboardHome() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-white/70 truncate">{p.title || '제목 없음'}</p>
-                    <p className="text-[9px] font-mono" style={{ color: STATUS_META[p.status].color }}>
+                    <p className="text-[9px]" style={{ color: STATUS_META[p.status].color }}>
                       {STATUS_META[p.status].label}
                     </p>
                   </div>
@@ -387,7 +387,7 @@ export default function DashboardHome() {
               <Flame size={13} className="text-orange-400" />
               <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">트렌드 인사이트</p>
             </div>
-            <Link href="/dashboard/trends/viral" className="text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors flex items-center gap-1">
+            <Link href="/dashboard/trends/viral" className="text-[10px] text-white/25 hover:text-white/50 transition-colors flex items-center gap-1">
               전체 <ChevronRight size={10} />
             </Link>
           </div>
@@ -400,7 +400,7 @@ export default function DashboardHome() {
           ) : insights.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-[12px] font-mono text-white/20">수집된 트렌드 없음</p>
-              <p className="text-[10px] font-mono text-white/15 mt-1">설정에서 카테고리를 선택하고 트렌드를 수집하세요</p>
+              <p className="text-[10px] text-white/15 mt-1">설정에서 카테고리를 선택하고 트렌드를 수집하세요</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -425,7 +425,7 @@ export default function DashboardHome() {
               <TrendingUp size={13} className="text-[#22c55e]" />
               <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">최근 발행</p>
             </div>
-            <Link href="/dashboard/calendar" className="text-[10px] font-mono text-white/25 hover:text-white/50 transition-colors flex items-center gap-1">
+            <Link href="/dashboard/calendar" className="text-[10px] text-white/25 hover:text-white/50 transition-colors flex items-center gap-1">
               캘린더 <ChevronRight size={10} />
             </Link>
           </div>
@@ -451,9 +451,9 @@ export default function DashboardHome() {
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-bold text-white/70 truncate">{p.title || '제목 없음'}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[9px] font-mono text-white/25 capitalize">{p.platform}</span>
+                      <span className="text-[9px] text-white/25 capitalize">{p.platform}</span>
                       {p.content_series && (
-                        <span className="text-[9px] font-mono text-purple-400/50">
+                        <span className="text-[9px] text-purple-400/50">
                           {p.content_series.title}{p.episode_number ? ` EP${p.episode_number}` : ''}
                         </span>
                       )}

@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw, Settings, Sparkles, Bot, BarChart2, AlertCircle, CheckCircle2, Search, Tag } from 'lucide-react';
+import { Globe, Wand2, Send, Copy, Check, ChevronDown, ChevronUp, Loader2, FileText, RefreshCw, Settings, Sparkles, Bot, BarChart2, AlertCircle, CheckCircle2, Search, Tag, Lock, TrendingUp, Zap } from 'lucide-react';
+import type { RelatedKeyword, TitleSuggestion } from '@/app/api/blog/keyword-suggest/route';
 
 type Platform    = 'wordpress' | 'naver' | 'nextblog';
 type SeoPlatform = 'naver' | 'google';
 type Tone        = 'friendly' | 'professional' | 'casual' | 'educational';
-type Length      = 'short' | 'medium' | 'long';
+type Length      = 'short' | 'medium' | 'long' | 'xlarge';
 
 type SeoCheckItem = { item: string; pass: boolean; tip: string };
 
@@ -32,6 +33,25 @@ function SeoScoreRing({ score }: { score: number }) {
       <text x={34} y={34} textAnchor="middle" dominantBaseline="central"
         fill={color} fontSize={14} fontWeight={900}>{score}</text>
     </svg>
+  );
+}
+
+function MiniScoreRing({ value, color, label }: { value: number; color: string; label: string }) {
+  const r = 13, circ = 2 * Math.PI * r;
+  const filled = (value / 100) * circ;
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <svg width={34} height={34} viewBox="0 0 34 34">
+        <circle cx={17} cy={17} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={2.5} />
+        <circle cx={17} cy={17} r={r} fill="none" stroke={color} strokeWidth={2.5}
+          strokeDasharray={`${filled} ${circ}`} strokeLinecap="round" transform="rotate(-90 17 17)"
+          style={{ opacity: 0.85 }}
+        />
+        <text x={17} y={17} textAnchor="middle" dominantBaseline="central"
+          fill={color} fontSize={9} fontWeight="500" style={{ opacity: 0.95 }}>{value}</text>
+      </svg>
+      <span className="text-[10px] text-white/30" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>{label}</span>
+    </div>
   );
 }
 
@@ -62,6 +82,13 @@ const PRICE_TIER: Record<string, { color: string; bg: string }> = {
   '고지능':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
   '최고품질':    { color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
   '최고 가성비': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+};
+const HOOK_TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+  '질문형': { bg: 'rgba(168,85,247,0.12)',  color: '#c084fc' },
+  '숫자형': { bg: 'rgba(59,130,246,0.12)',  color: '#60a5fa' },
+  '충격형': { bg: 'rgba(239,68,68,0.12)',   color: '#f87171' },
+  '약속형': { bg: 'rgba(34,197,94,0.12)',   color: '#4ade80' },
+  '비교형': { bg: 'rgba(20,184,166,0.12)',  color: '#2dd4bf' },
 };
 function AiPriceBadge({ price }: { price?: string }) {
   if (!price) return null;
@@ -176,9 +203,10 @@ const TONE_OPTIONS: { value: Tone; label: string }[] = [
 ];
 
 const LENGTH_OPTIONS: { value: Length; label: string; desc: string }[] = [
-  { value: 'short', label: '짧게', desc: '500~800자' },
-  { value: 'medium', label: '보통', desc: '800~1500자' },
-  { value: 'long', label: '길게', desc: '1500~3000자' },
+  { value: 'short',  label: '짧게',     desc: '1,000자 미만' },
+  { value: 'medium', label: '보통',     desc: '2,000~3,000자' },
+  { value: 'long',   label: '길게',     desc: '3,000~5,000자' },
+  { value: 'xlarge', label: '아주 길게', desc: '5,000~7,000자' },
 ];
 
 function BlogPageInner() {
@@ -203,6 +231,18 @@ function BlogPageInner() {
   );
   const [monthlyVolume,   setMonthlyVolume]   = useState(initVolume);
   const [seoPlatform,     setSeoPlatform]     = useState<SeoPlatform>('naver');
+
+  // 키워드 분석 결과
+  const [kwAnalyzing, setKwAnalyzing]         = useState(false);
+  const [kwResult, setKwResult]               = useState<{
+    relatedKeywords: RelatedKeyword[];
+    titles: TitleSuggestion[];
+    hasLiveData: boolean;
+    searchVolume: number;
+    contentSaturation: number;
+    saturationRate: number;
+  } | null>(null);
+  const [kwError, setKwError]                 = useState('');
 
   const [tone, setTone] = useState<Tone>('friendly');
   const [length, setLength] = useState<Length>('medium');
@@ -289,6 +329,35 @@ function BlogPageInner() {
     finally { setEvaluating(false); }
   }
 
+  async function handleKeywordAnalyze() {
+    if (!targetKeyword.trim()) return;
+    setKwAnalyzing(true);
+    setKwError('');
+    setKwResult(null);
+    try {
+      const res = await fetch('/api/blog/keyword-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: targetKeyword.trim(), platform: seoPlatform, llmModelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '키워드 분석 실패');
+      setKwResult(data);
+      // 연관 키워드 자동 채우기
+      if (data.relatedKeywords?.length > 0) {
+        const kwList = (data.relatedKeywords as RelatedKeyword[])
+          .map(k => k.keyword).filter(Boolean).join(', ');
+        setRelatedKeywords(kwList);
+      }
+      // 검색량 자동 채우기
+      if (data.searchVolume > 0) setMonthlyVolume(String(data.searchVolume));
+    } catch (err: unknown) {
+      setKwError(err instanceof Error ? err.message : '분석 실패');
+    } finally {
+      setKwAnalyzing(false);
+    }
+  }
+
   async function handleWrite() {
     setWriting(true);
     setWriteError('');
@@ -306,7 +375,7 @@ function BlogPageInner() {
             relatedKeywords: related,
             platform:        seoPlatform,
             tone,
-            minLength:       length === 'short' ? 800 : length === 'long' ? 3000 : 2000,
+            minLength:       length === 'short' ? 800 : length === 'medium' ? 2000 : length === 'long' ? 3000 : 5000,
             source:          crawlResult?.content || '',
             customPrompt:    customPrompt.trim() || undefined,
             monthlyVolume:   monthlyVolume ? parseInt(monthlyVolume) : undefined,
@@ -324,8 +393,40 @@ function BlogPageInner() {
       if (data.steps) setAgentSteps(data.steps);
       if (writeMode !== 'agent') setWriteResult(data as WriteResult);
       setActiveTab('edit');
-      // 작성 완료 후 자동 채점
-      await runEvaluate(data.content);
+
+      // 에이전트 모드: write-agent 내부 채점 결과를 직접 사용 (별도 API 호출 불필요)
+      if (writeMode === 'agent' && data.scores && typeof data.totalScore === 'number') {
+        const s = data.scores as Record<string, number>;
+        const scoreMap: { key: string; nameKo: string }[] = [
+          { key: 'hook',          nameKo: '훅 강도' },
+          { key: 'structure',     nameKo: '서사 구조' },
+          { key: 'showTell',      nameKo: 'Show/Tell' },
+          { key: 'rhythm',        nameKo: '문장 리듬' },
+          { key: 'emotionalFlow', nameKo: '감정 흐름' },
+          { key: 'cta',           nameKo: 'CTA' },
+          { key: 'forbidden',     nameKo: '금지 표현' },
+          { key: 'closing',       nameKo: '클로징 에코' },
+          { key: 'freshness',     nameKo: '정보 신선도' },
+          { key: 'uniqueness',    nameKo: '독창성' },
+        ];
+        const total: number = data.totalScore;
+        const grade = total >= 90 ? 'S' : total >= 80 ? 'A' : total >= 70 ? 'B' : 'C';
+        setEvaluation({
+          totalScore: total,
+          grade,
+          passed: total >= 70,
+          suggestions: (data.editorNotes ?? []).slice(0, 3),
+          dimensions: scoreMap.map(({ key, nameKo }) => ({
+            nameKo,
+            score: s[key] ?? 0,
+            reason: '',
+            suggestion: '',
+          })),
+        });
+      } else {
+        // 표준 모드: 별도 채점 API 호출
+        await runEvaluate(data.content);
+      }
     } catch (err: unknown) {
       setWriteError(err instanceof Error ? err.message : '블로그 작성 중 오류 발생');
     } finally {
@@ -377,18 +478,23 @@ function BlogPageInner() {
   const anyConnected = Object.values(platformStatus).some(Boolean);
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-6">
-        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
-          <FileText size={13} strokeWidth={1.8} />
-        </span>
-        <span className="text-[19px] font-semibold text-white">블로그 작성</span>
-      </div>
+    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">
-        {/* ─── 좌측: 크롤링 + 에디터 ─── */}
-        <div className="space-y-4">
+      {/* ─── 좌측(40%) + 중앙(60%) 래퍼 ─── */}
+      <div className="flex-1 min-w-0 flex overflow-hidden">
+
+      {/* ─── 좌측: 입력 / 설정 (40%) ─── */}
+      <div className="w-2/5 shrink-0 flex flex-col overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
+        <div className="px-4 py-6 space-y-4">
+
+          {/* 헤더 */}
+          <div className="flex items-center gap-3 mt-4">
+            <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+              <FileText size={13} strokeWidth={1.8} />
+            </span>
+            <span className="text-[19px] font-semibold text-white">블로그 작성</span>
+          </div>
+
           {/* URL 크롤링 */}
           <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -401,42 +507,30 @@ function BlogPageInner() {
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCrawl()}
                 placeholder="https://example.com/article"
-                className="flex-1 bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[13px] text-white/80 placeholder-white/25 outline-none transition-colors font-mono"
+                className="flex-1 bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[12px] text-white/80 placeholder-white/25 outline-none transition-colors"
               />
               <button
                 onClick={handleCrawl}
                 disabled={crawling || !url.trim()}
-                className="flex items-center gap-2 bg-white/8 hover:bg-white/15 disabled:opacity-40 border border-white/10 text-white/70 text-[12px] font-bold px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 disabled:opacity-40 border border-white/10 text-white/70 text-[12px] font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
               >
-                {crawling ? <Loader2 size={13} className="animate-spin" /> : <Globe size={13} />}
-                {crawling ? '...' : '가져오기'}
+                {crawling ? <Loader2 size={12} className="animate-spin" /> : <Globe size={12} />}
               </button>
             </div>
-
-            {crawlError && <p className="text-red-400/80 text-[12px] font-mono mt-2">{crawlError}</p>}
-
+            {crawlError && <p className="text-red-400/80 text-[11px] font-mono mt-2">{crawlError}</p>}
             {crawlResult && (
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono text-white/40">{crawlResult.siteName}</span>
-                    <span className="text-[10px] font-mono bg-white/8 border border-white/10 px-1.5 py-0.5 rounded text-white/30">
-                      {crawlResult.length.toLocaleString()}자
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setShowSource(!showSource)}
-                    className="text-[11px] font-mono text-white/30 hover:text-white/60 flex items-center gap-1 transition-colors"
-                  >
+                  <span className="text-[11px] font-mono text-white/40">{crawlResult.siteName}</span>
+                  <button onClick={() => setShowSource(!showSource)} className="text-[11px] font-mono text-white/30 hover:text-white/60 flex items-center gap-1 transition-colors">
                     원문 {showSource ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   </button>
                 </div>
-                <p className="text-[13px] font-bold text-white/80 mt-2 leading-snug">{crawlResult.title}</p>
-                {crawlResult.byline && <p className="text-[11px] text-white/30 font-mono mt-0.5">{crawlResult.byline}</p>}
+                <p className="text-[12px] font-bold text-white/80 mt-1.5 leading-snug">{crawlResult.title}</p>
                 {showSource && (
-                  <div className="mt-3 max-h-48 overflow-y-auto rounded-lg bg-black/30 border border-white/8 p-3">
-                    <p className="text-[11px] text-white/40 font-mono leading-relaxed whitespace-pre-wrap">
-                      {crawlResult.content.slice(0, 3000)}{crawlResult.content.length > 3000 ? '\n...(생략)' : ''}
+                  <div className="mt-2 max-h-32 overflow-y-auto rounded-lg bg-black/30 border border-white/8 p-2">
+                    <p className="text-[10px] text-white/40 leading-relaxed whitespace-pre-wrap">
+                      {crawlResult.content.slice(0, 2000)}{crawlResult.content.length > 2000 ? '\n...(생략)' : ''}
                     </p>
                   </div>
                 )}
@@ -444,75 +538,216 @@ function BlogPageInner() {
             )}
           </div>
 
-          {/* 블로그 에디터 */}
-          {blogContent ? (
-            <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8">
-                <div className="flex gap-1">
-                  {(['edit', 'preview'] as const).map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`text-[11px] font-mono px-3 py-1 rounded transition-colors ${
-                        activeTab === tab ? 'text-white bg-white/10' : 'text-white/30 hover:text-white/60'
-                      }`}
-                    >
-                      {tab === 'edit' ? '편집' : '미리보기'}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-white/20">{blogContent.length.toLocaleString()}자</span>
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 border border-white/15 hover:border-white/30 text-white/50 hover:text-white/80 rounded-md transition-colors"
-                  >
-                    {copied ? <Check size={11} /> : <Copy size={11} />}
-                    {copied ? '복사됨' : '복사'}
-                  </button>
-                </div>
+          {/* SEO 키워드 */}
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
+            <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+              <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                <Search size={9} className="text-white/50" />
               </div>
-              <div className="px-4 pt-3">
-                <input
-                  type="text"
-                  value={blogTitle}
-                  onChange={e => setBlogTitle(e.target.value)}
-                  placeholder="블로그 제목..."
-                  className="w-full bg-transparent border-b border-white/10 focus:border-white/30 pb-2 text-[16px] font-black text-white outline-none transition-colors placeholder-white/15"
-                />
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>SEO 키워드</span>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              <div className="flex gap-1.5">
+                {(['naver', 'google'] as SeoPlatform[]).map(p => (
+                  <button key={p} onClick={() => setSeoPlatform(p)}
+                    className={`cf-filter-btn flex-1 py-1.5 text-[11px] font-mono rounded-lg border transition-colors ${
+                      seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
+                    }`}
+                  >{p === 'naver' ? '네이버 SEO' : '구글 SEO'}</button>
+                ))}
               </div>
-              {activeTab === 'edit' ? (
-                <textarea
-                  ref={editorRef}
-                  value={blogContent}
-                  onChange={e => setBlogContent(e.target.value)}
-                  className="w-full min-h-[400px] bg-transparent px-4 py-3 text-[13px] text-white/80 font-mono leading-relaxed outline-none resize-none"
-                  spellCheck={false}
+              {/* 키워드 입력 + 분석 버튼 */}
+              <div className="flex gap-1.5">
+                <input type="text" value={targetKeyword} onChange={e => { setTargetKeyword(e.target.value); setKwResult(null); }}
+                  onKeyDown={e => e.key === 'Enter' && handleKeywordAnalyze()}
+                  placeholder="메인 키워드 (예: 홈트레이닝)"
+                  className="flex-1 bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/25 outline-none transition-colors font-mono"
                 />
-              ) : (
-                <div className="px-4 py-3 min-h-[400px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(blogContent) }} />
+                <button onClick={handleKeywordAnalyze} disabled={kwAnalyzing || !targetKeyword.trim()}
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all duration-150 disabled:opacity-40"
+                  style={{ background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', color: '#4f8ef7' }}
+                  title="키워드 분석 (연관어·태그·제목 7개)"
+                >
+                  {kwAnalyzing ? <Loader2 size={11} className="animate-spin" /> : <TrendingUp size={11} />}
+                  {kwAnalyzing ? '' : '분석'}
+                </button>
+              </div>
+
+              <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
+                placeholder="추가 지시사항 (예: SEO 최적화, 특정 독자층, 포함할 내용...)" rows={2}
+                className="w-full bg-black border border-white/8 hover:border-white/15 focus:border-white/25 rounded-lg px-3 py-2 text-[12px] text-white/50 placeholder-white/20 outline-none transition-colors resize-none"
+              />
+              {monthlyVolume && (
+                <div className="flex items-center gap-2 text-[12px] text-white/30" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+                  <Tag size={10} />월간 검색량 {parseInt(monthlyVolume).toLocaleString()}회
+                </div>
+              )}
+
+              {/* 오류 */}
+              {kwError && (
+                <div className="flex items-center gap-1.5 text-[11px] text-orange-400/80 font-mono">
+                  <AlertCircle size={10} />{kwError}
+                </div>
+              )}
+
+              {/* 키워드 분석 결과 카드 */}
+              {kwResult && (
+                <div className="space-y-3 pt-1">
+                  {/* 데이터 출처 배지 */}
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded border ${kwResult.hasLiveData ? 'text-[#4f8ef7]/70 border-[#4f8ef7]/20 bg-[#4f8ef7]/5' : 'text-white/25 border-white/8 bg-transparent'}`} style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+                      {kwResult.hasLiveData ? '네이버 실시간' : 'AI 추정'}
+                    </span>
+                    {kwResult.searchVolume > 0 && (
+                      <span className="text-[11px] text-white/25" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>
+                        검색 {kwResult.searchVolume.toLocaleString()} · 발행 {kwResult.contentSaturation.toLocaleString()} · 포화 {kwResult.saturationRate}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 연관 키워드 7개 */}
+                  {kwResult.relatedKeywords.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-white/25 uppercase tracking-widest mb-1.5" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>연관 키워드</p>
+                      <div className="flex flex-wrap gap-1">
+                        {kwResult.relatedKeywords.map((kw, i) => (
+                          <button key={i}
+                            onClick={() => {
+                              const arr = relatedKeywords.split(',').map(s => s.trim()).filter(Boolean);
+                              if (!arr.includes(kw.keyword)) {
+                                setRelatedKeywords([...arr, kw.keyword].join(', '));
+                              }
+                            }}
+                            className="flex items-center gap-1 text-[11.5px] px-2 py-1 rounded-md border border-white/10 hover:border-[#4f8ef7]/30 bg-white/[0.02] hover:bg-[#4f8ef7]/5 text-white/50 hover:text-white/80 transition-all duration-150"
+                            style={{ fontFamily: "'Nanum Gothic', sans-serif" }}
+                            title={kw.monthlyTotal > 0 ? `월간 ${kw.monthlyTotal.toLocaleString()}회 · 경쟁 ${kw.compIdx}` : ''}
+                          >
+                            {kw.keyword}
+                            {kw.monthlyTotal > 0 && (
+                              <span className="text-[12px] text-white/25" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>{(kw.monthlyTotal/1000).toFixed(0)}K</span>
+                            )}
+                            {kw.opportunity >= 70 && <Zap size={8} className="text-yellow-400/60" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 제목 추천 7개 */}
+                  {kwResult.titles.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-white/25 uppercase tracking-widest mb-1.5" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>제목 추천</p>
+                      <div className="space-y-1">
+                        {kwResult.titles.map((t, i) => {
+                          const hookColor = HOOK_TYPE_COLORS[t.hookType] ?? { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' };
+                          const oppColor  = t.opportunityScore >= 75 ? '#facc15' : t.opportunityScore >= 55 ? '#60a5fa' : '#475569';
+                          return (
+                            <button key={i}
+                              onClick={() => { setBlogTitle(t.title); setTargetKeyword(prev => prev || t.title.slice(0, 20)); }}
+                              className="w-full text-left flex items-center gap-3 px-2.5 py-2.5 rounded-lg border border-white/8 hover:border-[#4f8ef7]/25 bg-white/[0.01] hover:bg-[#4f8ef7]/[0.04] transition-all duration-150 group"
+                            >
+                              {/* 제목 */}
+                              <span className="flex-1 min-w-0 text-[12.5px] text-white/70 group-hover:text-white/90 leading-snug" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>{t.title}</span>
+                              {/* 우측 그래픽 패널 */}
+                              <div className="shrink-0 flex flex-col items-center gap-1.5">
+                                {/* 훅 유형 배지 */}
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap"
+                                  style={{ background: hookColor.bg, color: hookColor.color, fontFamily: "'Nanum Gothic', sans-serif" }}>
+                                  {t.hookType}
+                                </span>
+                                {/* SEO + 기회 미니 링 */}
+                                <div className="flex items-end gap-2">
+                                  <MiniScoreRing value={t.seoScore}        color="#4f8ef7" label="SEO" />
+                                  <MiniScoreRing value={t.opportunityScore} color={oppColor} label="기회" />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
-                <FileText size={24} className="text-white/10" />
-              </div>
-              <p className="text-[13px] text-white/30 font-mono">URL을 입력하거나 직접 작성을 시작하세요</p>
-              <button
-                onClick={() => { setBlogContent('# 블로그 제목\n\n여기에 내용을 작성하세요...'); setBlogTitle('블로그 제목'); }}
-                className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors font-mono"
-              >
-                빈 문서로 시작 →
-              </button>
-            </div>
-          )}
+          </div>
+
         </div>
+      </div>
 
-        {/* ─── 우측: AI 설정 + 발행 ─── */}
-        <div className="space-y-3">
+      {/* ─── 중앙: 블로그 에디터 (60%) ─── */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-6">
+        {blogContent ? (
+          <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 shrink-0">
+              <div className="flex gap-1">
+                {(['edit', 'preview'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`text-[11px] font-mono px-3 py-1 rounded transition-colors ${
+                      activeTab === tab ? 'text-white bg-white/10' : 'text-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    {tab === 'edit' ? '편집' : '미리보기'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white/20">{blogContent.length.toLocaleString()}자</span>
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 border border-white/15 hover:border-white/30 text-white/50 hover:text-white/80 rounded-md transition-colors"
+                >
+                  {copied ? <Check size={11} /> : <Copy size={11} />}
+                  {copied ? '복사됨' : '복사'}
+                </button>
+              </div>
+            </div>
+            <div className="px-4 pt-3 shrink-0">
+              <input
+                type="text"
+                value={blogTitle}
+                onChange={e => setBlogTitle(e.target.value)}
+                placeholder="블로그 제목..."
+                className="w-full bg-transparent border-b border-white/10 focus:border-white/30 pb-2 text-[16px] font-black text-white outline-none transition-colors placeholder-white/15"
+              />
+            </div>
+            {activeTab === 'edit' ? (
+              <textarea
+                ref={editorRef}
+                value={blogContent}
+                onChange={e => setBlogContent(e.target.value)}
+                className="flex-1 w-full bg-transparent px-4 py-3 text-[13px] text-white/80 font-mono leading-relaxed outline-none resize-none"
+                spellCheck={false}
+              />
+            ) : (
+              <div className="flex-1 px-4 py-3 overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMarkdown(blogContent) }} />
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[400px]">
+            <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
+              <FileText size={24} className="text-white/10" />
+            </div>
+            <p className="text-[13px] text-white/30 font-mono">좌측에서 설정 후 AI 블로그 작성을 눌러주세요</p>
+            <button
+              onClick={() => { setBlogContent('# 블로그 제목\n\n여기에 내용을 작성하세요...'); setBlogTitle('블로그 제목'); }}
+              className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors font-mono"
+            >
+              빈 문서로 시작 →
+            </button>
+          </div>
+        )}
+      </div>
 
-          {/* ── AI 모델 카드 ── */}
+      </div>{/* ─── 좌측+중앙 래퍼 끝 ─── */}
+
+      {/* ─── 우측 사이드바: AI 모델 + 채점 + 발행 ─── */}
+      <aside className="w-96 shrink-0 flex flex-col overflow-y-auto" style={{ borderLeft: '1px solid var(--border)', background: 'var(--sidebar)' }}>
+        <div className="px-3 py-4 space-y-3">
+
+          {/* AI 모델 카드 */}
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
             <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ background: 'rgba(79,142,247,0.04)' }}>
               <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' }}>
@@ -552,41 +787,7 @@ function BlogPageInner() {
             </div>
           </div>
 
-          {/* ── SEO 키워드 카드 ── */}
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-            <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-              <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                <Search size={9} className="text-white/50" />
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>SEO 키워드</span>
-            </div>
-            <div className="px-4 py-3 space-y-3">
-              <div className="flex gap-1.5">
-                {(['naver', 'google'] as SeoPlatform[]).map(p => (
-                  <button key={p} onClick={() => setSeoPlatform(p)}
-                    className={`cf-filter-btn flex-1 py-1.5 text-[11px] font-mono rounded-lg border transition-colors ${
-                      seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
-                    }`}
-                  >{p === 'naver' ? '네이버 SEO' : '구글 SEO'}</button>
-                ))}
-              </div>
-              <input type="text" value={targetKeyword} onChange={e => setTargetKeyword(e.target.value)}
-                placeholder="메인 키워드 (예: 홈트레이닝)"
-                className="w-full bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/25 outline-none transition-colors font-mono"
-              />
-              <input type="text" value={relatedKeywords} onChange={e => setRelatedKeywords(e.target.value)}
-                placeholder="연관 키워드 (쉼표로 구분)"
-                className="w-full bg-black border border-white/8 hover:border-white/15 focus:border-white/25 rounded-lg px-3 py-2 text-[12px] text-white/50 placeholder-white/20 outline-none transition-colors font-mono"
-              />
-              {monthlyVolume && (
-                <div className="flex items-center gap-2 text-[11px] font-mono text-white/30">
-                  <Tag size={10} />월간 검색량 {parseInt(monthlyVolume).toLocaleString()}회
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── 작성 설정 카드 ── */}
+          {/* 작성 설정 카드 */}
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
             <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
               <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -596,11 +797,11 @@ function BlogPageInner() {
             </div>
             <div className="px-4 py-3 space-y-4">
               <div>
-                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">문체</p>
-                <div className="grid grid-cols-2 gap-1.5">
+                <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>문체</p>
+                <div className="grid grid-cols-4 gap-1.5">
                   {TONE_OPTIONS.map(opt => (
                     <button key={opt.value} onClick={() => setTone(opt.value)}
-                      className={`text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
+                      className={`text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${
                         tone === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                       }`}
                     >{opt.label}</button>
@@ -608,30 +809,29 @@ function BlogPageInner() {
                 </div>
               </div>
               <div>
-                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">길이</p>
-                <div className="flex gap-1.5">
+                <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>길이</p>
+                <div className="grid grid-cols-4 gap-1">
                   {LENGTH_OPTIONS.map(opt => (
                     <button key={opt.value} onClick={() => setLength(opt.value)}
-                      className={`flex-1 text-center py-1.5 rounded-lg border transition-colors ${
+                      className={`flex flex-col items-center text-center py-2 rounded-lg border transition-colors ${
                         length === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                       }`}
                     >
-                      <span className="text-[12px] font-mono block">{opt.label}</span>
-                      <span className="text-[9px] font-mono text-white/25">{opt.desc}</span>
+                      <span className="text-[11px] font-medium block leading-tight">{opt.label}</span>
+                      <span className="text-[9px] text-white/25 leading-tight mt-0.5">{opt.desc}</span>
                     </button>
                   ))}
                 </div>
-              </div>
-              <div>
-                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">추가 지시사항</p>
-                <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
-                  placeholder="예: SEO 최적화, 특정 독자층..." rows={3}
-                  className="w-full bg-black border border-[rgba(79,142,247,0.12)] hover:border-[rgba(79,142,247,0.24)] focus:border-[rgba(79,142,247,0.40)] rounded-lg px-3 py-2 text-[12px] text-white/70 placeholder-white/25 outline-none transition-colors font-mono resize-none"
-                />
+                {llmModelId === 'claude-haiku-4-5-20251001' && length !== 'short' && (
+                  <div className="mt-2 flex items-start gap-1.5 bg-amber-400/5 border border-amber-400/20 rounded-lg px-2.5 py-2">
+                    <AlertCircle size={11} className="text-amber-400/70 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-amber-400/70 leading-relaxed">Haiku 모델은 최대 ~8,000 토큰으로 1,000자 미만에서만 안정적으로 사용 가능합니다.</p>
+                  </div>
+                )}
               </div>
               {writeError && <p className="text-red-400/80 text-[12px] font-mono">{writeError}</p>}
-              <button onClick={handleWrite} disabled={writing || (!crawlResult && !customPrompt.trim())}
-                className="cf-filter-btn w-full flex items-center justify-center gap-2 bg-transparent border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white/70 font-bold text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors"
+              <button onClick={handleWrite} disabled={writing || (!crawlResult && !customPrompt.trim() && !targetKeyword.trim())}
+                className="cf-filter-btn sidebar-btn w-full flex items-center justify-center gap-2 border border-white/8 text-white/40 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[12px] py-2.5 rounded-lg transition-colors"
               >
                 {writing ? (
                   <><Loader2 size={14} className="animate-spin" /> {writeMode === 'agent' ? '에이전트 작동 중...' : '작성 중...'}</>
@@ -643,7 +843,7 @@ function BlogPageInner() {
               </button>
               {((writing && writeMode === 'agent') || agentSteps.length > 0) && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider">에이전트 진행</p>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wider">에이전트 진행</p>
                   {writing && agentSteps.length === 0 ? (
                     <div className="flex items-center gap-2 text-[11px] font-mono text-white/30">
                       <Loader2 size={11} className="animate-spin text-[#4f8ef7]/50" />리서처 분석 중...
@@ -664,7 +864,7 @@ function BlogPageInner() {
             </div>
           </div>
 
-          {/* ── 채점 결과 카드 ── */}
+          {/* 채점 결과 카드 */}
           {(evaluating || evaluation) && (
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
               <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(79,142,247,0.04)' }}>
@@ -693,18 +893,18 @@ function BlogPageInner() {
                     <div className="space-y-1.5">
                       {evaluation.dimensions.map((dim, i) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono text-white/30 w-20 shrink-0 truncate">{dim.nameKo}</span>
+                          <span className="text-[10px] text-white/30 w-20 shrink-0 truncate">{dim.nameKo}</span>
                           <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all ${dim.score >= 8 ? 'bg-[#4f8ef7]/70' : dim.score >= 6 ? 'bg-blue-400/70' : 'bg-orange-400/70'}`}
                               style={{ width: `${dim.score * 10}%` }} />
                           </div>
-                          <span className={`text-[10px] font-mono w-6 text-right shrink-0 ${dim.score >= 8 ? 'text-[#4f8ef7]/70' : dim.score >= 6 ? 'text-blue-400/70' : 'text-orange-400/70'}`}>{dim.score}</span>
+                          <span className={`text-[10px] w-6 text-right shrink-0 ${dim.score >= 8 ? 'text-[#4f8ef7]/70' : dim.score >= 6 ? 'text-blue-400/70' : 'text-orange-400/70'}`}>{dim.score}</span>
                         </div>
                       ))}
                     </div>
                     {evaluation.suggestions.length > 0 && (
                       <div className="bg-white/[0.02] border border-white/8 rounded-lg p-3 space-y-1.5">
-                        <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider flex items-center gap-1">
+                        <p className="text-[10px] text-white/25 uppercase tracking-wider flex items-center gap-1">
                           <AlertCircle size={10} />개선 제안
                         </p>
                         {evaluation.suggestions.slice(0, 3).map((s, i) => (
@@ -725,7 +925,7 @@ function BlogPageInner() {
             </div>
           )}
 
-          {/* ── 발행 카드 ── */}
+          {/* 발행 카드 */}
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
             <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
               <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -734,116 +934,127 @@ function BlogPageInner() {
               <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>발행 플랫폼</span>
             </div>
             <div className="px-4 py-3 space-y-4">
-            {/* 플랫폼 선택 */}
-            <div className="space-y-1.5">
-              {(Object.keys(PLATFORM_INFO) as Platform[]).map(platform => {
-                const info = PLATFORM_INFO[platform];
-                const isSelected = selectedPlatform === platform;
-                const isConn = platformStatus[platform];
-                return (
-                  <button
-                    key={platform}
-                    onClick={() => setSelectedPlatform(platform)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left ${
-                      isSelected ? 'border-white/20 bg-white/8' : 'border-white/6 hover:border-white/12 bg-white/[0.01]'
-                    }`}
-                  >
-                    <div
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-black text-white shrink-0"
-                      style={{ backgroundColor: info.color }}
-                    >
-                      {info.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-[13px] font-bold ${isSelected ? 'text-white' : 'text-white/60'}`}>{info.label}</p>
-                      <p className="text-[10px] font-mono text-white/25">{info.desc}</p>
-                    </div>
-                    {isConn
-                      ? <span className="text-[10px] font-mono text-green-400/70 shrink-0">연결됨</span>
-                      : <span className="text-[10px] font-mono text-white/20 shrink-0">미연결</span>
-                    }
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 연결 안 된 경우 안내 */}
-            {!platformStatus[selectedPlatform] && (
-              <div className="flex items-center gap-2 bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2.5">
-                <p className="text-[12px] text-white/40 font-mono flex-1">설정 페이지에서 계정을 연결해주세요</p>
-                <button
-                  onClick={() => router.push('/dashboard/settings')}
-                  className="flex items-center gap-1.5 text-[11px] font-mono text-white/50 hover:text-white/80 border border-white/15 hover:border-white/30 px-2.5 py-1 rounded-md transition-colors shrink-0"
-                >
-                  <Settings size={11} />설정
-                </button>
-              </div>
-            )}
-
-            {/* 연결된 경우 발행 상태 선택 */}
-            {platformStatus[selectedPlatform] && (
-              <div>
-                <p className="text-[10px] text-white/25 font-mono mb-2 uppercase tracking-wider">발행 상태</p>
-                <div className="flex gap-1.5">
-                  {(selectedPlatform === 'nextblog'
-                    ? [{ v: 'draft', l: '초안' }, { v: 'published', l: '발행' }]
-                    : [{ v: 'draft', l: '초안' }, { v: 'publish', l: '발행' }]
-                  ).map(({ v, l }) => (
+              <div className="flex gap-2">
+                {(Object.keys(PLATFORM_INFO) as Platform[]).map(platform => {
+                  const info = PLATFORM_INFO[platform];
+                  const isSelected = selectedPlatform === platform;
+                  const isConn = platformStatus[platform];
+                  return (
                     <button
-                      key={v}
-                      onClick={() => setStatusOverride(v as 'draft' | 'publish' | 'published')}
-                      className={`cf-filter-btn flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
-                        statusOverride === v ? 'border-white/20 bg-white/8 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
-                      }`}
+                      key={platform}
+                      onClick={() => setSelectedPlatform(platform)}
+                      className="relative flex-1 flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-200"
+                      style={{
+                        borderColor: isSelected ? `${info.color}55` : 'rgba(255,255,255,0.06)',
+                        background: isSelected ? `${info.color}0f` : 'rgba(255,255,255,0.01)',
+                      }}
                     >
-                      {l}
+                      {/* 연결 상태 표시 */}
+                      <span className="absolute top-2 right-2">
+                        {isConn ? (
+                          <span className="relative flex w-1.5 h-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#4ade80' }} />
+                            <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-green-400" />
+                          </span>
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/20 block" />
+                        )}
+                      </span>
+                      {/* 플랫폼 아이콘 */}
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black text-white shrink-0 transition-all duration-200"
+                        style={{ backgroundColor: isSelected ? info.color : `${info.color}55` }}>
+                        {info.icon}
+                      </div>
+                      {/* 플랫폼명 */}
+                      <span className="text-[11px] font-medium transition-colors duration-200 leading-tight text-center"
+                        style={{ color: isSelected ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' }}>
+                        {info.label}
+                      </span>
+                      {/* 미연결 배지 */}
+                      {!isConn && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: 'rgba(251,191,36,0.6)' }}>
+                          <Lock size={8} strokeWidth={2.5} />
+                          <span className="text-[9px] font-medium">미연결</span>
+                        </span>
+                      )}
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+
+              {!platformStatus[selectedPlatform] && (
+                <div className="flex items-center gap-2 bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2.5">
+                  <p className="text-[11px] text-white/40 font-mono flex-1">설정 페이지에서 계정을 연결해주세요</p>
+                  <button
+                    onClick={() => router.push('/dashboard/settings')}
+                    className="flex items-center gap-1.5 text-[11px] font-mono text-white/50 hover:text-white/80 border border-white/15 hover:border-white/30 px-2.5 py-1 rounded-md transition-colors shrink-0"
+                  >
+                    <Settings size={11} />설정
+                  </button>
                 </div>
-              </div>
-            )}
-
-            {/* 결과 메시지 */}
-            {publishResult && (
-              <div className={`text-[12px] font-mono p-3 rounded-lg border ${
-                publishResult.success ? 'text-[#4f8ef7]/80 border-[#4f8ef7]/20 bg-[#4f8ef7]/5' : 'text-red-400/80 border-red-500/20 bg-red-500/5'
-              }`}>
-                {publishResult.message}
-                {publishResult.link && (
-                  <a href={publishResult.link} target="_blank" rel="noopener noreferrer" className="block mt-1 text-[11px] underline opacity-70 hover:opacity-100 break-all">
-                    {publishResult.link}
-                  </a>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={handlePublish}
-              disabled={publishing || !blogContent.trim() || !blogTitle.trim()}
-              className={`w-full flex items-center justify-center gap-2 font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors ${
-                platformStatus[selectedPlatform]
-                  ? 'bg-white/8 hover:bg-white/15 disabled:opacity-30 border border-white/15 text-white/70'
-                  : 'bg-white/5 border border-white/10 text-white/30 cursor-pointer'
-              }`}
-            >
-              {publishing ? (
-                <><Loader2 size={14} className="animate-spin" /> 발행 중...</>
-              ) : platformStatus[selectedPlatform] ? (
-                <><Send size={14} /> {PLATFORM_INFO[selectedPlatform].label}에 발행</>
-              ) : (
-                <><Settings size={14} /> 계정 연결하기</>
               )}
-            </button>
 
-            {!anyConnected && (
-              <p className="text-[10px] text-white/20 font-mono text-center">
-                설정 페이지에서 블로그 플랫폼을 먼저 연결하세요
-              </p>
-            )}
-            </div>{/* px-4 py-3 */}
-          </div>{/* 발행 카드 */}
-        </div>{/* 우측 사이드바 */}
-      </div>
+              {platformStatus[selectedPlatform] && (
+                <div>
+                  <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">발행 상태</p>
+                  <div className="flex gap-1.5">
+                    {(selectedPlatform === 'nextblog'
+                      ? [{ v: 'draft', l: '초안' }, { v: 'published', l: '발행' }]
+                      : [{ v: 'draft', l: '초안' }, { v: 'publish', l: '발행' }]
+                    ).map(({ v, l }) => (
+                      <button
+                        key={v}
+                        onClick={() => setStatusOverride(v as 'draft' | 'publish' | 'published')}
+                        className={`cf-filter-btn flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
+                          statusOverride === v ? 'border-white/20 bg-white/8 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {publishResult && (
+                <div className={`text-[12px] font-mono p-3 rounded-lg border ${
+                  publishResult.success ? 'text-[#4f8ef7]/80 border-[#4f8ef7]/20 bg-[#4f8ef7]/5' : 'text-red-400/80 border-red-500/20 bg-red-500/5'
+                }`}>
+                  {publishResult.message}
+                  {publishResult.link && (
+                    <a href={publishResult.link} target="_blank" rel="noopener noreferrer" className="block mt-1 text-[11px] underline opacity-70 hover:opacity-100 break-all">
+                      {publishResult.link}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {platformStatus[selectedPlatform] && (
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing || !blogContent.trim() || !blogTitle.trim()}
+                  className="w-full flex items-center justify-center gap-2 font-black text-[13px] tracking-tight uppercase py-2.5 rounded-lg transition-colors bg-white/8 hover:bg-white/15 disabled:opacity-30 border border-white/15 text-white/70"
+                >
+                  {publishing ? (
+                    <><Loader2 size={14} className="animate-spin" /> 발행 중...</>
+                  ) : (
+                    <><Send size={14} /> {PLATFORM_INFO[selectedPlatform].label}에 발행</>
+                  )}
+                </button>
+              )}
+
+              {!anyConnected && (
+                <p className="text-[11px] text-white/20 text-center">
+                  설정 페이지에서 블로그 플랫폼을 먼저 연결하세요
+                </p>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { TREND_CATEGORIES } from '@/lib/youtube-trends';
 
-type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen';
+type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen' | 'perplexity';
 
 const inputCls = 'flex-1 bg-black/20 text-white/80 border border-white/10 rounded-lg focus:border-white/30 focus:outline-none text-[12px] font-mono placeholder:text-white/18 px-3 py-1.5 transition-colors';
 const saveBtnCls = 'cf-filter-btn px-4 py-1.5 bg-transparent border border-white/12 text-white/60 font-medium text-[12px] font-mono rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap';
@@ -19,12 +19,13 @@ function SingleKeySection({
   onSave: (provider: Provider, key: string) => Promise<void>;
   onDelete: (provider: Provider) => Promise<void>;
 }) {
-  const providerMap: Record<string, Provider> = { 
-    anthropic: 'anthropic', 
-    google: 'gemini', 
+  const providerMap: Record<string, Provider> = {
+    anthropic: 'anthropic',
+    google: 'gemini',
     elevenlabs: 'elevenlabs',
     'fal.ai': 'fal',
-    'dashscope': 'qwen' 
+    'dashscope': 'qwen',
+    'perplexity': 'perplexity',
   };
   const provider: Provider = providerMap[name.toLowerCase()] ?? 'gemini';
   const [input, setInput] = useState('');
@@ -51,15 +52,15 @@ function SingleKeySection({
           </div>
         </div>
         {hasKey
-          ? <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
-          : <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
+          ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
+          : <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
       </div>
       <div className="px-4 py-3">
         {hasKey && !editing ? (
           <div className="flex items-center gap-2">
             <div className="flex-1 flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
               <span className="text-white/40 text-[12px] font-mono flex-1">{showKey ? maskedKey : '••••••••••••••••••'}</span>
-              <button onClick={() => setShowKey(v => !v)} className="text-white/25 hover:text-white/55 text-[10px] font-mono transition-colors">{showKey ? '숨기기' : '보기'}</button>
+              <button onClick={() => setShowKey(v => !v)} className="text-white/25 hover:text-white/55 text-[10px] transition-colors">{showKey ? '숨기기' : '보기'}</button>
             </div>
             <button onClick={() => setEditing(true)} className="px-2.5 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 text-[11px] font-mono transition-colors">변경</button>
             <button onClick={async () => { setDeleting(true); await onDelete(provider); setDeleting(false); setEditing(false); }} disabled={deleting} className="px-2.5 py-1.5 rounded-lg border border-red-500/15 text-red-400/40 hover:text-red-400 text-[11px] font-mono transition-colors disabled:opacity-40">{deleting ? '...' : '삭제'}</button>
@@ -116,22 +117,22 @@ function DualKeySection({
           </div>
         </div>
         {hasKey
-          ? <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
-          : <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
+          ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
+          : <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
       </div>
       <div className="px-4 py-3">
         {hasKey && !editing ? (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-              <span className="text-white/28 text-[10px] font-mono w-20 shrink-0">{fields[0].label}</span>
+              <span className="text-white/28 text-[10px] w-20 shrink-0">{fields[0].label}</span>
               <span className="text-white/45 text-[12px] font-mono flex-1">{showKeys ? masked1 : '••••••••••••••••••'}</span>
             </div>
             <div className="flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-              <span className="text-white/28 text-[10px] font-mono w-20 shrink-0">{fields[1].label}</span>
+              <span className="text-white/28 text-[10px] w-20 shrink-0">{fields[1].label}</span>
               <span className="text-white/45 text-[12px] font-mono flex-1">{showKeys ? masked2 : '••••••••••••••••••'}</span>
             </div>
             <div className="flex items-center gap-2.5 pt-0.5">
-              <button onClick={() => setShowKeys(v => !v)} className="text-white/25 hover:text-white/55 text-[10px] font-mono transition-colors">{showKeys ? '숨기기' : '보기'}</button>
+              <button onClick={() => setShowKeys(v => !v)} className="text-white/25 hover:text-white/55 text-[10px] transition-colors">{showKeys ? '숨기기' : '보기'}</button>
               <button onClick={() => setEditing(true)} className="px-2.5 py-1 rounded-lg border border-white/10 text-white/40 hover:text-white/70 text-[11px] font-mono transition-colors">변경</button>
               <button onClick={async () => { setDeleting(true); await onDelete(provider); setDeleting(false); }} disabled={deleting} className="px-2.5 py-1 rounded-lg border border-red-500/15 text-red-400/40 hover:text-red-400 text-[11px] font-mono transition-colors disabled:opacity-40">{deleting ? '...' : '삭제'}</button>
             </div>
@@ -240,7 +241,7 @@ function BlogPlatformSection() {
 
       {/* 사이드바 */}
       <div className="w-52 shrink-0 space-y-2 sticky top-4">
-        <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest mb-3">블로그 연결</p>
+        <p className="text-[10px] text-white/25 uppercase tracking-widest mb-3">블로그 연결</p>
         {(Object.keys(platformMeta) as BlogPlatform[]).map(p => {
           const isConn = creds?.[p]?.connected ?? false;
           const isSel = selected === p;
@@ -251,7 +252,7 @@ function BlogPlatformSection() {
               }`}>
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: isConn ? '#4ade80' : '#ffffff20' }} />
               <span className="text-[11px] font-mono text-white/50 flex-1 truncate text-left">{platformMeta[p].label}</span>
-              <span className={`text-[10px] font-mono shrink-0 ${isConn ? 'text-green-400/70' : 'text-white/18'}`}>{isConn ? '✓' : '—'}</span>
+              <span className={`text-[10px] shrink-0 ${isConn ? 'text-green-400/70' : 'text-white/18'}`}>{isConn ? '✓' : '—'}</span>
             </button>
           );
         })}
@@ -280,8 +281,8 @@ function BlogPlatformSection() {
                 </div>
               </div>
               {isConnected
-                ? <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
-                : <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/8 text-white/25">미연결</span>}
+                ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
+                : <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/8 text-white/25">미연결</span>}
             </div>
 
             {/* 바디 */}
@@ -291,25 +292,25 @@ function BlogPlatformSection() {
                   {platform === 'wordpress' && creds?.wordpress && (
                     <div className="flex-1 flex flex-col gap-1">
                       <div className="flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-                        <span className="text-white/25 text-[10px] font-mono w-20 shrink-0">Site URL</span>
+                        <span className="text-white/25 text-[10px] w-20 shrink-0">Site URL</span>
                         <span className="text-white/55 text-[12px] font-mono truncate">{creds.wordpress.siteUrl}</span>
                       </div>
                       <div className="flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-                        <span className="text-white/25 text-[10px] font-mono w-20 shrink-0">Username</span>
+                        <span className="text-white/25 text-[10px] w-20 shrink-0">Username</span>
                         <span className="text-white/55 text-[12px] font-mono">{creds.wordpress.username}</span>
                       </div>
                     </div>
                   )}
                   {platform === 'naver' && creds?.naver && (
                     <div className="flex-1 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-                      <span className="text-white/25 text-[10px] font-mono">Access Token </span>
+                      <span className="text-white/25 text-[10px]">Access Token </span>
                       <span className="text-white/45 text-[12px] font-mono">{creds.naver.accessToken}</span>
                     </div>
                   )}
                   {platform === 'nextblog' && creds?.nextblog && (
                     <div className="flex-1 flex flex-col gap-1">
                       <div className="flex items-center gap-2 bg-black/20 border border-white/8 rounded-lg px-3 py-1.5">
-                        <span className="text-white/25 text-[10px] font-mono w-24 shrink-0">Supabase URL</span>
+                        <span className="text-white/25 text-[10px] w-24 shrink-0">Supabase URL</span>
                         <span className="text-white/55 text-[12px] font-mono truncate">{creds.nextblog.supabaseUrl}</span>
                       </div>
                     </div>
@@ -347,7 +348,7 @@ function BlogPlatformSection() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-white/18 text-[10px] font-mono">WordPress 관리자 → 프로필 → 앱 비밀번호</p>
+                      <p className="text-white/18 text-[10px]">WordPress 관리자 → 프로필 → 앱 비밀번호</p>
                     </>
                   )}
                   {platform === 'naver' && (
@@ -356,7 +357,7 @@ function BlogPlatformSection() {
                         <span className="text-white/28 text-[10.5px] font-mono w-28 shrink-0">Access Token</span>
                         <input type="password" value={naverForm.accessToken} onChange={e => setNaverForm({ accessToken: e.target.value })} placeholder="Bearer 토큰" className={inputCls} />
                       </div>
-                      <p className="text-white/18 text-[10px] font-mono">네이버 개발자센터 → 블로그 OAuth 발급</p>
+                      <p className="text-white/18 text-[10px]">네이버 개발자센터 → 블로그 OAuth 발급</p>
                     </>
                   )}
                   {platform === 'nextblog' && (
@@ -381,7 +382,7 @@ function BlogPlatformSection() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-white/18 text-[10px] font-mono">Supabase → Settings → API → service_role</p>
+                      <p className="text-white/18 text-[10px]">Supabase → Settings → API → service_role</p>
                     </>
                   )}
                   <div className="flex gap-2">
@@ -504,8 +505,8 @@ function NotificationSection() {
             </div>
           </div>
           {hasTelegram
-            ? <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
-            : <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
+            ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-green-400/25 text-green-400/70 bg-green-400/5"><span className="w-1 h-1 rounded-full bg-green-400" />연결됨</span>
+            : <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/8 text-white/25">미설정</span>}
         </div>
         <div className="px-4 py-3">
           {hasTelegram && !editing ? (
@@ -519,7 +520,7 @@ function NotificationSection() {
                   <div key={item.key} className="flex items-center justify-between px-3 py-2.5 border border-white/8 bg-white/[0.01] rounded-lg">
                     <div>
                       <p className="text-[12px] font-mono text-white/70">{item.label}</p>
-                      <p className="text-[10px] font-mono text-white/30">{item.desc}</p>
+                      <p className="text-[10px] text-white/30">{item.desc}</p>
                     </div>
                     <button
                       onClick={() => handleToggle(item.key, !item.value)}
@@ -544,7 +545,7 @@ function NotificationSection() {
           ) : (
             <div className="space-y-3">
               <div className="bg-white/[0.01] border border-white/6 rounded-lg px-3 py-2.5 space-y-1">
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1.5">설정 방법</p>
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">설정 방법</p>
                 {[
                   '1. @BotFather 에게 /newbot 명령 전송',
                   '2. 봇 이름 설정 후 Bot Token 수령',
@@ -637,7 +638,7 @@ function TrendSettingsSection() {
             <p className="text-white/28 text-[10.5px] font-mono mt-0.5">자동 수집할 카테고리 및 감지 기준</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full border ${settings.is_active ? 'border-green-400/25 text-green-400/70 bg-green-400/5' : 'border-white/8 text-white/25'}`}>
+        <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${settings.is_active ? 'border-green-400/25 text-green-400/70 bg-green-400/5' : 'border-white/8 text-white/25'}`}>
           <span className={`w-1 h-1 rounded-full ${settings.is_active ? 'bg-green-400' : 'bg-white/20'}`} />
           {settings.is_active ? '수집 활성화' : '수집 비활성화'}
         </span>
@@ -770,8 +771,8 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; dot: string }[] = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('api');
   const [keys, setKeys] = useState({
-    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false,
-    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: ''
+    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false, hasPerplexity: false,
+    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '', perplexity: ''
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -813,11 +814,11 @@ export default function SettingsPage() {
   return (
     <div>
       {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 mt-4">
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <SettingsIcon size={13} strokeWidth={1.8} />
         </span>
-        <span className="text-[19px] font-semibold text-white">설정</span>
+        <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>설정</span>
       </div>
 
       {/* 탭 */}
@@ -868,7 +869,7 @@ export default function SettingsPage() {
         <div className="flex gap-6 items-start">
           {/* 연결 현황 사이드 */}
           <div className="w-52 shrink-0 space-y-2 sticky top-4">
-            <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest mb-3">연결 현황</p>
+            <p className="text-[10px] text-white/25 uppercase tracking-widest mb-3">연결 현황</p>
             {[
               { label: 'Claude',      has: keys.hasAnthropic, color: '#E4572E' },
               { label: 'Gemini',      has: keys.hasGemini,    color: '#17BEBB' },
@@ -876,12 +877,13 @@ export default function SettingsPage() {
               { label: 'ElevenLabs',  has: keys.hasElevenlabs,color: '#27ae60' },
               { label: 'Kling AI',    has: keys.hasKling,     color: '#a78bfa' },
               { label: 'fal.ai',      has: keys.hasFal,       color: '#f97316' },
-              { label: 'Qwen',        has: keys.hasQwen,      color: '#6366f1' },
+              { label: 'Qwen',        has: keys.hasQwen,        color: '#6366f1' },
+              { label: 'Perplexity',  has: keys.hasPerplexity,  color: '#20b2aa' },
             ].map(({ label, has, color }) => (
               <div key={label} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${has ? 'border-green-400/20 bg-green-400/[0.04]' : 'border-white/8 bg-white/[0.02]'}`}>
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: has ? '#4ade80' : '#ffffff20' }} />
                 <span className="text-[11px] font-mono text-white/55 flex-1 truncate">{label}</span>
-                <span className={`text-[10px] font-mono shrink-0 ${has ? 'text-green-400/70' : 'text-white/20'}`}>{has ? '✓' : '—'}</span>
+                <span className={`text-[10px] shrink-0 ${has ? 'text-green-400/70' : 'text-white/20'}`}>{has ? '✓' : '—'}</span>
               </div>
             ))}
           </div>
@@ -948,6 +950,14 @@ export default function SettingsPage() {
                   placeholder="sk-..."
                   docsUrl="https://dashscope.console.aliyun.com/apiKey"
                   hasKey={keys.hasQwen} maskedKey={keys.qwen}
+                  onSave={handleSave} onDelete={handleDelete}
+                />
+                <SingleKeySection
+                  name="Perplexity" label="웹 리서치 — 블로그/대본 팩트 강화" color="#20b2aa"
+                  models={['sonar', 'sonar-pro']}
+                  placeholder="pplx-..."
+                  docsUrl="https://www.perplexity.ai/settings/api"
+                  hasKey={keys.hasPerplexity} maskedKey={keys.perplexity}
                   onSave={handleSave} onDelete={handleDelete}
                 />
               </div>

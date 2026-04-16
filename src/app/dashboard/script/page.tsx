@@ -304,7 +304,7 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
     <div className="space-y-4">
       {/* 스타일 선택 */}
       <div>
-        <p className="text-white/30 text-[10px] font-mono uppercase tracking-wider mb-2">썸네일 스타일</p>
+        <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2">썸네일 스타일</p>
         <div className="grid grid-cols-2 gap-1.5">
           {THUMB_STYLES.map(s => (
             <button
@@ -424,7 +424,7 @@ function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: str
                 </div>
                 {savedIds[idx] && (
                   <div className="absolute bottom-1 right-1 bg-black/60 rounded px-1 py-0.5">
-                    <span className="text-[#4f8ef7] text-[9px] font-mono">저장됨</span>
+                    <span className="text-[#4f8ef7] text-[9px]">저장됨</span>
                   </div>
                 )}
               </div>
@@ -765,7 +765,7 @@ function ScriptPageInner() {
               <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
                 <PenLine size={13} strokeWidth={1.8} />
               </span>
-              <span className="text-[19px] font-semibold text-white">대본 만들기</span>
+              <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>대본 만들기</span>
             </div>
             {/* 모드 토글 */}
             <div className="flex items-center gap-1">
@@ -877,7 +877,7 @@ function ScriptPageInner() {
                   <TrendingUp size={13} className="text-[#4f8ef7]/70" />
                   <span className="text-[12px] font-bold text-white/60">트렌드 기반 주제 추천</span>
                   {trendSource && (
-                    <span className="text-[10px] font-mono bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2 py-0.5 rounded-full text-[#4f8ef7]/60">
+                    <span className="text-[10px] bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2 py-0.5 rounded-full text-[#4f8ef7]/60">
                       {trendSource}
                     </span>
                   )}
@@ -902,7 +902,7 @@ function ScriptPageInner() {
                           <p className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors leading-snug">
                             {s.title}
                           </p>
-                          <span className={`shrink-0 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                          <span className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded border ${
                             s.type === '충격'   ? 'border-red-400/25 text-red-400/60 bg-red-400/5' :
                             s.type === '비교'   ? 'border-blue-400/25 text-blue-400/60 bg-blue-400/5' :
                             s.type === '예측'   ? 'border-purple-400/25 text-purple-400/60 bg-purple-400/5' :
@@ -949,7 +949,7 @@ function ScriptPageInner() {
             {/* ── 에이전트 단계 + 감독 전략 (멀티에이전트 모드) ── */}
             {scriptMode === 'agent' && agentSteps.length > 0 && (
               <div className="mb-4 bg-white/[0.02] border border-white/8 rounded-xl px-4 py-3 space-y-1.5">
-                <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-2">파이프라인 완료</p>
+                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-2">파이프라인 완료</p>
                 {agentSteps.map((step, i) => (
                   <div key={i} className="flex items-start gap-2 text-[11px] font-mono">
                     <CheckCircle2 size={11} className="text-[#4f8ef7]/70 mt-0.5 shrink-0" />
@@ -961,10 +961,10 @@ function ScriptPageInner() {
                 ))}
                 {directorStrategy && (
                   <details className="mt-2">
-                    <summary className="text-[10px] font-mono text-white/20 cursor-pointer hover:text-white/40 transition-colors">
+                    <summary className="text-[10px] text-white/20 cursor-pointer hover:text-white/40 transition-colors">
                       감독 전략 보기 ▸
                     </summary>
-                    <pre className="mt-2 text-[10px] font-mono text-white/30 leading-relaxed whitespace-pre-wrap bg-black/20 rounded-lg p-2 max-h-40 overflow-y-auto">
+                    <pre className="mt-2 text-[10px] text-white/30 leading-relaxed whitespace-pre-wrap bg-black/20 rounded-lg p-2 max-h-40 overflow-y-auto">
                       {directorStrategy}
                     </pre>
                   </details>
@@ -974,12 +974,12 @@ function ScriptPageInner() {
 
             {/* ── 완료 메시지 ── */}
             <div ref={scriptOutputRef} className="flex items-center gap-3 mb-5 mt-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#4f8ef7] bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+              <span className="inline-flex items-center gap-1.5 text-[10px] text-[#4f8ef7] bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
                 <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full animate-pulse" />
                 완성
               </span>
               {category && (
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[category] ?? 'text-white/30 border-white/8 bg-white/[0.03]'}`}>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[category] ?? 'text-white/30 border-white/8 bg-white/[0.03]'}`}>
                   {CATEGORY_LABELS[category] ?? category}
                 </span>
               )}
@@ -1000,7 +1000,7 @@ function ScriptPageInner() {
                   <span className="w-2 h-2 rounded-full bg-white/30" />
                   <span className="w-2 h-2 rounded-full bg-white/30" />
                 </div>
-                <span className="text-white/40 text-[10px] font-mono uppercase tracking-widest">SCRIPT</span>
+                <span className="text-white/40 text-[10px] uppercase tracking-widest">SCRIPT</span>
                 <button
                   onClick={handleCopy}
                   className={`sidebar-btn flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-lg border transition-all ${
@@ -1083,26 +1083,26 @@ function ScriptPageInner() {
                   {seoExpanded && (
                     <div className="px-4 py-3 space-y-3">
                       <div>
-                        <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1.5">제목 후보</p>
+                        <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1.5">제목 후보</p>
                         {seoPackage.titles.map((t, i) => (
                           <div key={i} className="flex items-start gap-2 py-1.5 border-b border-white/5 last:border-0">
-                            <span className="text-[10px] font-mono text-white/20 mt-0.5 w-3 shrink-0">{i + 1}</span>
+                            <span className="text-[10px] text-white/20 mt-0.5 w-3 shrink-0">{i + 1}</span>
                             <p className="text-[12px] text-white/70 leading-snug">{t}</p>
                           </div>
                         ))}
                       </div>
                       {seoPackage.thumbnailText && (
                         <div className="bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-lg px-3 py-2">
-                          <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1">썸네일 텍스트</p>
+                          <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1">썸네일 텍스트</p>
                           <p className="text-[14px] font-black text-[#4f8ef7]">{seoPackage.thumbnailText}</p>
                         </div>
                       )}
                       {seoPackage.hashtags?.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-mono text-white/25 uppercase tracking-wider mb-1.5">해시태그</p>
+                          <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1.5">해시태그</p>
                           <div className="flex flex-wrap gap-1">
                             {seoPackage.hashtags.map((h, i) => (
-                              <span key={i} className="text-[10px] font-mono bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded-full text-white/40">{h}</span>
+                              <span key={i} className="text-[10px] bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded-full text-white/40">{h}</span>
                             ))}
                           </div>
                         </div>

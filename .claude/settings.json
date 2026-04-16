@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-font-mono.sh\"",
+            "timeout": 10,
+            "statusMessage": "코드 규칙 검사 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

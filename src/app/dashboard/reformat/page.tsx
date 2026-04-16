@@ -157,11 +157,11 @@ export default function ReformatPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 mt-4">
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <Repeat2 size={13} strokeWidth={1.8} />
         </span>
-        <span className="text-[19px] font-semibold text-white">멀티채널 배포</span>
+        <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>멀티채널 배포</span>
       </div>
 
       {/* 대본 연동 배너 */}
@@ -229,7 +229,7 @@ export default function ReformatPage() {
                     }`}
                   >
                     <p className="text-[12px] font-bold truncate">{s.title || '제목 없음'}</p>
-                    <p className="text-[10px] font-mono text-white/25 mt-0.5">{s.content.length.toLocaleString()}자</p>
+                    <p className="text-[10px] text-white/25 mt-0.5">{s.content.length.toLocaleString()}자</p>
                   </button>
                 ))}
               </div>
@@ -237,7 +237,7 @@ export default function ReformatPage() {
 
             {sourceContent && !fromScript && (
               <div className="bg-white/[0.02] border border-white/6 rounded-lg px-3 py-2">
-                <p className="text-[10px] font-mono text-white/30 mb-1">미리보기</p>
+                <p className="text-[10px] text-white/30 mb-1">미리보기</p>
                 <p className="text-[11px] text-white/50 font-mono leading-relaxed line-clamp-3">{sourceContent.slice(0, 150)}...</p>
               </div>
             )}
@@ -260,7 +260,7 @@ export default function ReformatPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`text-[12px] font-bold ${selectedFormats.has(key) ? 'text-white' : 'text-white/50'}`}>{meta.label}</p>
-                    <p className="text-[10px] font-mono text-white/25">{meta.desc}</p>
+                    <p className="text-[10px] text-white/25">{meta.desc}</p>
                   </div>
                   <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                     selectedFormats.has(key) ? 'border-[#4f8ef7] bg-[#4f8ef7]' : 'border-white/20'
@@ -313,7 +313,7 @@ export default function ReformatPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[11px] font-mono text-white/30">{Object.keys(results).length}개 채널 변환 완료</p>
-                <p className="text-[10px] font-mono text-white/20">각 채널별 발행 버튼을 눌러 배포하세요</p>
+                <p className="text-[10px] text-white/20">각 채널별 발행 버튼을 눌러 배포하세요</p>
               </div>
 
               {(Object.entries(results) as [FormatKey, string][]).map(([key, text]) => {
@@ -334,7 +334,7 @@ export default function ReformatPage() {
                         </div>
                         <div>
                           <p className="text-[13px] font-bold text-white">{meta.label}</p>
-                          <p className="text-[10px] font-mono text-white/25">{text.length.toLocaleString()}자</p>
+                          <p className="text-[10px] text-white/25">{text.length.toLocaleString()}자</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -374,7 +374,7 @@ export default function ReformatPage() {
                       <div className="border-t border-[#a855f7]/15 bg-[#a855f7]/5 px-4 py-3 space-y-3">
                         <p className="text-[11px] font-bold text-[#a855f7]/70 uppercase tracking-widest">블로그 직접 발행</p>
                         <div>
-                          <p className="text-[10px] font-mono text-white/30 mb-1">발행 제목</p>
+                          <p className="text-[10px] text-white/30 mb-1">발행 제목</p>
                           <input
                             type="text"
                             value={blogTitle}
@@ -424,7 +424,7 @@ export default function ReformatPage() {
                             {Object.values(publishResults).find(r => r?.error)?.error}
                           </p>
                         )}
-                        <p className="text-[10px] font-mono text-white/20">
+                        <p className="text-[10px] text-white/20">
                           * 설정 페이지에서 블로그 계정 연결 필요
                         </p>
                       </div>
@@ -433,7 +433,7 @@ export default function ReformatPage() {
                     {/* 소셜 힌트 */}
                     {!isBlog && isExpanded && (
                       <div className="border-t border-white/5 px-4 py-2 bg-white/[0.01]">
-                        <p className="text-[10px] font-mono text-white/20">
+                        <p className="text-[10px] text-white/20">
                           💡 {meta.socialHint} — "복사+열기" 버튼으로 클립보드 복사 후 해당 플랫폼이 열립니다
                         </p>
                       </div>

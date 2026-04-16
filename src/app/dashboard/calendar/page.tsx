@@ -230,12 +230,12 @@ function CalendarPageInner() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-6">
       {/* ─── 헤더 ─── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-4">
         <div className="flex items-center gap-3">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <CalendarDays size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white">콘텐츠 캘린더</span>
+          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>콘텐츠 캘린더</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { setActivePanel('new-series'); setSelectedPlan(null); }}
@@ -268,7 +268,7 @@ function CalendarPageInner() {
               {(Object.entries(TYPE_CONFIG) as [ContentType, typeof TYPE_CONFIG[ContentType]][]).map(([type, cfg]) => (
                 <div key={type} className="flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
-                  <span className="text-[10px] font-mono text-white/30">{cfg.label}</span>
+                  <span className="text-[10px] text-white/30">{cfg.label}</span>
                 </div>
               ))}
             </div>
@@ -322,7 +322,7 @@ function CalendarPageInner() {
                             );
                           })}
                           {dayPlans.length > 3 && (
-                            <div className="text-[9px] font-mono text-white/25 pl-1">+{dayPlans.length - 3}</div>
+                            <div className="text-[9px] text-white/25 pl-1">+{dayPlans.length - 3}</div>
                           )}
                         </div>
                       </>
@@ -342,11 +342,11 @@ function CalendarPageInner() {
                 return (
                   <div key={type} className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TYPE_CONFIG[type].color }} />
-                    <span className="text-[10px] font-mono text-white/30">{TYPE_CONFIG[type].label} {count}</span>
+                    <span className="text-[10px] text-white/30">{TYPE_CONFIG[type].label} {count}</span>
                   </div>
                 );
               })}
-              <div className="ml-auto text-[10px] font-mono text-white/20">총 {plans.length}개 콘텐츠</div>
+              <div className="ml-auto text-[10px] text-white/20">총 {plans.length}개 콘텐츠</div>
             </div>
           )}
         </div>
@@ -396,7 +396,7 @@ function CalendarPageInner() {
                       </span>
                       {selectedPlan.source_trend_url && (
                         <a href={selectedPlan.source_trend_url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[10px] font-mono text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors">
+                          className="flex items-center gap-1 text-[10px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors">
                           <ExternalLink size={9} />원본 트렌드
                         </a>
                       )}
@@ -430,7 +430,7 @@ function CalendarPageInner() {
 
                   {/* 프로덕션 파이프라인 */}
                   <div className="px-4 pb-4">
-                    <p className="text-[10px] font-mono text-white/25 mb-2 uppercase tracking-wider">프로덕션 파이프라인</p>
+                    <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">프로덕션 파이프라인</p>
                     <div className="flex items-center gap-0">
                       {STATUS_PIPELINE.map((step, i) => {
                         const currentIdx = STATUS_ORDER.indexOf(selectedPlan.status);
@@ -484,7 +484,7 @@ function CalendarPageInner() {
                   {selectedPlan.notes && (
                     <div className="px-4 pb-4">
                       <div className="bg-white/[0.03] border border-white/6 rounded-lg px-3 py-2">
-                        <p className="text-[10px] font-mono text-white/25 mb-1">메모</p>
+                        <p className="text-[10px] text-white/25 mb-1">메모</p>
                         <p className="text-[11px] text-white/50 leading-relaxed">{selectedPlan.notes}</p>
                       </div>
                     </div>
@@ -538,9 +538,9 @@ function CalendarPageInner() {
                               <span className="text-[12px] font-bold text-white/80 truncate flex-1">{plan.title}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-mono text-white/25">{PLATFORM_META[plan.platform]?.label}</span>
+                              <span className="text-[10px] text-white/25">{PLATFORM_META[plan.platform]?.label}</span>
                               <span className="text-[9px] text-white/20">·</span>
-                              <span className="text-[10px] font-mono text-white/25">
+                              <span className="text-[10px] text-white/25">
                                 {STATUS_PIPELINE.find(s => s.key === plan.status)?.label}
                               </span>
                             </div>
@@ -563,19 +563,19 @@ function CalendarPageInner() {
               </div>
               <div className="px-4 py-4 space-y-3">
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">날짜</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">날짜</p>
                   <input type="date" value={selectedDate ?? ''} onChange={e => setSelectedDate(e.target.value)}
                     className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">제목</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">제목</p>
                   <input type="text" value={newPlan.title} onChange={e => setNewPlan(p => ({ ...p, title: e.target.value }))}
                     placeholder="콘텐츠 제목..."
                     className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">유형</p>
+                    <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">유형</p>
                     <select value={newPlan.content_type} onChange={e => setNewPlan(p => ({ ...p, content_type: e.target.value as ContentType }))}
                       className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       {(Object.entries(TYPE_CONFIG) as [ContentType, typeof TYPE_CONFIG[ContentType]][]).map(([t, c]) => (
@@ -584,7 +584,7 @@ function CalendarPageInner() {
                     </select>
                   </div>
                   <div>
-                    <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">플랫폼</p>
+                    <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">플랫폼</p>
                     <select value={newPlan.platform} onChange={e => setNewPlan(p => ({ ...p, platform: e.target.value as Platform }))}
                       className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       {(Object.keys(PLATFORM_META) as Platform[]).map(pl => <option key={pl} value={pl}>{PLATFORM_META[pl].label}</option>)}
@@ -593,7 +593,7 @@ function CalendarPageInner() {
                 </div>
                 {series.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">시리즈 연결</p>
+                    <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">시리즈 연결</p>
                     <select value={newPlan.series_id} onChange={e => setNewPlan(p => ({ ...p, series_id: e.target.value }))}
                       className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-2 py-1.5 text-[12px] text-white/70 font-mono outline-none focus:border-[#4f8ef7]/40">
                       <option value="">없음</option>
@@ -602,7 +602,7 @@ function CalendarPageInner() {
                   </div>
                 )}
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">메모</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">메모</p>
                   <textarea value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))}
                     placeholder="키워드, 레퍼런스..." rows={2}
                     className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/70 font-mono outline-none resize-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
@@ -627,19 +627,19 @@ function CalendarPageInner() {
               </div>
               <div className="px-4 py-4 space-y-3">
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">시리즈명</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">시리즈명</p>
                   <input type="text" value={newSeries.title} onChange={e => setNewSeries(s => ({ ...s, title: e.target.value }))}
                     placeholder="예: AI 툴 완전 정복 시리즈"
                     className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">핵심 주제</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">핵심 주제</p>
                   <input type="text" value={newSeries.topic} onChange={e => setNewSeries(s => ({ ...s, topic: e.target.value }))}
                     placeholder="예: 직장인을 위한 AI 생산성 툴"
                     className="w-full bg-white/[0.03] border border-white/8 rounded-lg px-3 py-1.5 text-[12px] text-white/80 outline-none focus:border-[#4f8ef7]/40 placeholder-white/20" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-mono text-white/25 mb-1.5 uppercase tracking-wider">에피소드 수</p>
+                  <p className="text-[10px] text-white/25 mb-1.5 uppercase tracking-wider">에피소드 수</p>
                   <div className="flex gap-1.5">
                     {[3, 5, 7, 10].map(n => (
                       <button key={n} onClick={() => setNewSeries(s => ({ ...s, episode_count: n }))}
@@ -654,7 +654,7 @@ function CalendarPageInner() {
                     <Wand2 size={11} className="text-[#4f8ef7]/60" />
                     <span className="text-[11px] font-bold text-[#4f8ef7]/70">AI 에피소드 자동 구성</span>
                   </div>
-                  <p className="text-[10px] font-mono text-white/30">{newSeries.episode_count}편의 에피소드 제목, 설명, 키워드를 AI가 자동으로 기획합니다.</p>
+                  <p className="text-[10px] text-white/30">{newSeries.episode_count}편의 에피소드 제목, 설명, 키워드를 AI가 자동으로 기획합니다.</p>
                 </div>
                 <button onClick={handleSaveSeries} disabled={savingSeries || !newSeries.title.trim() || !newSeries.topic.trim()}
                   className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[12px] uppercase py-2.5 rounded-lg transition-colors">
@@ -705,7 +705,7 @@ function CalendarPageInner() {
                         <span className="text-[14px]">{emoji}</span>
                         <p className="text-[13px] font-bold text-white/90">{s.title}</p>
                       </div>
-                      <p className="text-[10px] font-mono text-white/30">{s.topic}</p>
+                      <p className="text-[10px] text-white/30">{s.topic}</p>
                     </div>
                     <button onClick={() => handleDeleteSeries(s.id)}
                       className="opacity-0 group-hover:opacity-100 text-red-400/30 hover:text-red-400 transition-all">
@@ -740,7 +740,7 @@ function CalendarPageInner() {
                       {scheduledPlans.length > 0 && <span className="text-blue-400/50 ml-1">· {scheduledPlans.length}예약</span>}
                     </span>
                     <button onClick={() => handleAddEpisodesToCalendar(s)}
-                      className="text-[10px] font-mono text-white/25 hover:text-white/60 transition-colors border border-white/8 hover:border-white/20 px-2 py-0.5 rounded">
+                      className="text-[10px] text-white/25 hover:text-white/60 transition-colors border border-white/8 hover:border-white/20 px-2 py-0.5 rounded">
                       일정 등록
                     </button>
                   </div>

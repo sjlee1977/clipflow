@@ -100,6 +100,32 @@ async function callLLM(
   return response.text ?? '';
 }
 
+// ── Perplexity 웹 검색 ────────────────────────────────────────────────────────
+async function callPerplexity(apiKey: string, query: string, maxTokens = 700): Promise<{ answer: string; citations: string[] }> {
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'sonar',
+      messages: [
+        { role: 'system', content: '정확하고 간결하게 한국어로 답변하세요. 최신 정보와 출처를 포함합니다.' },
+        { role: 'user', content: query },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.2,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(`Perplexity 오류: ${err?.error?.message ?? res.status}`);
+  }
+  const data = await res.json() as { choices?: { message?: { content?: string } }[]; citations?: string[] };
+  return {
+    answer:    data.choices?.[0]?.message?.content ?? '',
+    citations: (data.citations ?? []).slice(0, 5),
+  };
+}
+
 // ── 카테고리 위키 로딩 ─────────────────────────────────────────────────────────
 function loadCategoryWiki(category: string): {
   identity: string; tone: string; structure: string;
@@ -123,6 +149,19 @@ async function runDirector(
   minLength: number,
 ): Promise<{ strategy: DirectorStrategy }> {
 
+  // ── Perplexity 웹 리서치 (키 있을 때만) ─────────────────────────────────────
+  let webResearch = '';
+  if (apiKeys.perplexity) {
+    try {
+      const q = `"${topic}" 관련 최신 이슈, 통계, 실제 사례, 시청자 관심 포인트 (유튜브 콘텐츠 제작용, 2024~2025년)`;
+      const { answer, citations } = await callPerplexity(apiKeys.perplexity, q, 700);
+      if (answer) {
+        webResearch = answer;
+        if (citations.length) webResearch += `\n\n[출처] ${citations.join(' | ')}`;
+      }
+    } catch { /* Perplexity 실패 시 무시 */ }
+  }
+
   const systemPrompt = `당신은 유튜브 콘텐츠 감독입니다. 100편 이상의 영상을 기획했습니다.
 주제를 받으면 어떤 각도로 가야 바이럴이 되는지 즉시 압니다.
 모든 결정에는 반드시 "왜(Why)"를 포함합니다. 이유 없는 지시는 작가가 판단할 수 없습니다.
@@ -141,7 +180,7 @@ JSON만 출력. 다른 텍스트 없음.`;
   const userPrompt = `주제: "${topic}"
 카테고리: ${category}
 목표 길이: 최소 ${minLength}자
-
+${webResearch ? `\n## 실시간 웹 리서치 결과 (전략에 반드시 반영)\n${webResearch}\n` : ''}
 이 주제로 최고의 유튜브 대본을 만들기 위한 전략을 설계하세요.
 
 출력 형식:
@@ -419,9 +458,10 @@ export async function POST(req: NextRequest) {
 
     const meta    = user.user_metadata ?? {};
     const apiKeys = {
-      gemini:    meta.gemini_api_key    ?? '',
-      anthropic: meta.anthropic_api_key ?? '',
-      qwen:      meta.qwen_api_key      ?? '',
+      gemini:     meta.gemini_api_key     ?? '',
+      anthropic:  meta.anthropic_api_key  ?? '',
+      qwen:       meta.qwen_api_key       ?? '',
+      perplexity: meta.perplexity_api_key ?? '',
     };
 
     const wiki  = loadCategoryWiki(category);
@@ -432,7 +472,7 @@ export async function POST(req: NextRequest) {
     try {
       const res  = await runDirector(model, apiKeys, topic, category, wiki, minLength);
       strategy   = res.strategy;
-      steps.push({ agent: '감독', status: 'done', summary: `각도: ${strategy.coreAngle.slice(0, 60)}` });
+      steps.push({ agent: '감독', status: 'done', summary: `각도: ${strategy.coreAngle.slice(0, 60)}${apiKeys.perplexity ? ' [Perplexity 리서치 적용]' : ''}` });
     } catch (e) {
       const msg = (e as Error).message;
       steps.push({ agent: '감독', status: 'error', summary: msg });

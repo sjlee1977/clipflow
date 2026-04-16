@@ -1,4 +1,45 @@
 @import "tailwindcss";
+@import "@fontsource/nanum-gothic/400.css";
+@import "@fontsource/nanum-gothic/700.css";
+
+/* ══════════════════════════════════════════════════════
+   로컬 한국어 폰트
+   ══════════════════════════════════════════════════════ */
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/fonts/spoqa-han-sans-neo/SpoqaHanSansNeo-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/fonts/spoqa-han-sans-neo/SpoqaHanSansNeo-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('/fonts/gmarket-sans/GmarketSansLight.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('/fonts/gmarket-sans/GmarketSansMedium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('/fonts/gmarket-sans/GmarketSansBold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ══════════════════════════════════════════════════════
    Tailwind v4 @theme — 액센트 파랑으로 전역 리매핑
