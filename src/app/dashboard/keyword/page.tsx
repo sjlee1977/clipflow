@@ -393,7 +393,7 @@ export default function KeywordPage() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-2 px-5 py-3 text-[12px] font-mono border-b-2 transition-colors ${
+              className={`cf-filter-btn flex items-center gap-2 px-5 py-3 text-[12px] font-mono border-b-2 transition-colors ${
                 activeTab === t.id ? 'border-[#4f8ef7] text-white' : 'border-transparent text-white/35 hover:text-white/65 hover:border-white/20'
               }`}
             >
@@ -409,12 +409,12 @@ export default function KeywordPage() {
               <>
                 <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5">
                   {PERIOD_OPTIONS.map(p => (
-                    <button key={p.value} onClick={() => setPeriod(p.value)} className={`px-2.5 py-1 text-[12px] font-medium transition-colors ${period === p.value ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{p.label}</button>
+                    <button key={p.value} onClick={() => setPeriod(p.value)} className={`cf-filter-btn px-2.5 py-1 text-[12px] font-medium transition-colors ${period === p.value ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{p.label}</button>
                   ))}
                 </div>
                 <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5">
                   {TIMEUNIT_OPTIONS.map(u => (
-                    <button key={u.value} onClick={() => setTimeUnit(u.value)} className={`px-2.5 py-1 text-[12px] font-medium transition-colors ${timeUnit === u.value ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{u.label}</button>
+                    <button key={u.value} onClick={() => setTimeUnit(u.value)} className={`cf-filter-btn px-2.5 py-1 text-[12px] font-medium transition-colors ${timeUnit === u.value ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{u.label}</button>
                   ))}
                 </div>
               </>
@@ -422,7 +422,7 @@ export default function KeywordPage() {
             {isGoogle && (
               <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/8 p-0.5">
                 {[{ v: 'KR', l: '한국' }, { v: 'US', l: '미국' }, { v: 'JP', l: '일본' }].map(g => (
-                  <button key={g.v} onClick={() => setGeo(g.v)} className={`px-2.5 py-1 text-[12px] font-medium transition-colors ${geo === g.v ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{g.l}</button>
+                  <button key={g.v} onClick={() => setGeo(g.v)} className={`cf-filter-btn px-2.5 py-1 text-[12px] font-medium transition-colors ${geo === g.v ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/70'}`}>{g.l}</button>
                 ))}
               </div>
             )}

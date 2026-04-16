@@ -166,7 +166,7 @@ export default function AutoBlogPage() {
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <Zap size={13} strokeWidth={1.8} />
         </span>
-        <span className="text-sm font-semibold text-white">자동 블로그 생성</span>
+        <span className="text-[19px] font-semibold text-white">자동 블로그 생성</span>
       </div>
 
       {/* 실행 전: 중앙 단일 컬럼 / 실행 후: 2컬럼 */}
@@ -182,7 +182,7 @@ export default function AutoBlogPage() {
               <div className="flex gap-1.5">
                 {GEO_OPTIONS.map(o => (
                   <button key={o.v} onClick={() => setGeo(o.v)}
-                    className={`flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
+                    className={`cf-filter-btn flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
                       geo === o.v ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {o.l}
@@ -197,7 +197,7 @@ export default function AutoBlogPage() {
               <div className="flex gap-1.5">
                 {(['naver', 'google'] as SeoPlatform[]).map(p => (
                   <button key={p} onClick={() => setSeoPlatform(p)}
-                    className={`flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
+                    className={`cf-filter-btn flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
                       seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {p === 'naver' ? '네이버' : '구글'}
@@ -212,7 +212,7 @@ export default function AutoBlogPage() {
               <div className="grid grid-cols-2 gap-1.5">
                 {TONE_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setTone(o.value)}
-                    className={`text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
+                    className={`cf-filter-btn text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${
                       tone === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     {o.label}
@@ -227,7 +227,7 @@ export default function AutoBlogPage() {
               <div className="flex gap-1.5">
                 {LENGTH_OPTIONS.map(o => (
                   <button key={o.value} onClick={() => setMinLength(o.value)}
-                    className={`flex-1 text-center py-1.5 rounded-lg border transition-colors ${
+                    className={`cf-filter-btn flex-1 text-center py-1.5 rounded-lg border transition-colors ${
                       minLength === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                     }`}>
                     <span className="text-[12px] font-mono block">{o.label}</span>
@@ -257,7 +257,7 @@ export default function AutoBlogPage() {
                 <div className="flex gap-1.5">
                   {['wordpress', 'naver', 'nextblog'].map(p => (
                     <button key={p} onClick={() => setPublishPlatform(p)}
-                      className={`flex-1 text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${
+                      className={`cf-filter-btn flex-1 text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${
                         publishPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'
                       }`}>
                       {p === 'wordpress' ? 'WP' : p === 'naver' ? 'Naver' : 'Next'}
@@ -272,7 +272,7 @@ export default function AutoBlogPage() {
           <button
             onClick={handleRun}
             disabled={running}
-            className="w-full flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-50 text-black font-black text-[14px] tracking-tight uppercase py-3 rounded-xl transition-colors"
+            className="cf-filter-btn w-full flex items-center justify-center gap-2 bg-transparent border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white/70 font-bold text-[14px] tracking-tight uppercase py-3 rounded-xl transition-colors"
           >
             {running
               ? <><Loader2 size={15} className="animate-spin" /> 파이프라인 실행 중...</>

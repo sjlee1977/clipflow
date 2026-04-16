@@ -284,3 +284,36 @@ html.light .cf-progress-fill::after { display: none; }
 ::-webkit-scrollbar-thumb       { background: rgba(79,142,247,0.22); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(79,142,247,0.40); }
 html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* ══════════════════════════════════════════════════════
+   필터/선택 버튼 공통 — hover glow 애니메이션
+   ══════════════════════════════════════════════════════ */
+@keyframes cf-btn-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(79,142,247,0); }
+  50%       { box-shadow: 0 0 8px rgba(79,142,247,0.32), 0 0 18px rgba(79,142,247,0.1); }
+}
+.cf-filter-btn:hover {
+  color: rgba(79,142,247,0.88) !important;
+  background: rgba(79,142,247,0.07) !important;
+  border-color: rgba(79,142,247,0.32) !important;
+  animation: cf-btn-glow 1.6s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════
+   프롬프트 카테고리 탭 — hover/active glow 애니메이션
+   ══════════════════════════════════════════════════════ */
+@keyframes tab-border-glow {
+  0%, 100% { box-shadow: 0 0 0px rgba(var(--tab-rgb), 0), 0 0 0px rgba(var(--tab-rgb), 0); }
+  50%       { box-shadow: 0 0 8px rgba(var(--tab-rgb), 0.3), 0 0 16px rgba(var(--tab-rgb), 0.1); }
+}
+
+.cf-tab-btn {
+  --tab-rgb: 255,255,255;
+}
+.cf-tab-btn[data-glow="true"] {
+  animation: tab-border-glow 1.6s ease-in-out infinite;
+}
+.cf-tab-btn[data-active="true"] {
+  animation: tab-border-glow 2.2s ease-in-out infinite;
+}
+

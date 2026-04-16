@@ -123,16 +123,16 @@ export default function OutliersPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
-            <Zap size={13} strokeWidth={1.8} />
-          </span>
-          <div>
-            <span className="text-sm font-semibold text-white">채널 이상치 영상</span>
-            {lastUpdated && (
-              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>
-            )}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+              <Zap size={13} strokeWidth={1.8} />
+            </span>
+            <span className="text-[19px] font-semibold text-white leading-none mt-0.5">채널 이상치 영상</span>
           </div>
+          {lastUpdated && (
+            <p className="text-[11px] pl-10" style={{ color: 'var(--text-faint)' }}>최종 갱신: {lastUpdated}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -163,7 +163,7 @@ export default function OutliersPage() {
             <button
               key={val}
               onClick={() => setPeriod(val)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
+              className="cf-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
               style={
                 period === val
                   ? {
@@ -291,7 +291,7 @@ export default function OutliersPage() {
             <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
               {OUTLIER_SORTS.map((s) => (
                 <button key={s.key} onClick={() => setSortKey(s.key)}
-                  className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+                  className="cf-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
                   style={sortKey === s.key
                     ? { background: 'var(--sidebar)', color: '#4f8ef7', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }
                     : { color: 'var(--text-faint)' }}>

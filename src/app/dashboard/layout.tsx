@@ -14,18 +14,33 @@ const DASHBOARD_ITEM = { href: '/dashboard', label: '대시보드', icon: Layout
 
 const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
-    group: '만들기',
+    group: '영상 제작',
     items: [
       { href: '/dashboard/prompt',    label: '대본 요청 스크립트', icon: FileText },
       { href: '/dashboard/script',    label: '대본 만들기',         icon: PenLine },
       { href: '/dashboard/video',     label: '영상 만들기',         icon: Video },
-      { href: '/dashboard/blog',       label: '블로그 작성',         icon: BookOpen },
-      { href: '/dashboard/auto-blog',  label: '자동 블로그 생성',    icon: Zap },
-      { href: '/dashboard/competitor', label: '경쟁 영상 분석',       icon: Search },
     ],
   },
   {
-    group: '발행',
+    group: '블로그',
+    items: [
+      { href: '/dashboard/blog',      label: '블로그 작성',      icon: BookOpen },
+      { href: '/dashboard/auto-blog', label: '자동 블로그 생성', icon: Zap },
+      { href: '/dashboard/keyword',   label: '키워드 분석',      icon: BarChart2 },
+    ],
+  },
+  {
+    group: '유튜브 분석',
+    items: [
+      { href: '/dashboard/trends/viral',      label: '급상승 영상',    icon: TrendingUp },
+      { href: '/dashboard/trends/outliers',   label: '채널 이상치',    icon: Zap },
+      { href: '/dashboard/trends/subscriber', label: '구독자 분석',    icon: Users },
+      { href: '/dashboard/trends/comments',   label: '댓글 분석',      icon: MessageSquare },
+      { href: '/dashboard/competitor',        label: '경쟁 영상 분석', icon: Search },
+    ],
+  },
+  {
+    group: '발행 도구',
     items: [
       { href: '/dashboard/calendar',  label: '콘텐츠 캘린더', icon: CalendarDays },
       { href: '/dashboard/reformat',  label: '멀티포맷 변환', icon: Repeat2 },
@@ -33,29 +48,19 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
     ],
   },
   {
-    group: '분석',
-    items: [
-      { href: '/dashboard/trends/viral',      label: '급상승 영상',   icon: TrendingUp },
-      { href: '/dashboard/trends/outliers',   label: '채널 이상치',   icon: Zap },
-      { href: '/dashboard/trends/subscriber', label: '구독자 분석',   icon: Users },
-      { href: '/dashboard/keyword',            label: '키워드 분석',   icon: BarChart2 },
-      { href: '/dashboard/trends/comments',    label: '댓글 분석',     icon: MessageSquare },
-    ],
-  },
-  {
     group: '라이브러리',
     items: [
-      { href: '/dashboard/history',       label: '내 영상',    icon: Film },
-      { href: '/dashboard/my-scripts',    label: '내 대본',    icon: ScrollText },
-      { href: '/dashboard/carousel',      label: '내 캐러셀',  icon: LayoutTemplate },
-      { href: '/dashboard/thumbnail',      label: '내 썸네일',  icon: Images },
-      { href: '/dashboard/my-channel',    label: '내 채널',    icon: Tv },
+      { href: '/dashboard/history',    label: '내 영상',   icon: Film },
+      { href: '/dashboard/my-scripts', label: '내 대본',   icon: ScrollText },
+      { href: '/dashboard/carousel',   label: '내 캐러셀', icon: LayoutTemplate },
+      { href: '/dashboard/thumbnail',  label: '내 썸네일', icon: Images },
+      { href: '/dashboard/my-channel', label: '내 채널',   icon: Tv },
     ],
   },
   {
     group: '설정',
     items: [
-      { href: '/dashboard/settings', label: '설정', icon: Settings },
+      { href: '/dashboard/settings', label: '설정',     icon: Settings },
       { href: '/dashboard/admin',    label: '회원 관리', icon: ShieldCheck },
     ],
   },
@@ -125,7 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userName, setUserName]       = useState<string | null>(null);
   const [credits, setCredits]         = useState<number | null>(null);
   const [newTrendCount, setNewTrendCount] = useState(0);
-  const [tier, setTier]               = useState<Tier>('guest');
+  const [tier, setTier]               = useState<Tier | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -230,10 +235,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {group.items.map((item) => {
                 // 관리자 메뉴는 admin만 표시
-                if (item.href === '/dashboard/admin' && tier !== 'admin') return null;
+                if (item.href === '/dashboard/admin' && tier !== null && tier !== 'admin') return null;
                 const active = pathname === item.href;
                 const badge = item.href.includes('/trends/viral') ? newTrendCount : undefined;
-                const locked = !canAccess(tier, item.href);
+                const locked = tier !== null && !canAccess(tier, item.href);
                 return (
                   <NavLink
                     key={item.href}
@@ -272,7 +277,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {userName.charAt(0).toUpperCase()}
               </div>
               <p className="text-[11px] truncate font-light tracking-wide" style={{ color: 'var(--text-faint)', fontFamily: "'Space Grotesk', sans-serif" }}>{userName}</p>
-              {(() => {
+              {tier && (() => {
                 const c = TIER_COLORS[tier];
                 return (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-md shrink-0 font-semibold"
@@ -323,7 +328,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* 페이지 콘텐츠 */}
         <div className="p-6">
-          {tier && !canAccess(tier, pathname) ? (
+          {tier === null ? (
+            <div className="flex items-center justify-center py-32">
+              <div className="w-5 h-5 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+            </div>
+          ) : !canAccess(tier, pathname) ? (
             <AccessDenied tier={tier} route={pathname} />
           ) : (
             children

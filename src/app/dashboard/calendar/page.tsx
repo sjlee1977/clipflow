@@ -235,7 +235,7 @@ function CalendarPageInner() {
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <CalendarDays size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-sm font-semibold text-white">콘텐츠 캘린더</span>
+          <span className="text-[19px] font-semibold text-white">콘텐츠 캘린더</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { setActivePanel('new-series'); setSelectedPlan(null); }}
@@ -643,7 +643,7 @@ function CalendarPageInner() {
                   <div className="flex gap-1.5">
                     {[3, 5, 7, 10].map(n => (
                       <button key={n} onClick={() => setNewSeries(s => ({ ...s, episode_count: n }))}
-                        className={`flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
+                        className={`cf-filter-btn flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${
                           newSeries.episode_count === n ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
                         }`}>{n}편</button>
                     ))}

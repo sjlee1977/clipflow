@@ -168,9 +168,11 @@ export default function HistoryPage() {
   }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: { id: string } | null } }) => {
       if (!user) { setLoading(false); return; }
-      supabase.from('videos').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+      supabase.from('videos').select('*')
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .order('created_at', { ascending: false })
         .then(({ data }: { data: unknown[] | null }) => { setVideos((data ?? []) as Video[]); setLoading(false); });
     });
   }, []);

@@ -83,7 +83,7 @@ export async function runTrendsCollection(
       for (const category of allCategories) {
         for (const videoType of targetVideoTypes) {
           try {
-            const videos = await searchRecentVideos(category, 20, 24, region, videoType);
+            const videos = await searchRecentVideos(category, 50, 24, region, videoType);
 
             // 채널 처리
             const channelIds = [...new Set(videos.map((v) => v.channelId))];
