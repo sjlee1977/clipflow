@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
 
     const meta = user.user_metadata ?? {};
-    const clientId     = meta.naver_client_id?.trim();
-    const clientSecret = meta.naver_client_secret?.trim();
+    const clientId     = process.env.NAVER_CLIENT_ID?.trim()     || meta.naver_client_id?.trim();
+    const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim() || meta.naver_client_secret?.trim();
 
     if (!clientId || !clientSecret) {
       return NextResponse.json(
-        { error: 'Naver DataLab API 키가 설정되지 않았습니다. 설정 → SEO 키워드 리서치에서 등록해주세요.' },
+        { error: 'Naver DataLab API 키가 설정되지 않았습니다.' },
         { status: 400 }
       );
     }

@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
 
     const meta = user.user_metadata ?? {};
-    const clientId     = meta.naver_client_id?.trim();
-    const clientSecret = meta.naver_client_secret?.trim();
+    const clientId     = process.env.NAVER_CLIENT_ID?.trim()     || meta.naver_client_id?.trim();
+    const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim() || meta.naver_client_secret?.trim();
 
     if (!clientId || !clientSecret) {
       return NextResponse.json(

@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react';
 
+function getInitialDark(): boolean {
+  if (typeof window === 'undefined') return true;
+  const stored = localStorage.getItem('theme');
+  return stored ? stored === 'dark' : true;
+}
+
 export function useTheme() {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(getInitialDark);
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    const dark = stored ? stored === 'dark' : true;
-    setIsDark(dark);
-    document.documentElement.classList.toggle('dark', dark);
-    document.documentElement.classList.toggle('light', !dark);
-  }, []);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+  }, [isDark]);
 
   function toggle() {
     const next = !isDark;

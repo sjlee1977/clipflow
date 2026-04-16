@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, TrendingUp, BarChart2, ShoppingBag, Globe2, Loader2, AlertCircle, PenLine, ArrowUpRight, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 
@@ -38,10 +38,7 @@ type CompIdx = '낮음' | '중간' | '높음';
 
 // ─── 유틸 ─────────────────────────────────────────────────────────────────────
 function fmt(n: number): string {
-  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`;
-  if (n >= 10_000)      return `${(n / 10_000).toFixed(1)}만`;
-  if (n >= 1_000)       return `${(n / 1_000).toFixed(1)}천`;
-  return n.toLocaleString();
+  return n.toLocaleString('ko-KR');
 }
 
 const COMP_COLOR: Record<CompIdx, string> = {
@@ -199,12 +196,35 @@ export default function KeywordPage() {
   const [shoppingError, setShoppingError] = useState('');
   const [shoppingNoData, setShoppingNoData] = useState(false);
 
+  // 콘텐츠 발행량
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentData, setContentData] = useState<{ blog: number; cafe: number; total: number; saturation: { blog: number; cafe: number; total: number } } | null>(null);
+
   // 구글 트렌드
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleData, setGoogleData] = useState<GoogleTrendsResult | null>(null);
   const [googleError, setGoogleError] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ── 콘텐츠 발행량 조회 ───────────────────────────────────────────────────
+  const fetchContent = useCallback(async (kw: string, monthlyTotal: number) => {
+    setContentLoading(true);
+    try {
+      const res = await fetch(`/api/seo/naver-content?keyword=${encodeURIComponent(kw)}&period=${period}&monthlyTotal=${monthlyTotal}`);
+      const data = await res.json();
+      if (res.ok) setContentData(data);
+    } catch { /* silent */ }
+    finally { setContentLoading(false); }
+  }, [period]);
+
+  // 검색량 결과가 나오면 콘텐츠 발행량 자동 조회
+  useEffect(() => {
+    if (!volumeData) return;
+    const mainItem = volumeData.results?.[0];
+    if (!mainItem) return;
+    fetchContent(volumeData.keyword, mainItem.monthlyTotal);
+  }, [volumeData, fetchContent]);
 
   // ── 네이버 검색량 조회 ────────────────────────────────────────────────────
   const fetchVolume = useCallback(async (kw: string) => {
@@ -274,6 +294,7 @@ export default function KeywordPage() {
     const kw = keyword.trim();
     if (!kw) return;
     setShowAllRelated(false);
+    setContentData(null);
     if (activeTab === 'naver') {
       await Promise.all([fetchVolume(kw), fetchTrend(kw)]);
     } else if (activeTab === 'shopping') {
@@ -322,7 +343,7 @@ export default function KeywordPage() {
             <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
               <BarChart2 size={13} strokeWidth={1.8} />
             </span>
-            <span className="text-sm font-semibold text-white">키워드 리서치</span>
+            <span className="text-[19px] font-semibold text-white">키워드 리서치</span>
           </div>
         </div>
 
@@ -455,7 +476,12 @@ export default function KeywordPage() {
                 <div className="flex items-stretch border-b border-white/8">
                   {/* 총 검색량 */}
                   <div className="flex-1 px-6 py-5 border-r border-white/8">
-                    <p className="text-[12px] font-medium text-white/50 mb-2">월간 총 검색량</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-[12px] font-medium text-white/50">월간 총 검색량</p>
+                      {(mainItem as any).estimated && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15', border: '1px solid rgba(250,204,21,0.25)' }}>추정</span>
+                      )}
+                    </div>
                     <p className="text-[28px] font-black text-white tracking-tight leading-none">{fmt(mainItem.monthlyTotal)}</p>
                     <div className="flex gap-3 mt-2 text-[13px] text-white/50">
                       <span>PC {fmt(mainItem.monthlyPc)}</span>
@@ -532,6 +558,48 @@ export default function KeywordPage() {
                       </div>
                     </div>
                     <TrendChart results={trendData!.results} height={160} />
+                  </div>
+                )}
+
+                {/* 콘텐츠 발행량 */}
+                {(contentLoading || contentData) && (
+                  <div className="border border-white/8 bg-white/[0.02] p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <BarChart2 size={13} className="text-[#4f8ef7]" />
+                      <p className="text-[13px] font-semibold text-white/60">콘텐츠 발행량</p>
+                      <span className="text-[12px] text-white/40">Naver Search 기준</span>
+                    </div>
+                    {contentLoading ? (
+                      <div className="grid grid-cols-3 gap-4">
+                        {[0,1,2].map(i => <div key={i} className="h-20 bg-white/[0.03] animate-pulse rounded" />)}
+                      </div>
+                    ) : contentData && (
+                      <div className="grid grid-cols-3 gap-4">
+                        {([
+                          { label: '블로그', count: contentData.blog, sat: contentData.saturation.blog },
+                          { label: '카페',   count: contentData.cafe, sat: contentData.saturation.cafe },
+                          { label: '전체',   count: contentData.total, sat: contentData.saturation.total },
+                        ] as { label: string; count: number; sat: number }[]).map(({ label, count, sat }) => {
+                          const satColor = sat >= 100 ? '#ef4444' : sat >= 50 ? '#facc15' : '#4ade80';
+                          const satLabel = sat >= 100 ? '매우 높음' : sat >= 50 ? '높음' : sat >= 20 ? '보통' : '낮음';
+                          return (
+                            <div key={label} className="border border-white/6 bg-white/[0.02] p-4 rounded-lg">
+                              <p className="text-[11px] font-medium text-white/40 mb-1">{label}</p>
+                              <p className="text-[22px] font-black text-white tracking-tight">{fmt(count)}</p>
+                              <div className="flex items-center gap-1.5 mt-2">
+                                <span className="text-[11px] font-bold" style={{ color: satColor }}>{sat}%</span>
+                                <span className="text-[10px] text-white/30">포화</span>
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${satColor}18`, color: satColor }}>{satLabel}</span>
+                              </div>
+                              <div className="h-1 bg-white/8 rounded-full mt-2 overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${Math.min(sat, 100)}%`, backgroundColor: satColor }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 

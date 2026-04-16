@@ -10,35 +10,58 @@ const supabase = createClient();
 
 function VideoThumbnail({ src, className }: { src: string; className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mountedRef = useRef(false);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    const handleSeeked = () => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      setReady(true);
-    };
+    if (!video) return;
+
+    const timeout = setTimeout(() => { if (mountedRef.current) setFailed(true); }, 10000);
+
     const handleMeta = () => { video.currentTime = 0.5; };
+    const handleSeeked = () => { if (mountedRef.current) { setReady(true); clearTimeout(timeout); } };
+    const handleError = () => { if (mountedRef.current) { setFailed(true); clearTimeout(timeout); } };
+
     video.addEventListener('loadedmetadata', handleMeta);
     video.addEventListener('seeked', handleSeeked);
+    video.addEventListener('error', handleError);
     return () => {
+      clearTimeout(timeout);
       video.removeEventListener('loadedmetadata', handleMeta);
       video.removeEventListener('seeked', handleSeeked);
+      video.removeEventListener('error', handleError);
     };
   }, [src]);
 
   return (
     <>
-      <video ref={videoRef} src={src} preload="metadata" muted style={{ display: 'none' }} crossOrigin="anonymous" />
-      <canvas ref={canvasRef} className={className} style={{ display: ready ? 'block' : 'none' }} />
-      {!ready && <div className="absolute inset-0 bg-black/80 flex items-center justify-center"><span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" /></div>}
+      {/* video 자체를 썸네일로 사용 — canvas/CORS 불필요 */}
+      <video
+        ref={videoRef}
+        src={src}
+        preload="metadata"
+        muted
+        playsInline
+        className={className}
+        style={{ display: ready ? 'block' : 'none', pointerEvents: 'none', objectFit: 'cover' }}
+      />
+      {!ready && !failed && (
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+          <span className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+        </div>
+      )}
+      {failed && (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <Film size={20} style={{ color: 'rgba(255,255,255,0.3)' }} />
+        </div>
+      )}
     </>
   );
 }
@@ -119,9 +142,9 @@ function timeAgo(dateStr: string) {
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
   const days = Math.floor(hours / 24);
-  if (days > 0) return `${days}일 전`;
-  if (hours > 0) return `${hours}시간 전`;
-  return `${mins}분 전`;
+  if (days > 0) return `${days}일전`;
+  if (hours > 0) return `${hours}시간전`;
+  return `${mins}분전`;
 }
 
 export default function HistoryPage() {
@@ -145,8 +168,11 @@ export default function HistoryPage() {
   }
 
   useEffect(() => {
-    supabase.from('videos').select('*').order('created_at', { ascending: false })
-      .then(({ data }: { data: unknown[] | null }) => { setVideos((data ?? []) as Video[]); setLoading(false); });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { setLoading(false); return; }
+      supabase.from('videos').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+        .then(({ data }: { data: unknown[] | null }) => { setVideos((data ?? []) as Video[]); setLoading(false); });
+    });
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -174,7 +200,7 @@ export default function HistoryPage() {
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <Film size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-sm font-semibold text-white">내 영상</span>
+          <span className="text-[19px] font-semibold text-white">내 영상</span>
         </div>
         <div className="flex flex-col items-center justify-center py-32 gap-5">
           <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
@@ -199,7 +225,7 @@ export default function HistoryPage() {
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <Film size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-sm font-semibold text-white">내 영상</span>
+          <span className="text-[19px] font-semibold text-white">내 영상</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
@@ -208,19 +234,20 @@ export default function HistoryPage() {
       </div>
 
       {/* 테이블 헤더 */}
-      <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2 mb-1 border-b border-white/6">
-        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">순위</span>
-        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">썸네일</span>
-        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase">제목 / 옵션</span>
-        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase text-right">게시일</span>
-        <span className="text-[10px] font-mono text-white/25 tracking-widest uppercase text-right">액션</span>
+      <div className="grid grid-cols-[36px_96px_1fr_72px_100px_70px] gap-4 items-center px-4 py-2 mb-1 border-b border-white/6">
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase">순위</span>
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase">썸네일</span>
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase">제목 / 옵션</span>
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase text-right">게시일</span>
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase text-center">액션</span>
+        <span className="text-[11px] font-mono text-white/25 tracking-widest uppercase text-right">다운로드</span>
       </div>
 
       {/* 영상 리스트 */}
       <div className="space-y-0.5">
         {videos.map((v, i) => (
           <div key={v.id} className="group rounded-xl border border-white/5 hover:border-white/12 bg-white/[0.015] hover:bg-white/[0.035] transition-all duration-150 overflow-hidden">
-            <div className="grid grid-cols-[36px_96px_1fr_72px_130px] gap-4 items-center px-4 py-2.5">
+            <div className="grid grid-cols-[36px_96px_1fr_72px_100px_70px] gap-4 items-center px-4 py-2.5">
 
               {/* 순위 */}
               <span className={`text-[13px] font-black font-mono tabular-nums ${i < 3 ? 'text-[#4f8ef7]' : 'text-white/25'}`}>
@@ -288,8 +315,8 @@ export default function HistoryPage() {
                 <span className="text-[12px] font-mono text-white/40">{timeAgo(v.created_at)}</span>
               </div>
 
-              {/* 액션 버튼 */}
-              <div className="flex items-center justify-end gap-1.5">
+              {/* 액션 버튼 (편집/삭제) */}
+              <div className="flex flex-nowrap items-center justify-center gap-1.5">
                 {v.scenes?.length ? (
                   <button
                     onClick={() => handleEditScenes(v)}
@@ -304,6 +331,10 @@ export default function HistoryPage() {
                 >
                   삭제
                 </button>
+              </div>
+
+              {/* 다운로드 버튼 */}
+              <div className="flex items-center justify-end">
                 <button
                   onClick={async () => {
                     setDownloading(v.id);
@@ -321,9 +352,9 @@ export default function HistoryPage() {
                     setDownloading(null);
                   }}
                   disabled={downloading === v.id}
-                  className="bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[11px] tracking-tight uppercase px-3 py-1 rounded transition-colors"
+                  className="flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 border border-[#4f8ef7]/25 hover:border-[#4f8ef7]/60 text-[#4f8ef7]/55 hover:text-[#4f8ef7] disabled:opacity-40 rounded transition-colors"
                 >
-                  {downloading === v.id ? '...' : '↓ MP4'}
+                  {downloading === v.id ? '...' : <><span>MP4</span><span>↓</span></>}
                 </button>
               </div>
 

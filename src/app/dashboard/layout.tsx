@@ -6,7 +6,9 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, type LucideIcon } from 'lucide-react';
+import type { Tier } from '@/lib/tier';
+import { TIER_LABELS, TIER_COLORS, canAccess, requiredTier } from '@/lib/tier';
 
 const DASHBOARD_ITEM = { href: '/dashboard', label: '대시보드', icon: LayoutDashboard };
 
@@ -17,8 +19,9 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/prompt',    label: '대본 요청 스크립트', icon: FileText },
       { href: '/dashboard/script',    label: '대본 만들기',         icon: PenLine },
       { href: '/dashboard/video',     label: '영상 만들기',         icon: Video },
-      { href: '/dashboard/blog',      label: '블로그 작성',         icon: BookOpen },
-      { href: '/dashboard/auto-blog', label: '자동 블로그 생성',    icon: Zap },
+      { href: '/dashboard/blog',       label: '블로그 작성',         icon: BookOpen },
+      { href: '/dashboard/auto-blog',  label: '자동 블로그 생성',    icon: Zap },
+      { href: '/dashboard/competitor', label: '경쟁 영상 분석',       icon: Search },
     ],
   },
   {
@@ -35,7 +38,8 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/trends/viral',      label: '급상승 영상',   icon: TrendingUp },
       { href: '/dashboard/trends/outliers',   label: '채널 이상치',   icon: Zap },
       { href: '/dashboard/trends/subscriber', label: '구독자 분석',   icon: Users },
-      { href: '/dashboard/keyword',           label: '키워드 분석',   icon: BarChart2 },
+      { href: '/dashboard/keyword',            label: '키워드 분석',   icon: BarChart2 },
+      { href: '/dashboard/trends/comments',    label: '댓글 분석',     icon: MessageSquare },
     ],
   },
   {
@@ -44,13 +48,15 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/history',       label: '내 영상',    icon: Film },
       { href: '/dashboard/my-scripts',    label: '내 대본',    icon: ScrollText },
       { href: '/dashboard/carousel',      label: '내 캐러셀',  icon: LayoutTemplate },
-      { href: '/dashboard/my-thumbnails', label: '내 썸네일',  icon: Images },
+      { href: '/dashboard/thumbnail',      label: '내 썸네일',  icon: Images },
+      { href: '/dashboard/my-channel',    label: '내 채널',    icon: Tv },
     ],
   },
   {
     group: '설정',
     items: [
       { href: '/dashboard/settings', label: '설정', icon: Settings },
+      { href: '/dashboard/admin',    label: '회원 관리', icon: ShieldCheck },
     ],
   },
 ];
@@ -62,12 +68,14 @@ function NavLink({
   icon: Icon,
   active,
   badge,
+  locked,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
   badge?: number;
+  locked?: boolean;
 }) {
   return (
     <Link
@@ -76,11 +84,11 @@ function NavLink({
       style={{
         background: active ? 'linear-gradient(135deg, rgba(79,142,247,0.18) 0%, rgba(79,142,247,0.10) 100%)' : 'transparent',
         border: active ? '1px solid rgba(79,142,247,0.30)' : '1px solid transparent',
-        color: active ? 'var(--text)' : 'var(--text-muted)',
+        color: locked ? 'var(--text-ultra)' : active ? 'var(--text)' : 'var(--text-muted)',
         fontWeight: active ? 600 : 400,
+        opacity: locked ? 0.5 : 1,
       }}
     >
-      {/* 아이콘 박스 — 활성: 초록 채움 / 비활성: 파랑 테두리 */}
       <span
         className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0 transition-all"
         style={active ? {
@@ -89,12 +97,12 @@ function NavLink({
           color: '#4ade80',
           boxShadow: '0 0 10px rgba(34,197,94,0.22), inset 0 0 6px rgba(34,197,94,0.06)',
         } : {
-          background: 'rgba(79,142,247,0.06)',
-          border: '1px solid rgba(79,142,247,0.22)',
-          color: '#4f8ef7',
+          background: locked ? 'rgba(156,163,175,0.06)' : 'rgba(79,142,247,0.06)',
+          border: locked ? '1px solid rgba(156,163,175,0.15)' : '1px solid rgba(79,142,247,0.22)',
+          color: locked ? '#9ca3af' : '#4f8ef7',
         }}
       >
-        <Icon size={13} strokeWidth={active ? 2.2 : 1.8} />
+        {locked ? <Lock size={11} strokeWidth={1.8} /> : <Icon size={13} strokeWidth={active ? 2.2 : 1.8} />}
       </span>
 
       <span className="truncate">{label}</span>
@@ -117,6 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userName, setUserName]       = useState<string | null>(null);
   const [credits, setCredits]         = useState<number | null>(null);
   const [newTrendCount, setNewTrendCount] = useState(0);
+  const [tier, setTier]               = useState<Tier>('guest');
 
   useEffect(() => {
     const supabase = createClient();
@@ -131,6 +140,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
         if (data) setCredits(data.credits_remaining);
       }
+    });
+
+    // 티어 조회
+    fetch('/api/user/profile').then(r => r.json()).then(d => {
+      if (d.tier) setTier(d.tier);
     });
 
     const checkTrends = async () => {
@@ -215,8 +229,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </p>
 
               {group.items.map((item) => {
+                // 관리자 메뉴는 admin만 표시
+                if (item.href === '/dashboard/admin' && tier !== 'admin') return null;
                 const active = pathname === item.href;
                 const badge = item.href.includes('/trends/viral') ? newTrendCount : undefined;
+                const locked = !canAccess(tier, item.href);
                 return (
                   <NavLink
                     key={item.href}
@@ -225,6 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     icon={item.icon}
                     active={active}
                     badge={badge}
+                    locked={locked}
                   />
                 );
               })}
@@ -237,22 +255,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="px-4 py-4 space-y-2"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          {/* 크레딧 바 */}
-          {credits !== null && (
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1"
-              style={{ background: 'rgba(79,142,247,0.08)', border: '1px solid rgba(79,142,247,0.15)' }}
-            >
-              <span style={{ color: '#4f8ef7' }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                  <circle cx="6" cy="6" r="5" fillOpacity="0.3" />
-                  <circle cx="6" cy="6" r="3" />
-                </svg>
-              </span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>크레딧</span>
-              <span className="ml-auto text-sm font-semibold" style={{ color: '#4f8ef7' }}>{credits.toLocaleString()}</span>
-            </div>
-          )}
+
 
           {/* 사용자 이름 + 배지 */}
           {userName && (
@@ -268,19 +271,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {userName.charAt(0).toUpperCase()}
               </div>
-              <p className="text-sm truncate font-medium" style={{ color: 'var(--text-muted)' }}>{userName}</p>
-              <span
-                className="text-[9px] px-1.5 py-0.5 rounded-md shrink-0 font-semibold"
-                style={{ background: 'rgba(79,142,247,0.15)', color: '#4f8ef7', border: '1px solid rgba(79,142,247,0.25)' }}
-              >
-                ADMIN
-              </span>
+              <p className="text-[11px] truncate font-light tracking-wide" style={{ color: 'var(--text-faint)', fontFamily: "'Space Grotesk', sans-serif" }}>{userName}</p>
+              {(() => {
+                const c = TIER_COLORS[tier];
+                return (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md shrink-0 font-semibold"
+                    style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+                    {TIER_LABELS[tier]}
+                  </span>
+                );
+              })()}
             </div>
           )}
-          {userEmail && (
-            <p className="text-[11px] truncate px-1" style={{ color: 'var(--text-faint)' }}>{userEmail}</p>
-          )}
-
           <div className="flex items-center justify-between pt-1 px-1">
             <span className="text-[10px]" style={{ color: 'var(--text-ultra)' }}>v1.0.0</span>
             <button
@@ -321,9 +323,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* 페이지 콘텐츠 */}
         <div className="p-6">
-          {children}
+          {tier && !canAccess(tier, pathname) ? (
+            <AccessDenied tier={tier} route={pathname} />
+          ) : (
+            children
+          )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function AccessDenied({ tier, route }: { tier: Tier; route: string }) {
+  const needed: Tier = requiredTier(route);
+  const c = TIER_COLORS[needed];
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+        <Lock size={28} style={{ color: '#ef4444', opacity: 0.7 }} />
+      </div>
+      <div className="text-center space-y-2">
+        <p className="text-[16px] font-semibold" style={{ color: 'var(--text)' }}>접근 권한이 없습니다</p>
+        <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
+          이 기능은{' '}
+          <span className="font-bold" style={{ color: c.color }}>{TIER_LABELS[needed]}</span>
+          {' '}이상 멤버십에서 이용할 수 있습니다.
+        </p>
+        <p className="text-[12px]" style={{ color: 'var(--text-faint)' }}>
+          현재 등급: <span style={{ color: 'var(--text-muted)' }}>{TIER_LABELS[tier]}</span>
+        </p>
+      </div>
+      <Link href="/dashboard/settings"
+        className="px-5 py-2 rounded-xl text-[13px] font-semibold transition-all"
+        style={{ background: `${c.bg}`, border: `1px solid ${c.border}`, color: c.color }}>
+        멤버십 업그레이드
+      </Link>
     </div>
   );
 }

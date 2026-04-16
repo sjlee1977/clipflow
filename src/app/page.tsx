@@ -40,7 +40,23 @@ export default function HomePage() {
               로그인
             </Link>
           )}
-          <Link href="/dashboard" className="bg-green-500 hover:bg-green-400 text-black text-[12px] font-black tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors">
+          <Link
+            href="/dashboard"
+            className="landing-btn-glow inline-flex items-center px-4 py-1.5 font-medium text-[12px] tracking-tight uppercase rounded-xl transition-all"
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(79,142,247,0.18) 0%, rgba(79,142,247,0.08) 100%)';
+              (e.currentTarget as HTMLElement).style.border = '1px solid rgba(79,142,247,0.35)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 14px rgba(79,142,247,0.15)';
+              (e.currentTarget as HTMLElement).style.color = '#a5c4fa';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.15)';
+              (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+              (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)';
+            }}
+          >
             {user ? '대시보드' : '무료 시작'}
           </Link>
         </div>
@@ -59,12 +75,12 @@ export default function HomePage() {
           <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
           AI_GEN
         </div>
-        <div className="absolute top-1/3 left-24 hidden lg:flex items-center gap-1.5 bg-blue-400 text-black text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
+        <div className="absolute top-1/3 left-24 hidden lg:flex items-center gap-1.5 bg-purple-500 text-white text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
+          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-white -rotate-45" />
           TTS_ON
         </div>
-        <div className="absolute top-1/2 right-20 hidden lg:flex items-center gap-1.5 bg-purple-500 text-white text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
-          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-white -rotate-45" />
+        <div className="absolute top-1/2 right-20 hidden lg:flex items-center gap-1.5 bg-yellow-400 text-black text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
+          <span className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[7px] border-r-black -rotate-45" />
           VIDEO_OUT
         </div>
         <div className="absolute top-2/3 right-32 hidden lg:flex items-center gap-1.5 bg-pink-400 text-black text-[12px] font-bold px-2.5 py-1 animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }}>
@@ -74,11 +90,6 @@ export default function HomePage() {
 
         {/* 메인 텍스트 */}
         <div className="relative text-center max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 border border-green-500/50 px-4 py-1.5 mb-8 text-[13px] tracking-widest text-green-500 uppercase">
-            <div className="w-2 h-2 bg-green-500 animate-pulse" />
-            지금 바로 무료로 시작
-          </div>
-
           <h1 className="text-5xl md:text-[78px] font-black leading-[1.05] tracking-tight mb-8" style={{ wordSpacing: '-0.1em' }}>
             <span className={`block ${d ? 'text-white' : 'text-black'}`}>영상 한 편에</span>
             <span className={`block ${d ? 'text-white' : 'text-black'}`}>몇 시간을</span>
@@ -91,8 +102,23 @@ export default function HomePage() {
           </p>
 
           <div className="flex items-center justify-center gap-3">
-            <Link href="/dashboard"
-              className="bg-green-500 hover:bg-green-400 text-white font-black text-[13px] tracking-tight uppercase px-5 py-2 rounded-md transition-colors">
+            <Link
+              href="/dashboard"
+              className="landing-btn-glow inline-flex items-center px-5 py-2 font-medium text-[13px] tracking-tight uppercase rounded-xl transition-all"
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(79,142,247,0.18) 0%, rgba(79,142,247,0.08) 100%)';
+                (e.currentTarget as HTMLElement).style.border = '1px solid rgba(79,142,247,0.35)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 14px rgba(79,142,247,0.15)';
+                (e.currentTarget as HTMLElement).style.color = '#a5c4fa';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                (e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.15)';
+                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)';
+              }}
+            >
               무료로 시작하기
             </Link>
           </div>

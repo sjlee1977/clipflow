@@ -263,6 +263,20 @@ html.light .cf-progress-fill { box-shadow: none !important; }
 html.light .cf-progress-fill::after { display: none; }
 
 /* ══════════════════════════════════════════════════════
+   랜딩 버튼 — 테두리 번짐 펄스
+   ══════════════════════════════════════════════════════ */
+@keyframes border-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(79,142,247,0.25), 0 0 0px rgba(79,142,247,0); }
+  50%       { box-shadow: 0 0 14px rgba(79,142,247,0.55), 0 0 24px rgba(79,142,247,0.18); }
+}
+.landing-btn-glow {
+  animation: border-glow-pulse 3s ease-in-out infinite;
+}
+.landing-btn-glow:hover {
+  animation: none;
+}
+
+/* ══════════════════════════════════════════════════════
    스크롤바
    ══════════════════════════════════════════════════════ */
 ::-webkit-scrollbar             { width: 4px; height: 4px; }
