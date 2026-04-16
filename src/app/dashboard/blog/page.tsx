@@ -406,8 +406,8 @@ function BlogPageInner() {
           { key: 'cta',           nameKo: 'CTA' },
           { key: 'forbidden',     nameKo: '금지 표현' },
           { key: 'closing',       nameKo: '클로징 에코' },
-          { key: 'freshness',     nameKo: '정보 신선도' },
-          { key: 'uniqueness',    nameKo: '독창성' },
+          { key: 'humanFeel',       nameKo: '인간 필기감' },
+          { key: 'factualAccuracy', nameKo: '사실 정확성' },
         ];
         const total: number = data.totalScore;
         const grade = total >= 90 ? 'S' : total >= 80 ? 'A' : total >= 70 ? 'B' : 'C';

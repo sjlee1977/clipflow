@@ -314,16 +314,16 @@ ${title ? `\n참고 제목: ${title}` : ''}
 
 // ── Agent 3: 편집장 ────────────────────────────────────────────────────────────
 export interface EditorScores {
-  hook: number;         // 1. 훅 강도
-  structure: number;    // 2. 서사 구조
-  showTell: number;     // 3. Show/Tell 밸런스
-  rhythm: number;       // 4. 문장 리듬
-  emotionalFlow: number;// 5. 감정 흐름
-  cta: number;          // 6. CTA
-  forbidden: number;    // 7. 금지 표현 (10 = 없음)
-  closing: number;      // 8. 클로징 에코
-  freshness: number;    // 9. 정보 신선도 (연도/날짜 적절성)
-  uniqueness: number;   // 10. 독창성
+  hook: number;            // 1. 훅 강도
+  structure: number;       // 2. 서사 구조
+  showTell: number;        // 3. Show/Tell 밸런스
+  rhythm: number;          // 4. 문장 리듬
+  emotionalFlow: number;   // 5. 감정 흐름
+  cta: number;             // 6. CTA
+  forbidden: number;       // 7. 금지 표현 (10 = 없음)
+  closing: number;         // 8. 클로징 에코
+  humanFeel: number;       // 9. 인간 필기감 (AI 패턴 제거)
+  factualAccuracy: number; // 10. 사실 정확성 (검증 불가 수치 여부)
 }
 
 async function runEditor(
@@ -334,20 +334,33 @@ async function runEditor(
   const persona = readWikiFile('blog/writer-persona.md');
 
   const systemPrompt = `당신은 15년 경력의 디지털 미디어 편집장입니다.
-작가의 의도를 살리면서 약점만 외과적으로 수정합니다. 전체 재작성 금지.
 
 채점 기준 (각 10점 만점, 총 100점):
-${rubric || `1.훅강도 2.서사구조 3.Show/Tell 4.문장리듬 5.감정흐름 6.CTA 7.금지표현 8.클로징에코 9.정보신선도 10.독창성`}
+${rubric || `1.훅강도 2.서사구조 3.Show/Tell 4.문장리듬 5.감정흐름 6.CTA 7.금지표현 8.클로징에코 9.인간필기감 10.사실정확성`}
 
 금지 표현 (절대 없어야 함 — 있으면 7번 항목 감점):
 ${persona ? persona.split('절대 사용 금지')[1]?.split('##')[0]?.slice(0, 300) ?? '' : '지금까지 알아보았습니다, 도움이 됐으면 좋겠습니다'}
 
-정보 신선도(9번) 감점 기준:
-- 이미 지난 연도("2024년 최신", "2023년 기준" 등)가 제목/본문에 있으면 -3점
-- 날짜 없이 "최신" 단어만 사용 시 -1점`;
+인간 필기감(9번) 핵심 체크리스트:
+- AI 패턴("살펴보겠습니다", "알아보겠습니다", "이상으로") 제거
+- 개인 경험담 1개 이상, 독자 직접 질문 1개 이상
+- 구어체 어미("~더라고요", "~거든요"), 짧은 문장 활용
+- 문단 길이 불규칙 (2줄짜리와 5줄짜리 혼용)
 
-  const userPrompt = `아래 초고를 채점하고 편집하세요.
-7점 미만 항목만 수정합니다 (전체 재작성 금지).
+사실 정확성(10번) 핵심 체크:
+- 검증 불가 수치·연구·발언 있으면 감점
+- 이미 지난 연도("2024년 최신", "2023년 기준") 표현 있으면 감점`;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const userPrompt = `아래 초고를 채점하고, 점수에 따라 수정 강도를 결정하세요.
+
+수정 규칙:
+- 총점 49점 이하: 전면 재작성. 소재와 구조만 참고해 모든 문장을 새로 씁니다. 훅·인간필기감·5막 구조 우선.
+- 총점 50~74점: 약점 섹션 재작성. 7점 미만 항목의 해당 섹션 전체를 다시 씁니다.
+- 총점 75점 이상: 외과적 수정만. 7점 미만 항목 문장만 수정합니다.
+
+오늘 날짜: ${today} (연도 표현 수정 시 이 날짜 기준으로)
 
 ---초고---
 ${draft}
@@ -363,12 +376,12 @@ ${draft}
     "cta": 0~10,
     "forbidden": 0~10,
     "closing": 0~10,
-    "freshness": 0~10,
-    "uniqueness": 0~10
+    "humanFeel": 0~10,
+    "factualAccuracy": 0~10
   },
   "totalScore": 0~100,
   "editorNotes": ["항목명 N점: 수정 이유 또는 '수정 없음'"],
-  "finalContent": "수정된 최종 마크다운 전체 (수정 없으면 원문 그대로)"
+  "finalContent": "수정된 최종 마크다운 전체"
 }`;
 
   const raw = await callLLM(model, apiKeys, systemPrompt,
@@ -382,16 +395,16 @@ ${draft}
   }>(raw, {});
 
   const scores: EditorScores = {
-    hook:          parsed.scores?.hook          ?? 0,
-    structure:     parsed.scores?.structure     ?? 0,
-    showTell:      parsed.scores?.showTell      ?? 0,
-    rhythm:        parsed.scores?.rhythm        ?? 0,
-    emotionalFlow: parsed.scores?.emotionalFlow ?? 0,
-    cta:           parsed.scores?.cta           ?? 0,
-    forbidden:     parsed.scores?.forbidden     ?? 0,
-    closing:       parsed.scores?.closing       ?? 0,
-    freshness:     parsed.scores?.freshness     ?? 0,
-    uniqueness:    parsed.scores?.uniqueness    ?? 0,
+    hook:            parsed.scores?.hook            ?? 0,
+    structure:       parsed.scores?.structure       ?? 0,
+    showTell:        parsed.scores?.showTell        ?? 0,
+    rhythm:          parsed.scores?.rhythm          ?? 0,
+    emotionalFlow:   parsed.scores?.emotionalFlow   ?? 0,
+    cta:             parsed.scores?.cta             ?? 0,
+    forbidden:       parsed.scores?.forbidden       ?? 0,
+    closing:         parsed.scores?.closing         ?? 0,
+    humanFeel:       parsed.scores?.humanFeel       ?? 0,
+    factualAccuracy: parsed.scores?.factualAccuracy ?? 0,
   };
   const totalScore = parsed.totalScore
     ?? Object.values(scores).reduce((a, b) => a + b, 0);
