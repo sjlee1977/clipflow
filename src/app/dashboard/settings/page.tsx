@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { TREND_CATEGORIES } from '@/lib/youtube-trends';
 
-type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen' | 'perplexity';
+type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen' | 'perplexity' | 'google_places';
 
 const inputCls = 'flex-1 bg-black/20 text-white/80 border border-white/10 rounded-lg focus:border-white/30 focus:outline-none text-[12px] font-mono placeholder:text-white/18 px-3 py-1.5 transition-colors';
 const saveBtnCls = 'cf-filter-btn px-4 py-1.5 bg-transparent border border-white/12 text-white/60 font-medium text-[12px] font-mono rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap';
@@ -26,6 +26,7 @@ function SingleKeySection({
     'fal.ai': 'fal',
     'dashscope': 'qwen',
     'perplexity': 'perplexity',
+    'google_places': 'google_places',
   };
   const provider: Provider = providerMap[name.toLowerCase()] ?? 'gemini';
   const [input, setInput] = useState('');
@@ -771,8 +772,8 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; dot: string }[] = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('api');
   const [keys, setKeys] = useState({
-    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false, hasPerplexity: false,
-    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '', perplexity: ''
+    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false, hasPerplexity: false, hasGooglePlaces: false,
+    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '', perplexity: '', googlePlaces: ''
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -879,6 +880,7 @@ export default function SettingsPage() {
               { label: 'fal.ai',      has: keys.hasFal,       color: '#f97316' },
               { label: 'Qwen',        has: keys.hasQwen,        color: '#6366f1' },
               { label: 'Perplexity',  has: keys.hasPerplexity,  color: '#20b2aa' },
+              { label: 'Google Places', has: keys.hasGooglePlaces, color: '#4285f4' },
             ].map(({ label, has, color }) => (
               <div key={label} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${has ? 'border-green-400/20 bg-green-400/[0.04]' : 'border-white/8 bg-white/[0.02]'}`}>
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: has ? '#4ade80' : '#ffffff20' }} />
@@ -958,6 +960,14 @@ export default function SettingsPage() {
                   placeholder="pplx-..."
                   docsUrl="https://www.perplexity.ai/settings/api"
                   hasKey={keys.hasPerplexity} maskedKey={keys.perplexity}
+                  onSave={handleSave} onDelete={handleDelete}
+                />
+                <SingleKeySection
+                  name="google_places" label="미디어 허브 여행 리서치 (호텔·명소·맛집 데이터)" color="#4285f4"
+                  models={['Places API (New)']}
+                  placeholder="AIza..."
+                  docsUrl="https://console.cloud.google.com/apis/library/places-backend.googleapis.com"
+                  hasKey={keys.hasGooglePlaces} maskedKey={keys.googlePlaces}
                   onSave={handleSave} onDelete={handleDelete}
                 />
               </div>

@@ -1,11 +1,11 @@
 ---
-updated: 2026-04-16
+updated: 2026-04-18
 ttl: 60
-ttl_reason: 코드(write-pipeline/route.ts, generate-titles/route.ts) 변경 시 동기화 필요
+ttl_reason: 코드(write-multi-platform/route.ts, generate-titles/route.ts) 변경 시 동기화 필요
 volatile: false
 split_children:
   - file: write-pipeline-agents.md
-    contains: "5. 글쓰기 파이프라인, 6. 인간 필기감 원칙, 7. 할루시네이션 탐지 원칙"
+    contains: "5. 단일 플랫폼 파이프라인 에이전트, 6. 인간 필기감 원칙, 7. 할루시네이션 탐지 원칙"
 ---
 
 # AI 블로그 자동화 파이프라인 — 완전 가이드
@@ -13,11 +13,14 @@ split_children:
 > **문서 목적**: ClipFlow AI 블로그 작성 시스템의 모든 판단 기준, 에이전트 구성, 실제 프롬프트, 설계 근거를 기록.
 > 코드가 변경될 때마다 이 문서도 함께 업데이트됨.
 >
-> **최종 업데이트**: 2026-04-16
+> **최종 업데이트**: 2026-04-18
 > **관련 파일**:
 > - `src/app/api/blog/generate-titles/route.ts` — 제목 생성
 > - `src/app/api/blog/score-titles/route.ts` — 독립 채점
-> - `src/app/api/blog/write-pipeline/route.ts` — 글쓰기 파이프라인
+> - `src/app/api/blog/write-multi-platform/route.ts` — **풀 자동화 멀티플랫폼 파이프라인 (현행)**
+> - `src/app/api/blog/write-pipeline/route.ts` — 단일 플랫폼 파이프라인 (레거시)
+> - `src/app/api/blog/cron-publish/route.ts` — 예약 자동 발행
+> - `src/app/api/blog/scheduled-posts/route.ts` — 예약 포스트 CRUD
 
 ---
 
@@ -27,9 +30,9 @@ split_children:
 2. [키워드 리서치 — 데이터 출처와 판단 기준](#2-키워드-리서치)
 3. [SEO 제목 생성 에이전트](#3-seo-제목-생성-에이전트)
 4. [독립 채점 에이전트 — 8차원 × 12.5점](#4-독립-채점-에이전트)
-5. [글쓰기 파이프라인 → **write-pipeline-agents.md**](write-pipeline-agents.md) ← 분리됨
-6. [인간 필기감 원칙 → **write-pipeline-agents.md**](write-pipeline-agents.md) ← 분리됨
-7. [할루시네이션 탐지 원칙 → **write-pipeline-agents.md**](write-pipeline-agents.md) ← 분리됨
+5. [멀티플랫폼 글쓰기 파이프라인 (현행)](#5-멀티플랫폼-글쓰기-파이프라인)
+6. [플랫폼별 작성 가이드](#6-플랫폼별-작성-가이드)
+7. [단일 플랫폼 파이프라인 에이전트 → **write-pipeline-agents.md**](write-pipeline-agents.md) ← 분리됨
 8. [글 품질 평가 — 10차원 100점](#8-글-품질-평가)
 9. [AI 모델 선택 기준](#9-ai-모델-선택-기준)
 10. [설계 판단 기록 — 왜 이렇게 만들었나](#10-설계-판단-기록)
@@ -39,9 +42,11 @@ split_children:
 
 ## 1. 전체 파이프라인 흐름
 
+> **현행 시스템**: `write-multi-platform` (3개 플랫폼 동시 생성 풀 자동화)
+
 ```
 [사용자 입력]
-    키워드 입력
+    키워드 + 제목 선택
          │
          ▼
 [Phase 1: 리서치]
@@ -56,7 +61,7 @@ split_children:
     SEO 제목 생성 에이전트 (temp 0.8)
     → 5가지 훅 유형 × 플랫폼 원칙 → 5개 제목
          │
-         ▼ (자동, 생성과 병렬 아님 — 생성 완료 후 실행)
+         ▼ (자동, 생성 완료 후 실행)
 [독립 채점 에이전트] (temp 0.1)
     → 8차원 × 12.5점 = 100점
     → 네이버 / 구글 루브릭 분리
@@ -66,20 +71,50 @@ split_children:
     사용자가 제목 선택 (또는 직접 입력)
          │
          ▼
-[Phase 3: 글쓰기]
-    Agent 1: 리서처   (temp 0.3)  → 5막 아웃라인
-    Agent 2: 작가     (temp 0.8)  → 초고 마크다운
-    Agent 2.5: 팩트체커 (temp 0.1) → 할루시네이션 탐지
-    Agent 3: 편집자   (temp 0.2)  → AI 패턴 제거 + 팩트체크 반영
-    Agent 4: 평가자   (temp 0.2)  → 10차원 채점
-         │
-         ▼ (총점 < 80 또는 약점 차원 존재 시, 최대 2라운드)
-    Agent 5: 리파이너  (temp 0.5) → 약점 부분만 수정
-    Agent 6: 재평가자  (temp 0.2) → 재채점
+[Phase 3: 멀티플랫폼 글쓰기]
+
+    Agent 1: 리서처 (temp 0.3, 1회)
+    → 5막 아웃라인 JSON (painPoint, uniqueAngle, hookType, emotionalArc, structure, keyPoints)
          │
          ▼
-[Phase 4: 완료]
-    최종 블로그 글 + 품질 점수 + 팩트체크 결과
+    Agent 2(WP): 워드프레스 작가 (temp 0.8, 1회)
+    → WP 초고 생성 (팩트체크 기준 텍스트 확보)
+         │
+         ▼
+    Agent 2.5: 팩트체커 (temp 0.1, 1회)
+    → WP 초고 기반 할루시네이션 탐지
+    → HIGH 위험 목록 → 이후 편집자에게 전달
+         │
+         ├─────────────────────────────────┐
+         ▼                                 ▼
+    Agent 2(Naver) (병렬)          Agent 2(Personal) (병렬)
+    네이버 작가 (temp 0.8)          개인 작가 (temp 0.8)
+         │                                 │
+         └──────────────┬──────────────────┘
+                        ▼
+    Agent 3×3: 플랫폼별 편집자 (temp 0.2, 병렬)
+    → Naver / WordPress / Personal 동시 편집
+    → AI 패턴 제거 + 팩트체크 반영 + 플랫폼 최적화
+         │
+         ▼
+    Agent 4: 평가자 (temp 0.2, WP 기준 1회)
+    → 10차원 × 10점 = 100점 환산
+    → 등급: S / A (통과) / B / C / D (재작성)
+         │
+         ▼ (grade B 이하 = 75점 미만, 최대 2라운드)
+    Agent 5×3: 리파이너 (temp 0.5, 병렬)
+    → 3개 플랫폼 약점 동시 수정
+    → 재평가 → 점수 변화 기록
+         │
+         ▼
+    이미지 생성×3 (병렬, generateImgs=true 시)
+    → [IMAGE: 설명] 마커 → FLUX 이미지 URL 교체
+         │
+         ▼
+[Phase 4: 완료 및 저장]
+    DB: scheduled_posts 테이블 저장 (saveToDb=true 시)
+    → naver/wordpress/personal 버전 + 평가 + 예약 시간
+    응답: { naver, wordpress, personal, outline, factCheck, evaluation, steps }
 ```
 
 ---
@@ -264,43 +299,136 @@ CoSchedule Headline Analyzer, MonsterInsights, AMI(Advanced Marketing Institute)
 
 ---
 
-## 5. 글쓰기 파이프라인 → [write-pipeline-agents.md](write-pipeline-agents.md)
+## 5. 멀티플랫폼 글쓰기 파이프라인
 
-> 섹션 5(에이전트 프롬프트 전체), 6(인간 필기감), 7(할루시네이션 탐지)는
-> **[write-pipeline-agents.md](write-pipeline-agents.md)** 로 분리됨.
->
-> **분리 이유**: 원본 파일이 750줄을 초과해 LLM 컨텍스트 부담 증가.
-> 파이프라인 흐름(1~4섹션)과 에이전트 프롬프트(5~7섹션)를 분리해 필요한 부분만 로드.
+**구현 파일**: `src/app/api/blog/write-multi-platform/route.ts`
 
-**구현 파일**: `src/app/api/blog/write-pipeline/route.ts`
+### 에이전트 구성 (현행)
+
+| 에이전트 | Temp | max_tokens | 실행 횟수 | 역할 |
+|---------|------|-----------|---------|------|
+| Agent 1: 리서처 | 0.3 | 1200 | 1회 | 5막 아웃라인 JSON 생성 |
+| Agent 2(WP): 작가 | 0.8 | 7000 | 1회 | WP 초고 (팩트체크 기준) |
+| Agent 2.5: 팩트체커 | 0.1 | 1500 | 1회 | WP 초고 할루시네이션 탐지 |
+| Agent 2(N+P): 작가 | 0.8 | 3000/4500 | 병렬 2회 | Naver + Personal 초고 |
+| Agent 3×3: 편집자 | 0.2 | 플랫폼별 +1000 | 병렬 3회 | 편집 + 팩트체크 반영 |
+| Agent 4: 평가자 | 0.2 | 3000 | 1회 | 10차원 채점 (WP 기준) |
+| Agent 5×3: 리파이너 | 0.5 | 플랫폼별 +1000 | 병렬 최대 2라운드 | 약점 수정 |
+| ImageGen×3 | — | — | 병렬 | [IMAGE:] 마커 → FLUX |
+
+### 팩트체커 배치 설계
+
+```
+WP 초고 완성
+    ↓
+팩트체커 실행 (HIGH/MEDIUM/LOW 분류)
+    ↓
+Naver + Personal 작가 실행 (병렬, 팩트체커와 독립)
+    ↓
+편집자×3 실행 시 HIGH 위험 목록 주입
+    → "HIGH 위험 N개는 반드시 헤징 언어로 완화하거나 제거"
+```
+
+**설계 이유**: WP 초고로 팩트체크 기준을 확보 → 나머지 2개 플랫폼 작성과 병렬화 가능 → 편집 단계에서 3개 모두 동일한 팩트체크 반영.
+
+### 리파이너 실행 조건
+
+```typescript
+// 통과 기준: grade A 이상 (totalScore >= 75)
+const passed = grade === 'S' || grade === 'A';
+
+// 리파이너 루프
+for (let round = 1; round <= 2; round++) {
+  if (totalScore >= 80 || 약점차원수 === 0) break;
+  // 3개 플랫폼 동시 리파인 (병렬)
+  // 재평가 후 점수 변화 steps에 기록
+}
+```
+
+**리파이너 조기 종료**: `totalScore >= 80` OR `약점 차원(score < 7) = 0`
+**최대 2라운드** — 그 이상은 문체 파괴 위험
+
+### DB 저장 구조
+
+```
+테이블: scheduled_posts
+주요 컬럼:
+  - topic, keyword, seo_platform
+  - naver_title / naver_content / naver_images
+  - wordpress_title / wordpress_content / wordpress_images
+  - personal_title / personal_content / personal_images
+  - evaluation (JSONB)
+  - scheduled_at (예약 발행 시간)
+  - status: draft → scheduled → published
+```
+
+**saveToDb=true** 시 자동 저장. `scheduled_at` 있으면 예약 발행 대상.
+자동 발행: `src/app/api/blog/cron-publish/route.ts` (Railway Cron 트리거)
+
+### Wiki 로딩 방식
+
+```typescript
+const WIKI = path.join(process.cwd(), 'wiki');
+function wiki(p: string) { return fs.readFileSync(path.join(WIKI, p), 'utf-8'); }
+function latestFeedback() {
+  // wiki/feedback/ 폴더에서 가장 최신 파일 1개 로드
+  // 작가 시스템 프롬프트에 "최근 피드백 (반드시 반영)" 섹션으로 삽입
+}
+```
+
+로드되는 wiki 파일:
+- `blog/structure.md` → 리서처 (5막 구조)
+- `blog/hook-writing.md` → 리서처 (훅 유형)
+- `blog/writer-persona.md` → 작가 + 편집자 (금지 표현)
+- `blog/cta-writing.md` → 작가 (CTA 원칙)
+- `blog/emotional-flow.md` → 작가 (감정 흐름)
+- `blog/evaluation-rubric.md` → 편집자 + 평가자 (채점 기준)
+- `wiki/feedback/최신.md` → 작가 (최근 피드백)
 
 ---
 
-## 6. 인간 필기감 원칙 → [write-pipeline-agents.md](write-pipeline-agents.md)
+## 6. 플랫폼별 작성 가이드
 
-→ `write-pipeline-agents.md` 섹션 6 참조.
+| 항목 | 네이버 | 워드프레스 | 개인 웹사이트 |
+|------|--------|----------|------------|
+| 목표 길이 | 800~1200자 | 1500~2500자 | 1000~1500자 |
+| max_tokens | 3000 | 7000 | 4500 |
+| 문체 | 친근한 구어체 (~해요, ~거든요) | 전문적·신뢰감 | 1인칭 개인 관점 |
+| 소제목 | ## 2~3개 (VIEW 최적화) | H2 3~4개 + H3 세부 | 자유 구성 |
+| SEO 포인트 | 키워드 첫 문단 50자 이내 | 키워드 밀도 1~2%, 첫 150자 메타 역할 | 해당 없음 |
+| 이미지 마커 | 2~3곳 | H2 섹션마다 1개 | 1~2곳 |
+| 차별화 포인트 | 모바일 스크롤 3회 이내 | 링크 구조 언급 + 독자 행동 유도 | 다른 두 플랫폼과 다른 독창적 각도 |
+
+### FLUX 이미지 프롬프트 스타일
+
+```typescript
+naver:     `Korean lifestyle photography, ${desc}, warm colors, mobile-friendly`
+wordpress: `Korean lifestyle photography, ${desc}, professional editorial style`
+personal:  `Korean lifestyle photography, ${desc}, authentic candid style, storytelling`
+```
 
 ---
 
-## 7. 할루시네이션 탐지 원칙 → [write-pipeline-agents.md](write-pipeline-agents.md)
+## 7. 단일 플랫폼 파이프라인 에이전트 → [write-pipeline-agents.md](write-pipeline-agents.md)
 
-→ `write-pipeline-agents.md` 섹션 7 참조.
+> 레거시 파이프라인(`write-pipeline/route.ts`) 에이전트 상세 프롬프트.
+> 인간 필기감 원칙·할루시네이션 탐지 원칙은 이 파일에서 관리.
+> **현행 멀티플랫폼 파이프라인도 동일 원칙 적용.**
 
 ---
 
 ## 에이전트 개요 (요약)
 
-> 상세 프롬프트는 `write-pipeline-agents.md` 참조.
-
 ```
-Agent 1: 리서처   (temp 0.3, max 1200) → 5막 아웃라인 JSON
-Agent 2: 작가     (temp 0.8, max 4000) → 마크다운 초고
-Agent 2.5: 팩트체커 (temp 0.1, max 2000) → 할루시네이션 위험 목록
-Agent 3: 편집자   (temp 0.2, max 4500) → AI패턴 제거 + 팩트체크 반영
-Agent 4: 평가자   (temp 0.2, max 2500) → 10차원 채점
-Agent 5+: 리파이너 (temp 0.5, max 4500) → 약점 수정 (최대 2라운드)
+Agent 1:   리서처      (temp 0.3, max 1200)         → 5막 아웃라인 JSON (1회)
+Agent 2:   작가×3      (temp 0.8, max 플랫폼별)      → WP 먼저 → Naver+Personal 병렬
+Agent 2.5: 팩트체커    (temp 0.1, max 1500)          → 할루시네이션 탐지 (1회)
+Agent 3:   편집자×3    (temp 0.2, max 플랫폼별+1000) → 병렬 편집 + 팩트체크 반영
+Agent 4:   평가자      (temp 0.2, max 3000)          → 10차원 채점 (WP 기준, 1회)
+Agent 5:   리파이너×3  (temp 0.5, max 플랫폼별+1000) → 병렬 약점 수정 (최대 2라운드)
 ```
 
+**통과 기준**: `grade === 'S' || grade === 'A'` (총점 75점 이상)
 **리파이너 실행 조건**: `totalScore < 80` AND `약점 차원(score < 7) >= 1`
 
 ---
@@ -362,10 +490,27 @@ Supabase `auth.users.user_metadata`:
 
 ## 10. 설계 판단 기록
 
+### 멀티플랫폼 동시 생성으로 전환한 이유 (2026-04-18)
+사용자가 글 하나를 쓰면 네이버·워드프레스·개인 웹사이트 3곳에 각각 최적화된 버전이 필요.
+단일 플랫폼 파이프라인을 3번 호출하면 비용 3배 + 시간 3배.
+리서처·팩트체커는 플랫폼 무관 → 1회만 실행. 작가·편집자·리파이너만 플랫폼별 병렬 실행.
+결과: 비용 ≈ 1.8배 증가, 시간 ≈ 단일 파이프라인과 동일(병렬 덕분).
+
+### WP 초고를 먼저 쓰는 이유
+팩트체커는 텍스트가 있어야 동작함.
+가장 긴 WP 버전으로 팩트체크하면 Naver/Personal에도 동일 기준 적용 가능.
+WP 초고 작성 중 Naver+Personal 작가를 병렬 실행하면 시간 절약 가능하지만,
+팩트체크 결과를 편집자에게 전달해야 하므로 순서 유지.
+
 ### 독립 채점을 별도 에이전트로 분리한 이유
 같은 모델이 생성하고 채점하면 자신의 결과물에 관대해진다.
 실제 테스트에서 자기채점 시 88~93점 인플레이션 확인.
 별도 API 호출로 편향을 구조적으로 차단.
+
+### 통과 기준을 80점→75점(grade A)으로 변경한 이유
+80점 기준이 너무 엄격해 리파이너가 과도하게 실행됨.
+grade A(75점+)면 실제 발행 품질로 충분.
+리파이너 실행 조건은 여전히 80점 미만 — 통과 판정과 리파인 트리거를 분리.
 
 ### 팩트체커를 작가 직후에 배치한 이유
 초고 상태에서 탐지해야 편집자가 반영할 수 있음.

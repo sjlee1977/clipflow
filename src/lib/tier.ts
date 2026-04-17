@@ -17,6 +17,9 @@ export const TIER_COLORS: Record<Tier, { bg: string; color: string; border: stri
   admin: { bg: 'rgba(239,68,68,0.10)',   color: '#f87171', border: 'rgba(239,68,68,0.30)'   },
 };
 
+// ─── Guest 사용량 한도 ─────────────────────────────────────────────────────────
+export const GUEST_LIMITS = { daily: 3, monthly: 10 };
+
 // ─── 티어 순서 (높을수록 권한 높음) ───────────────────────────────────────────
 const TIER_RANK: Record<Tier, number> = {
   guest: 0,

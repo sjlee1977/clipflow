@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, Globe, Cpu, type LucideIcon } from 'lucide-react';
 import type { Tier } from '@/lib/tier';
 import { TIER_LABELS, TIER_COLORS, canAccess, requiredTier } from '@/lib/tier';
 
@@ -27,6 +27,12 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
       { href: '/dashboard/blog',      label: '블로그 작성',      icon: BookOpen },
       { href: '/dashboard/auto-blog', label: '자동 블로그 생성', icon: Zap },
       { href: '/dashboard/keyword',   label: '키워드 분석',      icon: BarChart2 },
+    ],
+  },
+  {
+    group: '미디어 허브',
+    items: [
+      { href: '/dashboard/media-hub', label: '미디어 허브',      icon: Globe },
     ],
   },
   {

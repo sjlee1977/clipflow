@@ -21,6 +21,12 @@ YouTube 크리에이터를 위한 AI 올인원 플랫폼.
 | 성능/안정성 | [docs/RELIABILITY.md](docs/RELIABILITY.md) |
 | 기술 부채 확인 | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 
+## 커스텀 에이전트
+
+| 에이전트 | 호출 방법 | 역할 |
+|---------|----------|------|
+| `quality-check` | "quality-check 에이전트 실행" 또는 코드 정리 요청 | 중복 제거, 문서-코드 일치화, dead code 탐지, 코드 스타일 점검 |
+
 ## 절대 규칙
 - `.env` 파일 절대 수정/커밋 금지
 - API 키 등 민감한 값 출력 금지

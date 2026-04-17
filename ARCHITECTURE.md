@@ -7,6 +7,7 @@ clipflow/
 ├── src/
 │   ├── app/
 │   │   ├── api/
+│   │   │   ├── admin/users/route.ts            ← 관리자 사용자 목록
 │   │   │   ├── analyze-script/route.ts        ← 대본 분석
 │   │   │   ├── analyze-youtube/route.ts        ← YouTube URL 분석
 │   │   │   ├── animate-scene/route.ts          ← 씬 애니메이션
@@ -14,8 +15,14 @@ clipflow/
 │   │   │   ├── blog/
 │   │   │   │   ├── crawl/route.ts              ← 블로그 크롤링
 │   │   │   │   ├── credentials/route.ts        ← 블로그 인증 정보
+│   │   │   │   ├── evaluate/route.ts           ← 블로그 품질 평가
+│   │   │   │   ├── generate-titles/route.ts    ← 제목 후보 생성
+│   │   │   │   ├── keyword-suggest/route.ts    ← 키워드 제안
 │   │   │   │   ├── publish/route.ts            ← 블로그 발행
-│   │   │   │   └── write/route.ts              ← AI 블로그 글쓰기
+│   │   │   │   ├── score-titles/route.ts       ← 제목 점수 평가
+│   │   │   │   ├── write-agent/route.ts        ← AI 블로그 에이전트 (단계별)
+│   │   │   │   ├── write-pipeline/route.ts     ← 블로그 멀티에이전트 파이프라인
+│   │   │   │   └── write/route.ts              ← AI 블로그 글쓰기 (단일)
 │   │   │   ├── calendar/
 │   │   │   │   ├── plans/route.ts
 │   │   │   │   └── series/route.ts
@@ -23,11 +30,14 @@ clipflow/
 │   │   │   ├── carousels/
 │   │   │   │   ├── [id]/route.ts
 │   │   │   │   └── route.ts
+│   │   │   ├── competitor/transcript/route.ts  ← 경쟁자 영상 트랜스크립트
 │   │   │   ├── delete-video/route.ts
 │   │   │   ├── download/route.ts
+│   │   │   ├── evaluate-script/route.ts        ← 대본 품질 평가
 │   │   │   ├── generate-carousel/route.ts
 │   │   │   ├── generate-scenes/route.ts        ← 씬 목록 생성
 │   │   │   ├── generate-script/route.ts        ← AI 대본 생성 (LLM Wiki 연동)
+│   │   │   ├── generate-script-agent/route.ts  ← AI 대본 생성 에이전트 방식
 │   │   │   ├── generate-video/route.ts         ← 영상 렌더링
 │   │   │   ├── get-render-status/route.ts
 │   │   │   ├── keyword/analyze/route.ts        ← SEO 키워드 분석
@@ -38,14 +48,19 @@ clipflow/
 │   │   │   ├── preview-speech/route.ts         ← TTS 미리듣기
 │   │   │   ├── reformat/route.ts
 │   │   │   ├── regenerate-image/route.ts
+│   │   │   ├── save-video/route.ts             ← 영상 저장
 │   │   │   ├── seo/
 │   │   │   │   ├── google-trends/route.ts
+│   │   │   │   ├── naver-content/route.ts      ← 네이버 발행량 조회
 │   │   │   │   ├── naver-shopping/route.ts
 │   │   │   │   ├── naver-trend/route.ts
-│   │   │   │   └── naver-volume/route.ts
+│   │   │   │   └── naver-volume/route.ts       ← 네이버 검색량 조회
+│   │   │   ├── shopping-shorts/generate/route.ts ← 쇼핑 쇼츠 생성
+│   │   │   ├── suggest-topics/route.ts         ← 주제 추천
 │   │   │   ├── thumbnail/route.ts              ← 썸네일 생성
 │   │   │   ├── trends/
 │   │   │   │   ├── collect/route.ts
+│   │   │   │   ├── comments/route.ts           ← 댓글 트렌드 분석
 │   │   │   │   ├── insights/route.ts
 │   │   │   │   ├── outliers/route.ts
 │   │   │   │   ├── settings/route.ts
@@ -53,17 +68,33 @@ clipflow/
 │   │   │   │   ├── trigger/route.ts
 │   │   │   │   └── viral/route.ts
 │   │   │   ├── upload-image/route.ts
-│   │   │   └── user-keys/route.ts              ← 사용자 API 키 관리
+│   │   │   ├── usage/route.ts                  ← 사용량 조회
+│   │   │   ├── user/profile/route.ts           ← 사용자 프로필
+│   │   │   ├── user-keys/route.ts              ← 사용자 API 키 관리
+│   │   │   ├── wiki/
+│   │   │   │   ├── journal/route.ts            ← 위키 저널 기록
+│   │   │   │   ├── knowledge/query/route.ts    ← 지식 쿼리
+│   │   │   │   ├── pages/route.ts              ← 위키 페이지 목록
+│   │   │   │   ├── pages/[id]/route.ts         ← 위키 페이지 상세
+│   │   │   │   ├── sources/ingest/route.ts     ← 외부 소스 수집
+│   │   │   │   └── synthesis/route.ts          ← 지식 합성
+│   │   │   └── youtube/
+│   │   │       ├── analytics/route.ts          ← YouTube 채널 분석
+│   │   │       ├── oauth/route.ts              ← YouTube OAuth 시작
+│   │   │       └── oauth/callback/route.ts     ← YouTube OAuth 콜백
 │   │   ├── auth/callback/route.ts              ← Supabase OAuth 콜백
 │   │   ├── dashboard/
 │   │   │   ├── layout.tsx                      ← 사이드바 포함 레이아웃
 │   │   │   ├── page.tsx                        ← 대시보드 홈
+│   │   │   ├── admin/page.tsx                  ← 관리자 패널
 │   │   │   ├── auto-blog/page.tsx
 │   │   │   ├── blog/page.tsx
 │   │   │   ├── calendar/page.tsx
 │   │   │   ├── carousel/page.tsx
+│   │   │   ├── competitor/page.tsx             ← 경쟁자 분석
 │   │   │   ├── history/page.tsx
 │   │   │   ├── keyword/page.tsx
+│   │   │   ├── my-channel/page.tsx             ← 내 채널 현황
 │   │   │   ├── my-scripts/page.tsx
 │   │   │   ├── prompt/page.tsx                 ← YouTube 분석 + 대본 생성 입력
 │   │   │   ├── reformat/page.tsx
@@ -71,6 +102,7 @@ clipflow/
 │   │   │   ├── settings/page.tsx
 │   │   │   ├── thumbnail/page.tsx
 │   │   │   ├── trends/
+│   │   │   │   ├── comments/page.tsx           ← 댓글 트렌드
 │   │   │   │   ├── outliers/page.tsx
 │   │   │   │   ├── subscriber/page.tsx
 │   │   │   │   └── viral/page.tsx
@@ -82,6 +114,7 @@ clipflow/
 │   │   ├── DateRangePicker.tsx
 │   │   ├── SidebarScripts.tsx
 │   │   ├── TemplateGallery.tsx
+│   │   ├── TierGuard.tsx                       ← 티어별 접근 제어 컴포넌트
 │   │   └── ThemeToggle.tsx
 │   ├── lib/
 │   │   ├── auth.ts
@@ -109,6 +142,7 @@ clipflow/
 │   │   ├── supabase-server.ts
 │   │   ├── supabase.ts
 │   │   ├── templates.ts
+│   │   ├── tier.ts                             ← 사용자 티어/플랜 관리
 │   │   ├── trends-collect.ts
 │   │   ├── useTheme.ts
 │   │   ├── video-gen.ts
@@ -117,6 +151,7 @@ clipflow/
 │   └── remotion/                               ← 영상 렌더링 씬 컴포넌트
 ├── wiki/                                       ← AI 프롬프트 지식 베이스 (LLM Wiki)
 │   ├── blog/
+│   ├── knowledge/
 │   └── script/
 └── docs/                                       ← 프로젝트 지식 베이스
 ```
@@ -125,13 +160,17 @@ clipflow/
 
 | 도메인 | 페이지 | API 라우트 |
 |--------|--------|-----------|
-| **대본 생성** | `dashboard/prompt/`, `dashboard/script/` | `api/analyze-youtube/`, `api/analyze-script/`, `api/generate-script/` |
-| **블로그** | `dashboard/blog/`, `dashboard/auto-blog/` | `api/blog/write/`, `api/blog/publish/`, `api/auto-blog/run/` |
-| **영상** | `dashboard/video/` | `api/generate-scenes/`, `api/animate-scene/`, `api/generate-video/` |
+| **대본 생성** | `dashboard/prompt/`, `dashboard/script/` | `api/analyze-youtube/`, `api/analyze-script/`, `api/generate-script/`, `api/generate-script-agent/`, `api/evaluate-script/` |
+| **블로그** | `dashboard/blog/`, `dashboard/auto-blog/` | `api/blog/write/`, `api/blog/write-agent/`, `api/blog/write-pipeline/`, `api/blog/evaluate/`, `api/blog/generate-titles/`, `api/blog/score-titles/`, `api/blog/keyword-suggest/`, `api/blog/publish/`, `api/auto-blog/run/` |
+| **영상** | `dashboard/video/` | `api/generate-scenes/`, `api/animate-scene/`, `api/generate-video/`, `api/save-video/` |
 | **SEO/트렌드** | `dashboard/keyword/`, `dashboard/trends/*` | `api/keyword/analyze/`, `api/seo/*`, `api/trends/*` |
 | **썸네일** | `dashboard/thumbnail/` | `api/thumbnail/` |
 | **캘린더** | `dashboard/calendar/` | `api/calendar/*` |
-| **설정** | `dashboard/settings/` | `api/user-keys/` |
+| **설정** | `dashboard/settings/` | `api/user-keys/`, `api/user/profile/`, `api/usage/` |
+| **경쟁자 분석** | `dashboard/competitor/` | `api/competitor/transcript/` |
+| **내 채널** | `dashboard/my-channel/` | `api/youtube/analytics/`, `api/youtube/oauth/` |
+| **위키 시스템** | — | `api/wiki/pages/`, `api/wiki/sources/ingest/`, `api/wiki/knowledge/query/`, `api/wiki/synthesis/`, `api/wiki/journal/` |
+| **관리자** | `dashboard/admin/` | `api/admin/users/` |
 
 ## 레이어 의존성 규칙
 
