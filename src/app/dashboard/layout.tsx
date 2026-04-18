@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, Globe, Cpu, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, Globe, Cpu, Layers, type LucideIcon } from 'lucide-react';
 import type { Tier } from '@/lib/tier';
 import { TIER_LABELS, TIER_COLORS, canAccess, requiredTier } from '@/lib/tier';
 
@@ -48,9 +48,10 @@ const NAV_ITEMS: { group: string; items: { href: string; label: string; icon: Lu
   {
     group: '발행 도구',
     items: [
-      { href: '/dashboard/calendar',  label: '콘텐츠 캘린더', icon: CalendarDays },
-      { href: '/dashboard/reformat',  label: '멀티포맷 변환', icon: Repeat2 },
-      { href: '/dashboard/thumbnail', label: '썸네일 생성',   icon: Image },
+      { href: '/dashboard/carousel-studio', label: '카드뉴스 만들기', icon: Layers },
+      { href: '/dashboard/calendar',        label: '콘텐츠 캘린더',   icon: CalendarDays },
+      { href: '/dashboard/reformat',        label: '멀티포맷 변환',   icon: Repeat2 },
+      { href: '/dashboard/thumbnail',       label: '썸네일 생성',     icon: Image },
     ],
   },
   {

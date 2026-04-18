@@ -4,22 +4,14 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useRef, useState } from 'react';
 import { LayoutTemplate } from 'lucide-react';
-
-type CarouselCard = {
-  index: number;
-  cardType: 'title' | 'keypoint' | 'quote' | 'cta';
-  title: string;
-  subtitle?: string;
-  bullets?: string[];
-  emoji?: string;
-  bgColor: string;
-};
+import { CarouselCardPreview } from '@/components/carousel-card-preview';
+import type { CarouselCardData } from '@/components/carousel-card-preview';
 
 type Carousel = {
   id: string;
   topic: string;
   card_count: number;
-  cards: CarouselCard[];
+  cards: CarouselCardData[];
   created_at: string;
 };
 
@@ -223,59 +215,8 @@ export default function CarouselLibraryPage() {
                     <div
                       key={card.index}
                       ref={el => { cardRefs.current[`${selected.id}-${card.index}`] = el; }}
-                      style={{ backgroundColor: card.bgColor }}
-                      className="relative aspect-square rounded-xl overflow-hidden group"
                     >
-                      {/* 배경 노이즈 텍스처 */}
-                      <div className="absolute inset-0 opacity-[0.04]"
-                        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'1\'/%3E%3C/svg%3E")', backgroundSize: '200px' }}
-                      />
-
-                      {/* 그라데이션 오버레이 */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/20" />
-
-                      {/* 카드 내용 */}
-                      <div className="relative h-full flex flex-col p-3.5">
-                        {/* 상단: 번호 + 이모지 */}
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-white/30 text-[9px] font-bold tracking-widest">
-                            {String(card.index + 1).padStart(2, '0')}/{String(selected.cards.length).padStart(2, '0')}
-                          </span>
-                          {card.emoji && (
-                            <span className="text-lg leading-none">{card.emoji}</span>
-                          )}
-                        </div>
-
-                        {/* 중앙 콘텐츠 */}
-                        <div className="flex-1 flex flex-col justify-center gap-1.5">
-                          <p className={`font-black text-white leading-tight ${
-                            card.cardType === 'title' ? 'text-[13px]' : 'text-[11px]'
-                          }`}>
-                            {card.title}
-                          </p>
-                          {card.subtitle && (
-                            <p className="text-white/50 text-[9px] leading-relaxed">{card.subtitle}</p>
-                          )}
-                          {card.bullets && card.bullets.length > 0 && (
-                            <ul className="space-y-0.5 mt-0.5">
-                              {card.bullets.slice(0, 4).map((b, bi) => (
-                                <li key={bi} className="text-white/75 text-[9px] flex items-start gap-1 leading-snug">
-                                  <span className="text-white/60 mt-[1px] shrink-0">▸</span>
-                                  <span>{b}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        {/* 하단 브랜드 */}
-                        <div className="flex items-center justify-end mt-1">
-                          <div className="flex items-center gap-1 opacity-20">
-                            <div className="w-1.5 h-1.5 bg-white rounded-none" />
-                            <span className="text-white text-[7px] font-black tracking-widest uppercase">Clipflow</span>
-                          </div>
-                        </div>
-                      </div>
+                      <CarouselCardPreview card={card} total={selected.cards.length} />
                     </div>
                   ))}
                 </div>
