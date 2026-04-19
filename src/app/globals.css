@@ -331,7 +331,7 @@ html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
    ══════════════════════════════════════════════════════ */
 @keyframes cf-btn-glow {
   0%, 100% { box-shadow: 0 0 0 rgba(79,142,247,0); }
-  50%       { box-shadow: 0 0 8px rgba(79,142,247,0.32), 0 0 18px rgba(79,142,247,0.1); }
+  50%       { box-shadow: 0 0 16px rgba(79,142,247,0.5), 0 0 36px rgba(79,142,247,0.2), 0 0 56px rgba(79,142,247,0.08); }
 }
 .cf-filter-btn:hover {
   color: rgba(79,142,247,0.88) !important;

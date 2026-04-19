@@ -39,6 +39,7 @@ export type QwenSpeechOptions = {
   speed?: number;
   pitch?: number;
   apiKey?: string;
+  userId?: string;
 };
 
 /**
@@ -185,7 +186,7 @@ export async function generateSpeechToS3(
 ): Promise<{ url: string; durationMs: number }> {
   const { buffer, durationMs } = await generateSpeech(text, options);
 
-  const key = `audio/${filename}.mp3`;
+  const key = options.userId ? `users/${options.userId}/audio/${filename}.mp3` : `audio/${filename}.mp3`;
   await s3.send(new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,

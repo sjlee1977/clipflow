@@ -140,12 +140,12 @@ export async function POST(req: NextRequest) {
           audioUrl = '';
           durationMs = 3000; // 기본 3초
         } else if (ttsProvider === 'google') {
-          ({ url: audioUrl, durationMs } = await googleTTSToS3(ttsText, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key));
+          ({ url: audioUrl, durationMs } = await googleTTSToS3(ttsText, `scene-${ts}-${i}`, voiceId, speed, meta.gemini_api_key, user?.id));
         } else if (ttsProvider === 'elevenlabs') {
           const { generateSpeechToS3: elevenTTSToS3 } = await import('@/lib/elevenlabs');
-          ({ url: audioUrl, durationMs } = await elevenTTSToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key }));
+          ({ url: audioUrl, durationMs } = await elevenTTSToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.elevenlabs_api_key, userId: user?.id }));
         } else {
-          ({ url: audioUrl, durationMs } = await generateSpeechToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id }));
+          ({ url: audioUrl, durationMs } = await generateSpeechToS3(ttsText, `scene-${ts}-${i}`, { voiceId, speed, apiKey: meta.minimax_api_key, groupId: meta.minimax_group_id, userId: user?.id }));
         }
         // durationMs가 0이면 텍스트 길이 기반으로 추정 (한국어 ~300자/분)
         if (!durationMs || durationMs < 100) {

@@ -371,6 +371,7 @@ export async function generateImage(
   prompt: string,
   options: GenerateImageOptions = {},
   modelId = 'google/gemini-2.5-flash-image',
+  userId?: string,
   apiKey?: string
 ): Promise<string> {
   const { stylePrompt = '', characterBase64, characterMimeType = 'image/jpeg', subCharacters = [], format = 'landscape' } = options;
@@ -419,7 +420,9 @@ export async function generateImage(
   const mimeType = imagePart.inlineData.mimeType ?? 'image/png';
   const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
   const ext = mimeType.includes('jpeg') ? 'jpg' : 'png';
-  const key = `images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const key = userId
+    ? `users/${userId}/images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    : `images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   await s3.send(new PutObjectCommand({
     Bucket: BUCKET, Key: key, Body: imageBuffer, ContentType: mimeType,
@@ -463,7 +466,7 @@ function resamplePcm(pcm: Buffer, speed: number): Buffer {
   return out;
 }
 
-export async function generateSpeech(text: string, filename: string, voiceName = 'Kore', speed = 1.0, apiKey?: string): Promise<{ url: string; durationMs: number }> {
+export async function generateSpeech(text: string, filename: string, voiceName = 'Kore', speed = 1.0, apiKey?: string, userId?: string): Promise<{ url: string; durationMs: number }> {
   const response = await getAI(apiKey).models.generateContent({
     model: 'gemini-2.5-flash-preview-tts',
     contents: [{ role: 'user', parts: [{ text }] }],
@@ -481,7 +484,7 @@ export async function generateSpeech(text: string, filename: string, voiceName =
   const wavBuffer = pcmToWav(pcmData, 24000, 1, 16);
   const durationMs = Math.round((pcmData.length / (24000 * 2)) * 1000);
 
-  const key = `audio/${filename}.wav`;
+  const key = userId ? `users/${userId}/audio/${filename}.wav` : `audio/${filename}.wav`;
   await s3.send(new PutObjectCommand({
     Bucket: BUCKET, Key: key, Body: wavBuffer, ContentType: 'audio/wav',
   }));

@@ -102,8 +102,9 @@ async function llm(
   temp      = 0.7,
   json      = false,
 ): Promise<string> {
-  const isClaude = model.startsWith('claude');
-  const isQwen   = model.startsWith('qwen');
+  const isClaude  = model.startsWith('claude');
+  const isQwen    = model.startsWith('qwen');
+  const isOpenAI  = model.startsWith('gpt');
   const sys = json && !model.startsWith('gemini')
     ? `${system}\n\n반드시 유효한 JSON만 출력. 마크다운 코드블록 없이.`
     : system;
@@ -112,6 +113,21 @@ async function llm(
     const client = new Anthropic({ apiKey: apiKeys.anthropic });
     const res = await client.messages.create({ model, max_tokens: maxTokens, temperature: temp, system: sys, messages });
     return res.content[0]?.type === 'text' ? res.content[0].text : '';
+  }
+  if (isOpenAI) {
+    const body: Record<string, unknown> = {
+      model, max_tokens: maxTokens, temperature: temp,
+      messages: [{ role: 'system', content: sys }, ...messages],
+    };
+    if (json) body.response_format = { type: 'json_object' };
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKeys.openai}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(`OpenAI 오류: ${data?.error?.message ?? res.status}`);
+    return data.choices?.[0]?.message?.content ?? '';
   }
   if (isQwen) {
     const body: Record<string, unknown> = {
@@ -669,6 +685,7 @@ export async function POST(req: NextRequest) {
     const apiKeys = {
       gemini:     meta.gemini_api_key     ?? '',
       anthropic:  meta.anthropic_api_key  ?? '',
+      openai:     meta.openai_api_key     ?? '',
       qwen:       meta.qwen_api_key       ?? '',
       perplexity: meta.perplexity_api_key ?? '',
     };

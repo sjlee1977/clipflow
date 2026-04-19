@@ -144,7 +144,7 @@ function concatAndSubtitle(
 }
 
 /** 전체 파이프라인: 장면들 → 최종 MP4 → S3 URL */
-export async function renderVideo(scenes: RenderScene[]): Promise<string> {
+export async function renderVideo(scenes: RenderScene[], userId?: string): Promise<string> {
   const tmp = tmpdir();
   const jobId = `cf-${Date.now()}`;
   const aspectRatio = scenes[0]?.aspectRatio ?? '9:16';
@@ -176,7 +176,7 @@ export async function renderVideo(scenes: RenderScene[]): Promise<string> {
     await concatAndSubtitle(sceneOutputs, srtPath, finalPath);
 
     // 4. S3 업로드
-    const key = `videos/${jobId}.mp4`;
+    const key = userId ? `users/${userId}/videos/${jobId}.mp4` : `videos/${jobId}.mp4`;
     const videoBuffer = await fs.readFile(finalPath);
     await s3.send(new PutObjectCommand({
       Bucket: BUCKET,

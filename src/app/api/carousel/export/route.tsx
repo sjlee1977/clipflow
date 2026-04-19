@@ -10,25 +10,27 @@ import { join } from 'path';
 export const runtime = 'nodejs';
 
 interface ExportCard {
-  index:            number;
-  cardType:         'title' | 'keypoint' | 'highlight' | 'quote' | 'data' | 'cta';
-  title:            string;
-  subtitle?:        string;
-  bullets?:         string[];
-  stat?:            string;
-  statDesc?:        string;
-  quote?:           string;
-  quoteBy?:         string;
-  emoji?:           string;
-  bgColor?:         string;
-  accentColor?:     string;
-  accentSecondary?: string;
-  textPrimary?:     string;
-  textSecondary?:   string;
-  textMuted?:       string;
-  titleFontWeight?: number;
-  styleId?:         string;
-  layout?:          string;
+  index:               number;
+  cardType:            'title' | 'keypoint' | 'highlight' | 'quote' | 'data' | 'cta';
+  title:               string;
+  subtitle?:           string;
+  bullets?:            string[];
+  stat?:               string;
+  statDesc?:           string;
+  quote?:              string;
+  quoteBy?:            string;
+  emoji?:              string;
+  bgColor?:            string;
+  accentColor?:        string;
+  accentSecondary?:    string;
+  textPrimary?:        string;
+  textSecondary?:      string;
+  textMuted?:          string;
+  titleFontWeight?:    number;
+  styleId?:            string;
+  layout?:             string;
+  lightMode?:          boolean;
+  backgroundImageUrl?: string;
 }
 
 type W = 100|200|300|400|500|600|700|800|900;
@@ -136,27 +138,35 @@ function CardView({ card, total }: { card: ExportCard; total: number }) {
   return (
     <div style={{ width:1080, height:1080, backgroundColor: bg, display:'flex',
       flexDirection:'column', fontFamily:'KR', position:'relative', overflow:'hidden' }}>
-      {/* 글로우 */}
-      <div style={{ position:'absolute', top:-280, right:-280, width:800, height:800,
-        borderRadius:'50%', background:`radial-gradient(circle, ${ac}18 0%, transparent 70%)`, display:'flex' }} />
-      <div style={{ position:'absolute', bottom:-200, left:-200, width:600, height:600,
-        borderRadius:'50%', background:`radial-gradient(circle, ${ac}0e 0%, transparent 70%)`, display:'flex' }} />
+      {/* 배경 이미지 (업로드된 경우) */}
+      {card.backgroundImageUrl && (
+        <img src={card.backgroundImageUrl}
+          style={{ position:'absolute', top:0, left:0, width:1080, height:1080, objectFit:'cover', display:'flex' }} />
+      )}
+      {/* 글로우 (lightMode 및 photo-overlay 제외) */}
+      {!card.lightMode && layout !== 'photo-overlay' && (<>
+        <div style={{ position:'absolute', top:-280, right:-280, width:800, height:800,
+          borderRadius:'50%', background:`radial-gradient(circle, ${ac}18 0%, transparent 70%)`, display:'flex' }} />
+        <div style={{ position:'absolute', bottom:-200, left:-200, width:600, height:600,
+          borderRadius:'50%', background:`radial-gradient(circle, ${ac}0e 0%, transparent 70%)`, display:'flex' }} />
+      </>)}
       {/* 레이아웃 */}
       <div style={{ display:'flex', flexDirection:'column', width:'100%', height:'100%', position:'relative' }}>
-        {layout === 'bold-left'   && <BoldLeft   {...p} />}
-        {layout === 'centered'    && <Centered   {...p} />}
-        {layout === 'editorial'   && <Editorial  {...p} />}
-        {layout === 'magazine'    && <Magazine   {...p} />}
-        {layout === 'minimal'     && <Minimal    {...p} />}
-        {layout === 'infographic' && <Infographic {...p} />}
-        {layout === 'split'       && <Split      {...p} />}
-        {layout === 'kinetic'     && <Kinetic    {...p} />}
-        {layout === 'broadcast'   && <Broadcast  {...p} />}
-        {layout === 'cinematic'   && <Cinematic  {...p} />}
-        {layout === 'timeline'    && <Timeline   {...p} />}
-        {layout === 'glass'       && <Glass      {...p} />}
+        {layout === 'bold-left'     && <BoldLeft      {...p} />}
+        {layout === 'centered'      && <Centered      {...p} />}
+        {layout === 'editorial'     && <Editorial     {...p} />}
+        {layout === 'magazine'      && <Magazine      {...p} />}
+        {layout === 'minimal'       && <Minimal       {...p} />}
+        {layout === 'infographic'   && <Infographic   {...p} />}
+        {layout === 'split'         && <Split         {...p} />}
+        {layout === 'kinetic'       && <Kinetic       {...p} />}
+        {layout === 'broadcast'     && <Broadcast     {...p} />}
+        {layout === 'cinematic'     && <Cinematic     {...p} />}
+        {layout === 'timeline'      && <Timeline      {...p} />}
+        {layout === 'glass'         && <Glass         {...p} />}
+        {layout === 'photo-overlay' && <PhotoOverlay  {...p} />}
         {!['bold-left','centered','editorial','magazine','minimal','infographic',
-           'split','kinetic','broadcast','cinematic','timeline','glass'].includes(layout) && <BoldLeft {...p} />}
+           'split','kinetic','broadcast','cinematic','timeline','glass','photo-overlay'].includes(layout) && <BoldLeft {...p} />}
       </div>
     </div>
   );
@@ -994,6 +1004,73 @@ function Glass({ card, total, tp, ts, tm, ac, ac2, tw }: P) {
       {/* 외부 푸터 */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', paddingTop:20 }}>
         <span style={{ color:tm, fontSize:16, fontWeight:700, letterSpacing:6 }}>CLIPFLOW</span>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHOTO OVERLAY  (배경 이미지 위 텍스트 오버레이)
+// ════════════════════════════════════════════════════════════════════════════
+function PhotoOverlay({ card, total, ac, ac2, tw }: P) {
+  const ct = card.cardType; const idx = card.index;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', position:'relative', overflow:'hidden' }}>
+      {/* 그라데이션 오버레이 — inset 미지원이므로 명시적 top/left/width/height 사용 */}
+      <div style={{ position:'absolute', top:0, left:0, width:1080, height:1080,
+        background:'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 55%, rgba(0,0,0,0.18) 100%)',
+        display:'flex' }} />
+      {/* 헤더 */}
+      <div style={{ position:'relative', display:'flex', justifyContent:'space-between', alignItems:'center',
+        padding:'60px 80px 30px', flexShrink:0 }}>
+        <span style={{ color:'rgba(255,255,255,0.4)', fontSize:22, fontWeight:700, letterSpacing:4 }}>
+          {pad(idx+1)} / {pad(total)}
+        </span>
+        <span style={{ color:'rgba(255,255,255,0.3)', fontSize:18, fontWeight:700, letterSpacing:4 }}>
+          {ct.toUpperCase()}
+        </span>
+      </div>
+      {/* 스페이서 */}
+      <div style={{ flex:1, display:'flex' }} />
+      {/* 하단 콘텐츠 */}
+      <div style={{ position:'relative', padding:'0 80px 80px', display:'flex', flexDirection:'column', gap:20 }}>
+        <div style={{ width:80, height:4, backgroundColor:ac, borderRadius:2, marginBottom:12, display:'flex' }} />
+        {ct==='title' && (<>
+          <div style={{ fontSize:68, fontWeight:tw, color:'#fff', lineHeight:1.25, letterSpacing:'-0.02em' }}>{card.title}</div>
+          {card.subtitle && <div style={{ fontSize:30, color:'rgba(255,255,255,0.8)', lineHeight:1.6, fontWeight:400 }}>{card.subtitle}</div>}
+        </>)}
+        {(ct==='keypoint'||ct==='data') && (<>
+          <div style={{ fontSize:24, color:ac, fontWeight:700, letterSpacing:4, marginBottom:8 }}>{card.title?.toUpperCase()}</div>
+          {card.bullets?.slice(0,3).map((b,i) => (
+            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:20 }}>
+              <div style={{ width:10, height:10, borderRadius:'50%', backgroundColor:'rgba(255,255,255,0.7)', marginTop:12, flexShrink:0, display:'flex' }} />
+              <span style={{ fontSize:30, color:'rgba(255,255,255,0.88)', lineHeight:1.55, fontWeight:400 }}>{b}</span>
+            </div>
+          ))}
+        </>)}
+        {ct==='highlight' && (<>
+          <div style={{ fontSize:28, color:'rgba(255,255,255,0.72)', fontWeight:400 }}>{card.title}</div>
+          <div style={{ fontSize:160, fontWeight:900, color:ac, lineHeight:1, letterSpacing:'-0.04em' }}>{card.stat}</div>
+          {card.statDesc && <div style={{ fontSize:28, color:'rgba(255,255,255,0.7)', fontWeight:400 }}>{card.statDesc}</div>}
+        </>)}
+        {ct==='quote' && (
+          <div style={{ borderLeft:`8px solid ${ac}`, paddingLeft:32, display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ fontSize:40, color:'#fff', fontStyle:'italic', lineHeight:1.7, fontWeight:400 }}>{card.quote}</div>
+            {card.quoteBy && <div style={{ fontSize:26, color:'rgba(255,255,255,0.62)', fontWeight:700 }}>— {card.quoteBy}</div>}
+          </div>
+        )}
+        {ct==='cta' && (<>
+          <div style={{ fontSize:64, fontWeight:tw, color:'#fff', lineHeight:1.3 }}>{card.title}</div>
+          {card.subtitle && <div style={{ fontSize:30, color:'rgba(255,255,255,0.82)', lineHeight:1.65, fontWeight:400 }}>{card.subtitle}</div>}
+          <div style={{ backgroundColor:ac2||ac, borderRadius:60, padding:'18px 60px', display:'flex', alignSelf:'flex-start', marginTop:8 }}>
+            <span style={{ fontSize:28, fontWeight:900, color:'#050505' }}>팔로우</span>
+          </div>
+        </>)}
+        <div style={{ display:'flex', alignItems:'center', gap:14, paddingTop:24, marginTop:8,
+          borderTop:'1px solid rgba(255,255,255,0.18)' }}>
+          <div style={{ width:10, height:10, borderRadius:'50%', backgroundColor:ac, display:'flex' }} />
+          <span style={{ color:'rgba(255,255,255,0.28)', fontSize:18, fontWeight:700, letterSpacing:4 }}>CLIPFLOW</span>
+        </div>
       </div>
     </div>
   );

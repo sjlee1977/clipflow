@@ -236,22 +236,24 @@ export async function POST(req: NextRequest) {
       targetKeyword,
       relatedKeywords = [],
       platform        = 'naver',
-      tone            = 'informative',
-      minLength       = 2000,
-      source          = '',
-      customPrompt    = '',
-      llmProvider     = '',
-      monthlyVolume   = 0,
+      tone                = 'informative',
+      koreanSpeechLevel   = 'formal',
+      minLength           = 2000,
+      source              = '',
+      customPrompt        = '',
+      llmProvider         = '',
+      monthlyVolume       = 0,
     } = await req.json() as {
-      targetKeyword:   string;
-      relatedKeywords?: string[];
-      platform?:       'naver' | 'google';
-      tone?:           string;
-      minLength?:      number;
-      source?:         string;
-      customPrompt?:   string;
-      llmProvider?:    string;
-      monthlyVolume?:  number;
+      targetKeyword:      string;
+      relatedKeywords?:   string[];
+      platform?:          'naver' | 'google';
+      tone?:              string;
+      koreanSpeechLevel?: 'formal' | 'casual';
+      minLength?:         number;
+      source?:            string;
+      customPrompt?:      string;
+      llmProvider?:       string;
+      monthlyVolume?:     number;
     };
 
     if (!targetKeyword?.trim()) {
@@ -292,12 +294,32 @@ export async function POST(req: NextRequest) {
 
     // ── 톤 안내 ───────────────────────────────────────────────────────────────
     const toneMap: Record<string, string> = {
-      informative:   '정보 전달적이고 신뢰감 있는',
-      friendly:      '친근하고 대화하듯 편안한',
-      professional:  '전문적이고 권위 있는',
-      storytelling:  '스토리텔링 기반의 흥미로운',
+      informative: '정보 전달적이고 신뢰감 있는 문체로 작성하세요. 사실 기반의 중립적 서술을 유지하고, 출처 명시와 구체적 수치를 적극 활용해 독자의 신뢰를 확보하세요. 감정적 표현보다 논리적 흐름을 우선합니다.',
+      friendly: '독자와 1:1로 대화하듯 친근하고 편안한 문체로 작성하세요. "~해요", "~죠?", "사실은요" 같은 구어체 표현을 자연스럽게 섞고, 독자를 "여러분"으로 지칭하며 공감대를 형성하세요. 딱딱한 전문 용어는 쉬운 말로 풀어 설명합니다.',
+      professional: '전문가 관점에서 권위 있고 신뢰감 있는 문체로 작성하세요. 업계 용어와 데이터를 적극 활용하고, 단정적이고 명확한 문장을 사용하세요. 근거 없는 추측이나 모호한 표현은 피하고, 논리적 구조(문제 → 원인 → 해결책)를 따릅니다.',
+      storytelling: '독자를 이야기 속으로 끌어들이는 서사적 문체로 작성하세요. 도입부에 실제 사례나 가상의 시나리오로 공감을 유도하고, 기승전결 구조로 정보를 전달하세요. 감각적 묘사와 감정 이입을 활용해 정보를 경험으로 전환합니다.',
+      empathetic: '독자의 고민과 감정에 깊이 공감하는 문체로 작성하세요. "많이 힘드셨죠", "저도 그랬어요" 같은 공감 표현으로 시작하고, 독자의 입장에서 문제를 바라보세요. 해결책 제시보다 먼저 감정을 인정하고, 따뜻하고 지지적인 어조를 유지합니다.',
+      educational: '단계별로 명확하게 안내하는 실용적 문체로 작성하세요. 번호 목록·체크리스트·표를 적극 활용하고, 각 단계마다 "왜"와 "어떻게"를 함께 설명하세요. 독자가 읽은 후 바로 행동에 옮길 수 있도록 구체적인 실행 지침을 제공합니다.',
+      casual: '솔직하고 캐주얼한 문체로 작성하세요. 형식적인 구성에 얽매이지 말고 자연스럽게 생각을 풀어내세요. 유머·반어·자기 고백적 표현을 적절히 섞어 개성 있는 목소리를 드러내세요. 단, 핵심 정보는 빠짐없이 전달해야 합니다.',
     };
     const toneDesc = toneMap[tone] ?? toneMap.informative;
+
+    // ── 한국어 말투 레벨 ─────────────────────────────────────────────────────
+    const speechLevelDesc = koreanSpeechLevel === 'casual'
+      ? '말투: 반말 또는 구어체 (예: "~야", "~거든", "~잖아"). 친구에게 말하듯 편하게 씁니다.'
+      : '말투: 존댓말 (예: "~입니다", "~해요", "~세요"). 독자를 예의 바르게 대합니다.';
+
+    // ── 톤별 금지 표현 ───────────────────────────────────────────────────────
+    const forbiddenMap: Record<string, string> = {
+      informative:   '"확실히", "당연히", "물론"처럼 근거 없는 단정 표현 금지. 감탄사(와!, 헐, 대박) 금지.',
+      friendly:      '지나치게 딱딱한 문어체 금지. 단, "ㅠㅠ", "ㅋㅋ", "ㅎㅎ" 등 초성·이모티콘은 사용 금지.',
+      professional:  '"ㅠㅠ", "헐", "대박", "ㅋㅋ", "진짜요?" 같은 구어체·감탄사 절대 금지. 검증 안 된 추측 표현("아마", "인 것 같아요") 금지.',
+      storytelling:  '건조한 사실 나열 금지. 번호 목록 남용 금지 (서사 흐름을 끊음). "결론적으로" 같은 기계적 전환어 금지.',
+      empathetic:    '판단하거나 평가하는 표현("그건 잘못된 생각이에요", "사실 별거 아닌데요") 금지. 해결책을 감정 공감보다 먼저 꺼내지 마세요.',
+      educational:   '막연한 표현("적당히", "알아서", "경우에 따라") 금지. 단계 없이 결론만 던지는 방식 금지.',
+      casual:        '지나친 형식체·문어체 금지. 단, 핵심 정보를 생략하거나 사실을 왜곡하는 표현 금지.',
+    };
+    const forbiddenDesc = forbiddenMap[tone] ?? forbiddenMap.informative;
 
     const seoGuide = getSeoGuide(platform, targetKeyword, relatedKeywords);
     const relatedKwStr = relatedKeywords.slice(0, 10).join(', ');
@@ -335,6 +357,8 @@ content 필드는 반드시 마크다운이어야 하며 최소 ${minLength}자 
 **연관 키워드**: ${relatedKwStr || '(없음)'}
 **플랫폼**: ${platform === 'naver' ? '네이버 블로그' : '구글/워드프레스 블로그'}
 **문체**: ${toneDesc}
+**말투 레벨**: ${speechLevelDesc}
+**금지 표현**: ${forbiddenDesc}
 **최소 글자수**: ${minLength.toLocaleString()}자 이상${volumeHint}
 ${source ? `\n**참고 원문**:\n${source.slice(0, 5000)}` : ''}
 ${customPrompt ? `\n**추가 지시사항**: ${customPrompt}` : ''}

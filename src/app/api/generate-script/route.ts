@@ -496,17 +496,20 @@ export async function POST(req: NextRequest) {
     const model = llmModelId ?? 'gemini-2.5-flash';
     const isClaude = model.startsWith('claude');
     const isQwen = model.startsWith('qwen');
+    const isOpenAI = model.startsWith('gpt');
 
     let apiKey = '';
     if (isClaude) apiKey = meta.anthropic_api_key;
     else if (isQwen) apiKey = meta.qwen_api_key;
+    else if (isOpenAI) apiKey = meta.openai_api_key;
     else apiKey = meta.gemini_api_key;
 
     if (!apiKey) {
       let provider = 'Google (Gemini)';
       if (isClaude) provider = 'Anthropic (Claude)';
       else if (isQwen) provider = 'DashScope (Qwen)';
-      
+      else if (isOpenAI) provider = 'OpenAI';
+
       return NextResponse.json(
         { error: `${provider} API 키가 설정되지 않았습니다. 설정 페이지에서 키를 등록해주세요.`, needsKey: true },
         { status: 403 }
@@ -556,6 +559,26 @@ export async function POST(req: NextRequest) {
         messages: [{ role: 'user', content: userContent }],
       });
       script = (msg.content[0] as { type: string; text: string }).text ?? '';
+    } else if (isOpenAI) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          max_tokens: 8192,
+          temperature: 0.8,
+          messages: [
+            { role: 'system', content: dynamicSystemPrompt },
+            { role: 'user', content: userContent },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(`OpenAI API 오류: ${errorData.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      script = data.choices?.[0]?.message?.content ?? '';
     } else if (isQwen) {
       const res = await fetch('https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
         method: 'POST',

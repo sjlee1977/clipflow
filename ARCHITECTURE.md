@@ -20,7 +20,10 @@ clipflow/
 │   │   │   │   ├── keyword-suggest/route.ts    ← 키워드 제안
 │   │   │   │   ├── publish/route.ts            ← 블로그 발행
 │   │   │   │   ├── score-titles/route.ts       ← 제목 점수 평가
+│   │   │   │   ├── cron-publish/route.ts       ← 블로그 예약 자동 발행
+│   │   │   │   ├── scheduled-posts/route.ts    ← 예약 게시글 목록
 │   │   │   │   ├── write-agent/route.ts        ← AI 블로그 에이전트 (단계별)
+│   │   │   │   ├── write-multi-platform/route.ts ← 멀티 플랫폼 발행
 │   │   │   │   ├── write-pipeline/route.ts     ← 블로그 멀티에이전트 파이프라인
 │   │   │   │   └── write/route.ts              ← AI 블로그 글쓰기 (단일)
 │   │   │   ├── calendar/
@@ -34,7 +37,9 @@ clipflow/
 │   │   │   ├── delete-video/route.ts
 │   │   │   ├── download/route.ts
 │   │   │   ├── evaluate-script/route.ts        ← 대본 품질 평가
+│   │   │   ├── debug/qwen-models/route.ts       ← Qwen 모델 목록 조회 (디버그)
 │   │   │   ├── generate-carousel/route.ts
+│   │   │   ├── generate-carousel-agent/route.ts ← AI 카드뉴스 에이전트
 │   │   │   ├── generate-scenes/route.ts        ← 씬 목록 생성
 │   │   │   ├── generate-script/route.ts        ← AI 대본 생성 (LLM Wiki 연동)
 │   │   │   ├── generate-script-agent/route.ts  ← AI 대본 생성 에이전트 방식
@@ -56,6 +61,11 @@ clipflow/
 │   │   │   │   ├── naver-trend/route.ts
 │   │   │   │   └── naver-volume/route.ts       ← 네이버 검색량 조회
 │   │   │   ├── shopping-shorts/generate/route.ts ← 쇼핑 쇼츠 생성
+│   │   │   ├── media-hub/
+│   │   │   │   ├── cron-publish/route.ts       ← 미디어허브 예약 발행
+│   │   │   │   ├── posts/route.ts              ← 미디어허브 게시글 목록
+│   │   │   │   ├── travel/research/route.ts    ← 여행 리서치 파이프라인
+│   │   │   │   └── write/route.ts              ← 미디어허브 글쓰기
 │   │   │   ├── suggest-topics/route.ts         ← 주제 추천
 │   │   │   ├── thumbnail/route.ts              ← 썸네일 생성
 │   │   │   ├── trends/
@@ -91,9 +101,11 @@ clipflow/
 │   │   │   ├── blog/page.tsx
 │   │   │   ├── calendar/page.tsx
 │   │   │   ├── carousel/page.tsx
+│   │   │   ├── carousel-studio/page.tsx        ← 카드뉴스 제작 스튜디오
 │   │   │   ├── competitor/page.tsx             ← 경쟁자 분석
 │   │   │   ├── history/page.tsx
 │   │   │   ├── keyword/page.tsx
+│   │   │   ├── media-hub/page.tsx              ← 미디어허브
 │   │   │   ├── my-channel/page.tsx             ← 내 채널 현황
 │   │   │   ├── my-scripts/page.tsx
 │   │   │   ├── prompt/page.tsx                 ← YouTube 분석 + 대본 생성 입력
@@ -111,6 +123,7 @@ clipflow/
 │   │   ├── page.tsx                            ← 랜딩 페이지
 │   │   └── layout.tsx
 │   ├── components/
+│   │   ├── carousel-card-preview.tsx           ← 카드뉴스 카드 미리보기
 │   │   ├── DateRangePicker.tsx
 │   │   ├── SidebarScripts.tsx
 │   │   ├── TemplateGallery.tsx
@@ -118,8 +131,10 @@ clipflow/
 │   │   └── ThemeToggle.tsx
 │   ├── lib/
 │   │   ├── auth.ts
-│   │   ├── credits.ts
+│   │   ├── carousel-styles.ts                  ← 카드뉴스 스타일/레이아웃 정의
+│   │   ├── credits.ts                          ← 크레딧 차감 로직
 │   │   ├── dashscope-image.ts                  ← Qwen 이미지 생성
+│   │   ├── date.ts                             ← 날짜 유틸리티
 │   │   ├── elevenlabs.ts                       ← ElevenLabs TTS
 │   │   ├── fal-image.ts                        ← fal.ai 이미지 생성
 │   │   ├── fal-video.ts                        ← fal.ai 영상 생성
@@ -138,6 +153,7 @@ clipflow/
 │   │   ├── qwen-tts.ts
 │   │   ├── qwen-video.ts
 │   │   ├── remotion.ts
+│   │   ├── render-store.ts                     ← 카드뉴스 렌더링용 인메모리 스토어
 │   │   ├── supabase-browser.ts
 │   │   ├── supabase-server.ts
 │   │   ├── supabase.ts
@@ -165,6 +181,8 @@ clipflow/
 | **영상** | `dashboard/video/` | `api/generate-scenes/`, `api/animate-scene/`, `api/generate-video/`, `api/save-video/` |
 | **SEO/트렌드** | `dashboard/keyword/`, `dashboard/trends/*` | `api/keyword/analyze/`, `api/seo/*`, `api/trends/*` |
 | **썸네일** | `dashboard/thumbnail/` | `api/thumbnail/` |
+| **카드뉴스** | `dashboard/carousel-studio/`, `dashboard/carousel/` | `api/generate-carousel-agent/`, `api/carousels/*`, `api/carousel/export/` |
+| **미디어허브** | `dashboard/media-hub/` | `api/media-hub/*` |
 | **캘린더** | `dashboard/calendar/` | `api/calendar/*` |
 | **설정** | `dashboard/settings/` | `api/user-keys/`, `api/user/profile/`, `api/usage/` |
 | **경쟁자 분석** | `dashboard/competitor/` | `api/competitor/transcript/` |

@@ -18,29 +18,35 @@
  *   glass       오로라 글래스
  */
 
+export interface ChartItem { label: string; value: number }
+
 export interface CarouselCardData {
-  index:            number;
-  cardType:         'title' | 'keypoint' | 'highlight' | 'quote' | 'data' | 'cta';
-  title:            string;
-  subtitle?:        string;
-  bullets?:         string[];
-  stat?:            string;
-  statDesc?:        string;
-  quote?:           string;
-  quoteBy?:         string;
-  emoji?:           string;
-  bgColor?:         string;
-  bgGradient?:      string;
-  accentColor?:     string;
-  accentSecondary?: string;
-  textPrimary?:     string;
-  textSecondary?:   string;
-  textMuted?:       string;
-  fontFamily?:      string;
-  titleFontWeight?: number;
-  letterSpacing?:   string;
-  styleId?:         string;
-  layout?:          string;
+  index:               number;
+  cardType:            'title' | 'keypoint' | 'highlight' | 'quote' | 'data' | 'cta';
+  title:               string;
+  subtitle?:           string;
+  bullets?:            string[];
+  stat?:               string;
+  statDesc?:           string;
+  quote?:              string;
+  quoteBy?:            string;
+  emoji?:              string;
+  chartType?:          'bar' | 'donut' | 'gauge' | 'stat-grid';
+  chartData?:          ChartItem[];
+  bgColor?:            string;
+  bgGradient?:         string;
+  accentColor?:        string;
+  accentSecondary?:    string;
+  textPrimary?:        string;
+  textSecondary?:      string;
+  textMuted?:          string;
+  fontFamily?:         string;
+  titleFontWeight?:    number;
+  letterSpacing?:      string;
+  styleId?:            string;
+  layout?:             string;
+  lightMode?:          boolean;   // 밝은 배경 — 오버레이 스킵
+  backgroundImageUrl?: string;    // 사용자 업로드 이미지 (base64 or URL)
 }
 
 // ── 기본값 ───────────────────────────────────────────────────────────────────
@@ -454,6 +460,110 @@ function MinimalCard({ card, total, tp, ts, tm, ac, tw, ls }: CardProps) {
 // LAYOUT 6 — INFOGRAPHIC
 // 격자 배경, 번호 박스, 데이터 시각화
 // ════════════════════════════════════════════════════════════════════════════
+// ── SVG 차트 컴포넌트 ─────────────────────────────────────────────────────────
+
+function BarChartSVG({ data, ac, tm, tp }: { data: ChartItem[]; ac: string; tm: string; tp: string }) {
+  const max = Math.max(...data.map(d => d.value), 1);
+  const rowH = 26;
+  const h = data.length * rowH;
+  return (
+    <svg viewBox={`0 0 220 ${h}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {data.map((d, i) => {
+        const barW = Math.round((d.value / max) * 150);
+        const y = i * rowH;
+        return (
+          <g key={i}>
+            <text x="0" y={y + 9} fill={tp} fontSize="8" fontFamily="inherit">{d.label}</text>
+            <rect x="0" y={y + 13} width={barW} height="7" fill={ac} rx="2" opacity={1 - i * 0.12} />
+            <rect x={barW} y={y + 13} width={150 - barW} height="7" rx="2"
+              fill="none" stroke={`${ac}25`} strokeWidth="1" />
+            <text x="155" y={y + 20} fill={ac} fontSize="8" fontFamily="monospace" fontWeight="700"
+              dominantBaseline="middle">{d.value}%</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function DonutChartSVG({ data, ac, ac2, tm }: { data: ChartItem[]; ac: string; ac2: string; tm: string }) {
+  const cx = 55, cy = 55, r = 42, ir = 26;
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const colors = [ac, ac2 || `${ac}99`, `${ac}55`, `${ac}33`];
+  let angle = -Math.PI / 2;
+  const slices = data.map((d, i) => {
+    const a = (d.value / total) * Math.PI * 2;
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    const x2 = cx + r * Math.cos(angle + a), y2 = cy + r * Math.sin(angle + a);
+    const xi1 = cx + ir * Math.cos(angle + a), yi1 = cy + ir * Math.sin(angle + a);
+    const xi2 = cx + ir * Math.cos(angle), yi2 = cy + ir * Math.sin(angle);
+    const large = a > Math.PI ? 1 : 0;
+    const path = `M${x1} ${y1} A${r} ${r} 0 ${large} 1 ${x2} ${y2} L${xi1} ${yi1} A${ir} ${ir} 0 ${large} 0 ${xi2} ${yi2}Z`;
+    angle += a;
+    return { path, color: colors[i % colors.length], label: d.label, value: d.value };
+  });
+  return (
+    <svg viewBox="0 0 210 115" style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {slices.map((s, i) => <path key={i} d={s.path} fill={s.color} />)}
+      {slices.map((s, i) => (
+        <g key={i}>
+          <rect x="115" y={i * 22 + 10} width="8" height="8" fill={s.color} rx="1.5" />
+          <text x="127" y={i * 22 + 18} fill={tm} fontSize="7.5" fontFamily="inherit">{s.label}</text>
+          <text x="200" y={i * 22 + 18} fill={s.color} fontSize="7.5" fontFamily="monospace"
+            fontWeight="700" textAnchor="end">{s.value}%</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function GaugeChartSVG({ value, label, ac, tm }: { value: number; label: string; ac: string; tm: string }) {
+  const cx = 70, cy = 65, r = 52;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const startDeg = 200, endDeg = 340;
+  const totalDeg = endDeg - startDeg + 180;
+  const valueDeg = startDeg + ((value / 100) * totalDeg);
+  const arc = (deg: number) => ({
+    x: cx + r * Math.cos(toRad(deg)), y: cy + r * Math.sin(toRad(deg)),
+  });
+  const s = arc(200), e1 = arc(380), e2 = arc(valueDeg);
+  const bgPath = `M${s.x} ${s.y} A${r} ${r} 0 1 1 ${e1.x} ${e1.y}`;
+  const large = valueDeg - 200 > 180 ? 1 : 0;
+  const valPath = `M${s.x} ${s.y} A${r} ${r} 0 ${large} 1 ${e2.x} ${e2.y}`;
+  return (
+    <svg viewBox="0 0 140 90" style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <path d={bgPath} fill="none" stroke={`${ac}22`} strokeWidth="9" strokeLinecap="round" />
+      <path d={valPath} fill="none" stroke={ac} strokeWidth="9" strokeLinecap="round" />
+      <text x={cx} y={cy - 6} textAnchor="middle" fill={ac} fontSize="22" fontWeight="900"
+        fontFamily="monospace">{value}%</text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fill={tm} fontSize="7">{label}</text>
+    </svg>
+  );
+}
+
+function StatGridSVG({ data, ac, tm }: { data: ChartItem[]; ac: string; tm: string }) {
+  const cols = data.length <= 2 ? data.length : Math.min(data.length, 3);
+  const rows = Math.ceil(data.length / cols);
+  const cw = 220 / cols;
+  return (
+    <svg viewBox={`0 0 220 ${rows * 58}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {data.map((d, i) => {
+        const col = i % cols, row = Math.floor(i / cols);
+        const x = col * cw + cw / 2, y = row * 58 + 28;
+        return (
+          <g key={i}>
+            <text x={x} y={y} textAnchor="middle" fill={ac} fontSize="20" fontWeight="900"
+              fontFamily="monospace">{d.value}</text>
+            <text x={x} y={y + 14} textAnchor="middle" fill={tm} fontSize="7.5">{d.label}</text>
+            <line x1={x - 18} y1={y + 20} x2={x + 18} y2={y + 20} stroke={`${ac}30`} strokeWidth="1" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ── 인포그래픽 카드 ────────────────────────────────────────────────────────────
 function InfographicCard({ card, total, tp, ts, tm, ac, ac2, tw }: CardProps) {
   const { cardType: ct, index: idx } = card;
   return (
@@ -474,59 +584,79 @@ function InfographicCard({ card, total, tp, ts, tm, ac, ac2, tw }: CardProps) {
         {/* 구분선 */}
         <div style={{ background: `${ac}20`, height: '1px' }} />
 
-        {/* 콘텐츠 — 모든 케이스를 명시적 div(flex-col)로 감싸 fragment 레이아웃 버그 방지 */}
-        <div className="flex-1 flex flex-col justify-center overflow-hidden min-w-0">
-          {ct === 'title' && (
-            <div style={{ display:'flex', gap:'4px', overflow:'hidden', minWidth:0 }}>
-              <div style={{ background: ac, width: '3px', borderRadius: '2px', flexShrink: 0 }} />
-              <div style={{ display:'flex', flexDirection:'column', gap:'3px', minWidth:0, flex:'1 1 auto' }}>
-                <p style={{ ...TW, color: tp, fontWeight: tw }} className="w-full text-[12px] leading-tight">{card.title}</p>
-                {card.subtitle && <p style={{ ...TW, color: ts }} className="w-full text-[8.5px] leading-relaxed">{card.subtitle}</p>}
+        {/* 콘텐츠 — 모두 중앙 정렬 */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', overflow: 'hidden', width: '100%' }}>
+
+          {/* SVG 차트 — chartData 있을 때 */}
+          {card.chartData && card.chartData.length > 0 ? (
+            <>
+              {/* 차트 위 소제목 (keypoint/data/highlight 전용) */}
+              {(ct === 'keypoint' || ct === 'data' || ct === 'highlight') && (
+                <p style={{ ...TW, color: ac, fontWeight: 700, letterSpacing: '0.05em', textAlign: 'center' }}
+                  className="w-full text-[7.5px] uppercase">{card.title}</p>
+              )}
+              <div style={{ width: '100%' }}>
+                {card.chartType === 'bar'        && <BarChartSVG  data={card.chartData} ac={ac} tm={tm} tp={tp} />}
+                {card.chartType === 'donut'      && <DonutChartSVG data={card.chartData} ac={ac} ac2={ac2} tm={tm} />}
+                {card.chartType === 'gauge'      && card.chartData[0] &&
+                  <GaugeChartSVG value={card.chartData[0].value} label={card.chartData[0].label} ac={ac} tm={tm} />}
+                {card.chartType === 'stat-grid'  && <StatGridSVG  data={card.chartData} ac={ac} tm={tm} />}
               </div>
-            </div>
-          )}
-          {(ct === 'keypoint' || ct === 'data') && (
-            <div style={{ display:'flex', flexDirection:'column', gap:'4px', width:'100%' }}>
-              <p style={{ ...TW, color: ac, fontWeight: 700, letterSpacing: '0.06em' }} className="w-full text-[7.5px] uppercase">{card.title}</p>
-              {card.bullets?.slice(0,3).map((b,i) => (
-                <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'5px', width:'100%' }}>
-                  <div style={{
-                    background: i === 0 ? ac : `${ac}40`, color: i === 0 ? '#000' : ac,
-                    fontWeight: 700, flexShrink: 0, width: '14px', height: '14px', borderRadius: '2px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '7px',
-                  }}>{i+1}</div>
-                  <span style={{ ...TWF, color: ts }} className="text-[8.5px] leading-snug">{b}</span>
+              {(card.statDesc || card.subtitle) && (
+                <p style={{ ...TW, color: tm, textAlign: 'center' }} className="w-full text-[7.5px]">
+                  {card.statDesc ?? card.subtitle}
+                </p>
+              )}
+            </>
+          ) : (
+            /* 차트 없을 때 — 텍스트 중앙 정렬 */
+            <>
+              {ct === 'title' && (
+                <>
+                  <p style={{ ...TW, color: tp, fontWeight: tw, textAlign: 'center' }} className="w-full text-[13px] leading-tight">{card.title}</p>
+                  {card.subtitle && <p style={{ ...TW, color: ts, textAlign: 'center' }} className="w-full text-[8.5px] leading-relaxed">{card.subtitle}</p>}
+                </>
+              )}
+              {(ct === 'keypoint' || ct === 'data') && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <p style={{ ...TW, color: ac, fontWeight: 700, letterSpacing: '0.05em', textAlign: 'center' }} className="w-full text-[7.5px] uppercase">{card.title}</p>
+                  {card.bullets?.slice(0,3).map((b,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'5px', width:'100%' }}>
+                      <div style={{
+                        background: i === 0 ? ac : `${ac}40`, color: i === 0 ? '#000' : ac,
+                        fontWeight: 700, flexShrink: 0, width: '14px', height: '14px', borderRadius: '2px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px',
+                      }}>{i+1}</div>
+                      <span style={{ ...TWF, color: ts }} className="text-[8.5px] leading-snug">{b}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-          {ct === 'highlight' && (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'5px', width:'100%' }}>
-              <p style={{ ...TW, color: tm, letterSpacing: '0.06em', textAlign: 'center' }} className="w-full text-[7.5px] uppercase">{card.title}</p>
-              <p style={{ ...TW, color: ac, fontWeight: 900, letterSpacing: '-0.03em', textAlign: 'center' }} className="w-full text-[20px] leading-none">{card.stat}</p>
-              <div style={{ background: `${ac}30`, height: '1px', width: '100%' }} />
-              {card.statDesc && <p style={{ ...TW, color: ts, textAlign: 'center' }} className="w-full text-[8px]">{card.statDesc}</p>}
-            </div>
-          )}
-          {ct === 'quote' && (
-            <div style={{ display:'flex', flexDirection:'column', gap:'4px', width:'100%' }}>
-              <p style={{ ...TW, color: tm }} className="w-full text-[8px]">{card.title}</p>
-              <div style={{ borderLeft: `2px solid ${ac}`, background: `${ac}08`, padding: '5px 7px', borderRadius: '0 3px 3px 0' }}>
-                <p style={{ ...TW, color: tp, fontWeight: 500 }} className="w-full text-[8.5px] leading-snug">{card.quote}</p>
-              </div>
-              {card.quoteBy && <p style={{ ...TW, color: tm }} className="w-full text-[7.5px]">— {card.quoteBy}</p>}
-            </div>
-          )}
-          {ct === 'cta' && (
-            <div style={{ display:'flex', flexDirection:'column', gap:'6px', width:'100%' }}>
-              <p style={{ ...TW, color: tp, fontWeight: tw }} className="w-full text-[11px] leading-tight">{card.title}</p>
-              {card.subtitle && <p style={{ ...TW, color: ts }} className="w-full text-[8.5px] leading-relaxed">{card.subtitle}</p>}
-              <div style={{ display:'flex', gap:'4px', marginTop:'2px' }}>
-                <div style={{ background: ac, height: '2px', width: '20px', borderRadius: '1px' }} />
-                <div style={{ background: ac2, height: '2px', width: '10px', borderRadius: '1px' }} />
-              </div>
-            </div>
+              )}
+              {ct === 'highlight' && (
+                <>
+                  <p style={{ ...TW, color: tm, letterSpacing: '0.05em', textAlign: 'center' }} className="w-full text-[7.5px] uppercase">{card.title}</p>
+                  <p style={{ ...TW, color: ac, fontWeight: 900, letterSpacing: '-0.03em', textAlign: 'center' }} className="w-full text-[20px] leading-none">{card.stat}</p>
+                  <div style={{ background: `${ac}30`, height: '1px', width: '80%' }} />
+                  {card.statDesc && <p style={{ ...TW, color: ts, textAlign: 'center' }} className="w-full text-[8px]">{card.statDesc}</p>}
+                </>
+              )}
+              {ct === 'quote' && (
+                <div style={{ borderLeft: `2px solid ${ac}`, background: `${ac}08`, padding: '5px 7px', borderRadius: '0 3px 3px 0', width: '100%' }}>
+                  <p style={{ ...TW, color: tp, fontWeight: 500 }} className="w-full text-[8.5px] leading-snug">{card.quote}</p>
+                  {card.quoteBy && <p style={{ ...TW, color: tm }} className="w-full text-[7.5px] mt-1">— {card.quoteBy}</p>}
+                </div>
+              )}
+              {ct === 'cta' && (
+                <>
+                  <p style={{ ...TW, color: tp, fontWeight: tw, textAlign: 'center' }} className="w-full text-[11px] leading-tight">{card.title}</p>
+                  {card.subtitle && <p style={{ ...TW, color: ts, textAlign: 'center' }} className="w-full text-[8.5px] leading-relaxed">{card.subtitle}</p>}
+                  <div style={{ display:'flex', gap:'4px', marginTop:'2px' }}>
+                    <div style={{ background: ac, height: '2px', width: '20px', borderRadius: '1px' }} />
+                    <div style={{ background: ac2, height: '2px', width: '10px', borderRadius: '1px' }} />
+                  </div>
+                </>
+              )}
+            </>
           )}
         </div>
 
@@ -1035,6 +1165,82 @@ function GlassCard({ card, total, tp, ts, tm, ac, ac2, tw, ls }: CardProps) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// LAYOUT 13 — PHOTO OVERLAY
+// 배경 이미지 위에 그라데이션 + 하단 텍스트
+// ════════════════════════════════════════════════════════════════════════════
+function PhotoOverlayCard({ card, total, ac, ac2, tw }: CardProps) {
+  const { cardType: ct, index: idx } = card;
+  return (
+    <div className="relative h-full flex flex-col overflow-hidden">
+      {/* 그라데이션 오버레이 (이미지가 없어도 기본 배경에 적용) */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 55%, rgba(0,0,0,0.18) 100%)' }} />
+
+      {/* 헤더 */}
+      <div className="relative flex items-center justify-between px-3.5 pt-3 pb-1">
+        <span style={{ color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }} className="text-[7px] font-bold">{pad(idx+1)}/{pad(total)}</span>
+        {card.emoji && <span className="text-[12px] leading-none">{card.emoji}</span>}
+      </div>
+
+      {/* 스페이서 */}
+      <div className="flex-1" />
+
+      {/* 하단 콘텐츠 */}
+      <div className="relative px-3.5 pb-3.5">
+        {/* 액센트 라인 */}
+        <div style={{ background: ac, height: '2px', width: '20px', borderRadius: '1px', marginBottom: '6px' }} />
+
+        {ct === 'title' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+            <p style={{ ...TW, color: '#fff', fontWeight: tw, letterSpacing: '-0.02em' }} className="text-[13px] leading-tight">{card.title}</p>
+            {card.subtitle && <p style={{ ...TW, color: 'rgba(255,255,255,0.78)' }} className="text-[8.5px] leading-relaxed">{card.subtitle}</p>}
+          </div>
+        )}
+        {(ct === 'keypoint' || ct === 'data') && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'3px' }}>
+            <p style={{ ...TW, color: ac, fontWeight: 700, letterSpacing: '0.08em' }} className="text-[7.5px] uppercase mb-1">{card.title}</p>
+            {card.bullets?.slice(0,3).map((b,i) => (
+              <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'6px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', width:'3px', height:'3px', borderRadius:'50%', flexShrink:0, marginTop:'5px' }} />
+                <span style={{ ...TWF, color: 'rgba(255,255,255,0.85)' }} className="text-[8.5px] leading-snug">{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {ct === 'highlight' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'3px' }}>
+            <p style={{ ...TW, color: 'rgba(255,255,255,0.7)' }} className="text-[8.5px]">{card.title}</p>
+            <p style={{ ...TW, color: ac, fontWeight: 900, letterSpacing: '-0.04em' }} className="text-[22px] leading-none">{card.stat}</p>
+            {card.statDesc && <p style={{ ...TW, color: 'rgba(255,255,255,0.62)' }} className="text-[8px]">{card.statDesc}</p>}
+          </div>
+        )}
+        {ct === 'quote' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'3px', borderLeft:`2px solid ${ac}`, paddingLeft:'8px' }}>
+            <p style={{ ...TW, color: '#fff', fontStyle:'italic', fontWeight:500 }} className="text-[9px] leading-snug">"{card.quote}"</p>
+            {card.quoteBy && <p style={{ ...TW, color: 'rgba(255,255,255,0.55)' }} className="text-[7.5px]">— {card.quoteBy}</p>}
+          </div>
+        )}
+        {ct === 'cta' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+            <p style={{ ...TW, color: '#fff', fontWeight: tw }} className="text-[12px] leading-tight">{card.title}</p>
+            {card.subtitle && <p style={{ ...TW, color: 'rgba(255,255,255,0.82)' }} className="text-[8.5px] leading-relaxed">{card.subtitle}</p>}
+            <div style={{ background: ac2 || ac, borderRadius:'999px', padding:'3px 10px', alignSelf:'flex-start', marginTop:'3px' }}>
+              <span style={{ color: ac2 ? '#fff' : '#000', fontSize:'8px', fontWeight:900 }}>FOLLOW</span>
+            </div>
+          </div>
+        )}
+
+        {/* 푸터 */}
+        <div style={{ marginTop:'7px', paddingTop:'6px', borderTop:'1px solid rgba(255,255,255,0.15)', display:'flex', alignItems:'center', gap:'4px' }}>
+          <div style={{ background: ac, width:'4px', height:'4px', borderRadius:'50%' }} />
+          <span style={{ color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em' }} className="text-[6px] font-bold uppercase">Clipflow</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ════════════════════════════════════════════════════════════════════════════
 export function CarouselCardPreview({ card, total }: { card: CarouselCardData; total: number }) {
@@ -1057,28 +1263,40 @@ export function CarouselCardPreview({ card, total }: { card: CarouselCardData; t
       style={{ backgroundColor: bgC, fontFamily: ff }}
       className="relative aspect-square rounded-xl overflow-hidden cursor-default"
     >
+      {/* 배경 이미지 (업로드된 경우) */}
+      {card.backgroundImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={card.backgroundImageUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       {/* 노이즈 텍스처 */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ opacity: 0.04, backgroundImage: NOISE_SVG, backgroundSize: '200px' }} />
-      {/* 스타일별 그라데이션 오버레이 */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: bg }} />
+        style={{ opacity: card.lightMode ? 0.02 : 0.04, backgroundImage: NOISE_SVG, backgroundSize: '200px' }} />
+      {/* 스타일별 그라데이션 오버레이 (lightMode는 생략) */}
+      {!card.lightMode && (
+        <div className="absolute inset-0 pointer-events-none" style={{ background: bg }} />
+      )}
 
       {/* 레이아웃 렌더링 */}
       <div className="relative h-full">
-        {layout === 'bold-left'   && <BoldLeftCard    {...props} />}
-        {layout === 'centered'    && <CenteredCard    {...props} />}
-        {layout === 'editorial'   && <EditorialCard   {...props} />}
-        {layout === 'magazine'    && <MagazineCard    {...props} />}
-        {layout === 'minimal'     && <MinimalCard     {...props} />}
-        {layout === 'infographic' && <InfographicCard {...props} />}
-        {layout === 'split'       && <SplitCard       {...props} />}
-        {layout === 'kinetic'     && <KineticCard     {...props} />}
-        {layout === 'broadcast'   && <BroadcastCard   {...props} />}
-        {layout === 'cinematic'   && <CinematicCard   {...props} />}
-        {layout === 'timeline'    && <TimelineCard    {...props} />}
-        {layout === 'glass'       && <GlassCard       {...props} />}
+        {layout === 'bold-left'     && <BoldLeftCard      {...props} />}
+        {layout === 'centered'      && <CenteredCard      {...props} />}
+        {layout === 'editorial'     && <EditorialCard     {...props} />}
+        {layout === 'magazine'      && <MagazineCard      {...props} />}
+        {layout === 'minimal'       && <MinimalCard       {...props} />}
+        {layout === 'infographic'   && <InfographicCard   {...props} />}
+        {layout === 'split'         && <SplitCard         {...props} />}
+        {layout === 'kinetic'       && <KineticCard       {...props} />}
+        {layout === 'broadcast'     && <BroadcastCard     {...props} />}
+        {layout === 'cinematic'     && <CinematicCard     {...props} />}
+        {layout === 'timeline'      && <TimelineCard      {...props} />}
+        {layout === 'glass'         && <GlassCard         {...props} />}
+        {layout === 'photo-overlay' && <PhotoOverlayCard  {...props} />}
         {!['bold-left','centered','editorial','magazine','minimal','infographic',
-           'split','kinetic','broadcast','cinematic','timeline','glass'].includes(layout) && (
+           'split','kinetic','broadcast','cinematic','timeline','glass','photo-overlay'].includes(layout) && (
           <BoldLeftCard {...props} />
         )}
       </div>

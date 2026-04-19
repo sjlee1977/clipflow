@@ -14,12 +14,14 @@ const s3 = new S3Client({
 });
 const BUCKET = process.env.S3_BUCKET ?? 'remotionlambda-apnortheast2-17lxfxukvf';
 
-async function reuploadVideoToS3(videoUrl: string): Promise<string> {
+async function reuploadVideoToS3(videoUrl: string, userId?: string): Promise<string> {
   try {
     const res = await fetch(videoUrl);
     if (!res.ok) throw new Error(`download failed: ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
-    const key = `videos/${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
+    const key = userId
+      ? `users/${userId}/videos/${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`
+      : `videos/${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
     await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: buf, ContentType: 'video/mp4' }));
     const s3Url = `https://${BUCKET}.s3.${process.env.AWS_REGION ?? 'ap-northeast-2'}.amazonaws.com/${key}`;
     console.log('[animate-scene] video re-uploaded to S3:', key);
@@ -129,7 +131,9 @@ export async function GET(req: NextRequest) {
 
     // 완료 시 Kling CDN URL → S3로 재업로드 (Lambda 렌더링 속도 최적화)
     if (status.task_status === 'succeed' && status.video_url) {
-      status.video_url = await reuploadVideoToS3(status.video_url);
+      const supabaseForUser = await createClient();
+      const { data: { user: currentUser } } = await supabaseForUser.auth.getUser();
+      status.video_url = await reuploadVideoToS3(status.video_url, currentUser?.id);
     }
 
     return NextResponse.json(status);

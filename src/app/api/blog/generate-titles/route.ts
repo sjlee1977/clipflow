@@ -34,6 +34,7 @@ async function callModel(
 ): Promise<string> {
   const isClaude = model.startsWith('claude');
   const isQwen   = model.startsWith('qwen');
+  const isOpenAI = model.startsWith('gpt');
 
   if (isClaude) {
     const client = new Anthropic({ apiKey: apiKeys.anthropic });
@@ -43,6 +44,21 @@ async function callModel(
       messages: [{ role: 'user', content: user }],
     });
     return res.content[0]?.type === 'text' ? res.content[0].text : '';
+  }
+
+  if (isOpenAI) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKeys.openai}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model, max_tokens: 1200, temperature: 0.8,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(`OpenAI 오류: ${data?.error?.message ?? res.status}`);
+    return data.choices?.[0]?.message?.content ?? '';
   }
 
   if (isQwen) {
@@ -108,6 +124,7 @@ export async function POST(req: NextRequest) {
     const apiKeys = {
       gemini:    meta.gemini_api_key    ?? '',
       anthropic: meta.anthropic_api_key ?? '',
+      openai:    meta.openai_api_key    ?? '',
       qwen:      meta.qwen_api_key      ?? '',
     };
 
@@ -115,6 +132,7 @@ export async function POST(req: NextRequest) {
     if (!model) {
       if (apiKeys.gemini)         model = 'gemini-2.5-flash';
       else if (apiKeys.anthropic) model = 'claude-haiku-4-5-20251001';
+      else if (apiKeys.openai)    model = 'gpt-4.1';
       else if (apiKeys.qwen)      model = 'qwen3.5-flash';
       else return NextResponse.json({ error: 'API 키가 없습니다' }, { status: 400 });
     }

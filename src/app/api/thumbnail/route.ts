@@ -153,6 +153,29 @@ async function generateWithFal(prompt: string, apiKey: string, aspectRatio: stri
   return data?.images?.[0]?.url ?? null;
 }
 
+// ─── OpenAI 이미지 생성 (gpt-image-1.5) ──────────────────────────────────────
+
+async function generateWithOpenAI(prompt: string, apiKey: string, aspectRatio: string) {
+  const size = aspectRatio === '16:9' ? '1792x1024' : '1024x1024';
+  const res = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-image-1.5',
+      prompt,
+      n: 1,
+      size,
+      response_format: 'url',
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(`OpenAI 이미지 오류: ${err?.error?.message ?? res.statusText}`);
+  }
+  const data = await res.json() as { data?: { url?: string }[] };
+  return data.data?.[0]?.url ?? null;
+}
+
 // ─── Gemini 이미지 생성 ───────────────────────────────────────────────────────
 
 async function generateWithGemini(prompt: string, apiKey: string) {
@@ -198,7 +221,19 @@ export async function POST(req: NextRequest) {
     const results: { url: string; prompt: string }[] = [];
     let lastError = '';
 
-    if (imageProvider === 'fal' || (!imageProvider && meta.fal_api_key)) {
+    if (imageProvider === 'openai' || (!imageProvider && meta.openai_api_key && !meta.fal_api_key && !meta.gemini_api_key)) {
+      const apiKey = meta.openai_api_key;
+      if (!apiKey) return NextResponse.json({ error: 'OpenAI API 키가 설정에 등록되지 않았습니다' }, { status: 400 });
+      for (const prompt of prompts.slice(0, 2)) {
+        try {
+          const url = await generateWithOpenAI(prompt, apiKey, aspectRatio);
+          if (url) results.push({ url, prompt });
+        } catch (e) {
+          console.error('[thumbnail openai]', e);
+          lastError = e instanceof Error ? e.message : String(e);
+        }
+      }
+    } else if (imageProvider === 'fal' || (!imageProvider && meta.fal_api_key)) {
       const apiKey = meta.fal_api_key;
       if (!apiKey) return NextResponse.json({ error: 'fal.ai API 키가 설정에 등록되지 않았습니다' }, { status: 400 });
       for (const prompt of prompts.slice(0, 3)) {

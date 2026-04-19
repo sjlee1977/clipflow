@@ -18,8 +18,8 @@ function getKlingToken(ak?: string, sk?: string) {
   return sign({ iss: accessKey, exp: now + 1800, nbf: now - 5 }, secretKey, { algorithm: 'HS256', header: { typ: 'JWT', alg: 'HS256' } });
 }
 
-export async function uploadImageToS3(buffer: Buffer): Promise<string> {
-  const fileName = `images/input-${Date.now()}.png`;
+export async function uploadImageToS3(buffer: Buffer, userId?: string): Promise<string> {
+  const fileName = userId ? `users/${userId}/images/input-${Date.now()}.png` : `images/input-${Date.now()}.png`;
   const bucket = process.env.S3_BUCKET!;
   const region = process.env.AWS_REGION || 'ap-northeast-2';
 

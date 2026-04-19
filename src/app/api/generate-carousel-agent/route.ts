@@ -30,11 +30,13 @@ export interface CarouselCard {
   title:    string;
   subtitle?: string;
   bullets?:  string[];
-  stat?:     string;      // highlight 카드용 — "73%" 같은 큰 수치
-  statDesc?: string;      // stat 설명
-  quote?:    string;      // quote 카드용
-  quoteBy?:  string;      // 인용 출처
-  emoji?:    string;
+  stat?:      string;
+  statDesc?:  string;
+  quote?:     string;
+  quoteBy?:   string;
+  emoji?:     string;
+  chartType?: 'bar' | 'donut' | 'gauge' | 'stat-grid';
+  chartData?: { label: string; value: number }[];
   // 스타일 (applyStyle에서 주입)
   bgColor:          string;
   bgGradient?:      string;
@@ -283,7 +285,22 @@ async function runCopywriter(
   storyboard: Storyboard,
   platform: Platform,
   tone: Tone,
+  overrideLayout?: string,
 ): Promise<CarouselCard[]> {
+  const isInfographic = overrideLayout === 'infographic';
+
+  const infographicExtra = isInfographic ? `
+
+[인포그래픽 레이아웃 전용 — 차트 데이터 필수]
+keypoint·data·highlight 카드에는 반드시 chartType + chartData를 포함하세요.
+- chartType: "bar" | "donut" | "gauge" | "stat-grid"
+- chartData: [{ "label": "항목명", "value": 숫자 }] (value는 정수)
+- bar: 항목별 비율 비교 (value = 0~100의 상대값, 최대항목=100)
+- donut: 구성 비율 (value 합계 = 100)
+- gauge: 단일 수치 (chartData 1개, value = 0~100 퍼센트)
+- stat-grid: 핵심 숫자 나열 (value = 실제 수치, label = 단위 포함 설명)
+title·cta·quote 카드는 기존 방식 유지.` : '';
+
   const sys = `당신은 SNS 캐러셀 카피라이터입니다. 스토리보드와 리서치 결과를 받아 각 카드의 텍스트를 작성합니다.
 ${PLATFORM_GUIDE[platform]}
 톤: ${TONE_GUIDE[tone]}
@@ -294,7 +311,7 @@ ${PLATFORM_GUIDE[platform]}
 - highlight: title(맥락 문장) + stat(핵심 수치, 예: "73%") + statDesc(수치 설명 1줄) + emoji
 - quote: title(인용 배경 1줄) + quote(인용 내용) + quoteBy(출처) + emoji
 - data: title(데이터 요약) + bullets(비교·대조 항목 2~3개) + emoji
-- cta: title(행동 촉구 문장) + subtitle(혜택·이유 1줄) + emoji
+- cta: title(행동 촉구 문장) + subtitle(혜택·이유 1줄) + emoji${infographicExtra}
 
 절대 금지:
 - "살펴보겠습니다", "알아보겠습니다" 등 AI 투명 표현
@@ -338,7 +355,9 @@ ${storyboardText}
       "title": "...",
       "stat": "73%",
       "statDesc": "...",
-      "emoji": "📊"
+      "emoji": "📊",
+      "chartType": "gauge",
+      "chartData": [{ "label": "달성률", "value": 73 }]
     }
   ]
 }
@@ -428,12 +447,8 @@ function applyStyle(cards: CarouselCard[], styleId: string): CarouselCard[] {
     : "'Noto Sans KR', sans-serif";
 
   return cards.map((card, i) => {
-    // 카드 타입별 배경색 결정
-    const isAlt  = card.cardType === 'title' || card.cardType === 'highlight' || card.cardType === 'quote';
-    const isCta  = card.cardType === 'cta';
-    const bgColor = isCta ? (style.bgCta ?? style.bg)
-                  : isAlt ? (style.bgAlt ?? style.bg)
-                  : style.bg;
+    // 모든 카드 동일 배경색 (일관성)
+    const bgColor = style.bg;
 
     return {
       ...card,
@@ -471,6 +486,8 @@ export async function POST(req: NextRequest) {
       tone = 'informative',
       cardCount = 8,
       llmModelId,
+      overrideStyleId,
+      overrideLayout,
     } = await req.json() as {
       inputType: InputType;
       content: string;
@@ -478,6 +495,8 @@ export async function POST(req: NextRequest) {
       tone: Tone;
       cardCount: number;
       llmModelId: string;
+      overrideStyleId?: string;
+      overrideLayout?: string;
     };
 
     if (!content?.trim()) {
@@ -505,7 +524,7 @@ export async function POST(req: NextRequest) {
     if (isQwen   && !apiKeys.qwen)      return NextResponse.json({ error: 'DashScope API 키가 필요합니다', needsKey: true }, { status: 400 });
     if (isGemini && !apiKeys.gemini)    return NextResponse.json({ error: 'Gemini API 키가 필요합니다', needsKey: true }, { status: 400 });
 
-    const clampedCount = Math.min(Math.max(Number(cardCount), 6), 12);
+    const clampedCount = Math.min(Math.max(Number(cardCount), 4), 12);
     const steps: AgentStep[] = [];
 
     // ── Agent 1: 리서처 ────────────────────────────────────────────────────────
@@ -520,7 +539,7 @@ export async function POST(req: NextRequest) {
 
     // ── Agent 3: 카피라이터 ────────────────────────────────────────────────────
     steps.push({ agent: '카피라이터', status: 'running', summary: '카드 텍스트 작성 중...' });
-    const rawCards = await runCopywriter(model, apiKeys, research, storyboard, platform, tone);
+    const rawCards = await runCopywriter(model, apiKeys, research, storyboard, platform, tone, overrideLayout);
     steps[steps.length - 1] = { agent: '카피라이터', status: 'done', summary: `${rawCards.length}장 텍스트 완성` };
 
     // ── Agent 4: 에디터 ────────────────────────────────────────────────────────
@@ -529,18 +548,31 @@ export async function POST(req: NextRequest) {
     steps[steps.length - 1] = { agent: '에디터', status: 'done', summary: '편집 완료' };
 
     // ── Agent 5: 스타일리스트 ──────────────────────────────────────────────────
-    steps.push({ agent: '스타일리스트', status: 'running', summary: '콘텐츠 분위기에 맞는 디자인 선택 중...' });
-    const styleId = await runStylist(model, apiKeys, research, tone, platform);
+    let styleId: string;
+    if (overrideStyleId && CAROUSEL_STYLES.find(s => s.id === overrideStyleId)) {
+      styleId = overrideStyleId;
+      const s = getStyle(styleId);
+      steps.push({ agent: '스타일리스트', status: 'done', summary: `수동 선택: ${s.nameKo}` });
+    } else {
+      steps.push({ agent: '스타일리스트', status: 'running', summary: '콘텐츠 분위기에 맞는 디자인 선택 중...' });
+      styleId = await runStylist(model, apiKeys, research, tone, platform);
+      const s = getStyle(styleId);
+      steps[steps.length - 1] = {
+        agent: '스타일리스트',
+        status: 'done',
+        summary: `${s.nameKo} (${s.name}) 스타일 적용`,
+      };
+    }
     const selectedStyle = getStyle(styleId);
-    steps[steps.length - 1] = {
-      agent: '스타일리스트',
-      status: 'done',
-      summary: `${selectedStyle.nameKo} (${selectedStyle.name}) 스타일 적용`,
-    };
 
     // ── 후처리 ────────────────────────────────────────────────────────────────
     const baseCards  = editedCards.length > 0 ? editedCards : rawCards;
-    const finalCards = applyStyle(baseCards, styleId);
+    const styledCards = applyStyle(baseCards, styleId);
+    const finalCards = styledCards.map(c => ({
+      ...c,
+      lightMode: selectedStyle.lightMode ?? false,
+      ...(overrideLayout ? { layout: overrideLayout } : {}),
+    }));
     const topic = extractTopic(inputType, content, finalCards);
 
     const result: CarouselAgentResult = {

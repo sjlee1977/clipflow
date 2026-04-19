@@ -20,7 +20,7 @@
 
 export type LayoutType =
   | 'bold-left' | 'centered' | 'editorial' | 'magazine' | 'minimal' | 'infographic'
-  | 'split' | 'kinetic' | 'broadcast' | 'cinematic' | 'timeline' | 'glass';
+  | 'split' | 'kinetic' | 'broadcast' | 'cinematic' | 'timeline' | 'glass' | 'photo-overlay';
 export type FontFamily = 'sans' | 'mono';
 
 export interface StyleDef {
@@ -30,6 +30,7 @@ export interface StyleDef {
   mood: string[];
   desc: string;
   layout: LayoutType;
+  lightMode?: boolean;  // 밝은 배경 — 텍스트/오버레이 반전 필요
   // 배경
   bg: string;
   bgAlt?: string;
@@ -314,6 +315,104 @@ export const CAROUSEL_STYLES: StyleDef[] = [
     textPrimary: '#f0fdf4', textSecondary: 'rgba(240,253,244,0.65)', textMuted: 'rgba(240,253,244,0.3)',
     font: { titleWeight: 700, family: 'sans', letterSpacing: '-0.01em' },
   },
+
+  // ── 13. CLEAN WHITE (밝은 에디토리얼) ──────────────────────────────────────
+  {
+    id: 'clean-white',
+    name: 'Clean White',
+    nameKo: '클린 화이트',
+    mood: ['clean', 'minimal', 'editorial', 'fashion', 'product', 'business', 'corporate'],
+    desc: '순백 배경 + 강렬한 블랙 타이포 + 레드 포인트. 패션·제품·비즈니스 미니멀.',
+    layout: 'editorial',
+    lightMode: true,
+    bg: '#ffffff', bgAlt: '#f8f8f8', bgCta: '#f0f0f0',
+    bgGradient: 'linear-gradient(135deg, rgba(0,0,0,0.015) 0%, rgba(0,0,0,0) 60%)',
+    accent: '#e63946', accentSecondary: '#1a1a1a',
+    textPrimary: '#0a0a0a', textSecondary: 'rgba(10,10,10,0.65)', textMuted: 'rgba(10,10,10,0.38)',
+    font: { titleWeight: 900, family: 'sans', letterSpacing: '-0.03em' },
+  },
+
+  // ── 14. KOREA NEWS (공공기관 카드뉴스) ────────────────────────────────────
+  {
+    id: 'korea-news',
+    name: 'Korea News',
+    nameKo: '코리아 뉴스',
+    mood: ['news', 'information', 'public', 'education', 'campaign', 'korea', 'government'],
+    desc: '한국 공공기관 카드뉴스 스타일. 딥 블루 배경 + 흰 타이포 + 골드 포인트.',
+    layout: 'magazine',
+    bg: '#003087', bgAlt: '#002575', bgCta: '#001a5c',
+    bgGradient: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.1) 80%)',
+    accent: '#ffd700', accentSecondary: '#ffffff',
+    textPrimary: '#ffffff', textSecondary: 'rgba(255,255,255,0.82)', textMuted: 'rgba(255,255,255,0.52)',
+    font: { titleWeight: 800, family: 'sans' },
+  },
+
+  // ── 15. VIVID ORANGE (비비드 오렌지 프로모션) ─────────────────────────────
+  {
+    id: 'vivid-orange',
+    name: 'Vivid Orange',
+    nameKo: '비비드 오렌지',
+    mood: ['energetic', 'sale', 'promotion', 'ecommerce', 'food', 'lifestyle', 'vibrant', 'deal'],
+    desc: '비비드 오렌지-레드 배경. 프로모션·쇼핑·에너지·식음료·이벤트 콘텐츠에 최적.',
+    layout: 'bold-left',
+    bg: '#e84510', bgAlt: '#cc3c0e', bgCta: '#b5350c',
+    bgGradient: 'linear-gradient(135deg, rgba(255,140,0,0.45) 0%, rgba(200,0,50,0.25) 100%)',
+    accent: '#ffffff', accentSecondary: '#ffdd00',
+    textPrimary: '#ffffff', textSecondary: 'rgba(255,255,255,0.88)', textMuted: 'rgba(255,255,255,0.58)',
+    font: { titleWeight: 900, family: 'sans', letterSpacing: '-0.02em' },
+  },
+
+  // ── 16. CREAM EDITORIAL (따뜻한 에디토리얼) ───────────────────────────────
+  {
+    id: 'cream-editorial',
+    name: 'Cream Editorial',
+    nameKo: '크림 에디토리얼',
+    mood: ['warm', 'premium', 'fashion', 'beauty', 'food', 'lifestyle', 'editorial', 'magazine'],
+    desc: '따뜻한 크림 배경 + 다크 타이포 + 오렌지 포인트. 프리미엄 라이프스타일·패션.',
+    layout: 'minimal',
+    lightMode: true,
+    bg: '#f7f2e9', bgAlt: '#f2ede4', bgCta: '#ede8df',
+    bgGradient: 'linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0) 60%)',
+    accent: '#e05c1a', accentSecondary: '#1a1a1a',
+    textPrimary: '#1a1a1a', textSecondary: 'rgba(26,26,26,0.65)', textMuted: 'rgba(26,26,26,0.38)',
+    font: { titleWeight: 900, family: 'sans', letterSpacing: '-0.02em' },
+  },
+
+  // ── 17. PHOTO STORY (포토 오버레이) ──────────────────────────────────────
+  {
+    id: 'photo-story',
+    name: 'Photo Story',
+    nameKo: '포토 스토리',
+    mood: ['photo', 'story', 'lifestyle', 'travel', 'visual', 'dramatic', 'immersive'],
+    desc: '사진 위 텍스트 오버레이 전용. 이미지 업로드 시 최고의 효과. 감성적 스토리텔링.',
+    layout: 'photo-overlay',
+    bg: '#1a1a2e', bgAlt: '#16213e', bgCta: '#0f3460',
+    bgGradient: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.52) 55%, rgba(0,0,0,0.18) 100%)',
+    accent: '#ffffff', accentSecondary: '#e94560',
+    textPrimary: '#ffffff', textSecondary: 'rgba(255,255,255,0.88)', textMuted: 'rgba(255,255,255,0.58)',
+    font: { titleWeight: 800, family: 'sans' },
+  },
+];
+
+export const LAYOUT_LABELS: Record<LayoutType, { ko: string; desc: string }> = {
+  'bold-left':     { ko: '볼드레프트',   desc: '좌측 액센트 바' },
+  'centered':      { ko: '센터드',       desc: '중앙 정렬' },
+  'editorial':     { ko: '에디토리얼',   desc: '배경 카드번호' },
+  'magazine':      { ko: '매거진',       desc: '상단 풀헤더' },
+  'minimal':       { ko: '미니멀',       desc: '순수 타이포' },
+  'infographic':   { ko: '인포그래픽',   desc: '격자+번호박스' },
+  'split':         { ko: '스플릿',       desc: '좌우 분할' },
+  'kinetic':       { ko: '키네틱',       desc: '대형 배경텍스트' },
+  'broadcast':     { ko: '브로드캐스트', desc: '방송 자막바' },
+  'cinematic':     { ko: '시네마틱',     desc: '레터박스' },
+  'timeline':      { ko: '타임라인',     desc: '수직 시퀀스' },
+  'glass':         { ko: '글래스',       desc: '글래스모피즘' },
+  'photo-overlay': { ko: '포토오버레이', desc: '사진 위 텍스트' },
+};
+
+export const ALL_LAYOUT_TYPES: LayoutType[] = [
+  'bold-left', 'centered', 'editorial', 'magazine', 'minimal', 'infographic',
+  'split', 'kinetic', 'broadcast', 'cinematic', 'timeline', 'glass', 'photo-overlay',
 ];
 
 export function getStyle(id: string): StyleDef {

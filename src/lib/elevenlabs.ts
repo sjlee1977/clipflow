@@ -77,13 +77,13 @@ export async function generateSpeechBuffer(text: string, voiceId?: string, apiKe
  * 2. 렌더링용 S3 업로드 및 상세 정보 반환
  */
 export async function generateSpeechToS3(
-  text: string, 
-  filename: string, 
-  options: { voiceId?: string; speed?: number; apiKey?: string } = {}
+  text: string,
+  filename: string,
+  options: { voiceId?: string; speed?: number; apiKey?: string; userId?: string } = {}
 ): Promise<{ url: string; durationMs: number }> {
   const { buffer } = await generateSpeechBuffer(text, options.voiceId, options.apiKey);
 
-  const key = `audio/${filename}.mp3`;
+  const key = options.userId ? `users/${options.userId}/audio/${filename}.mp3` : `audio/${filename}.mp3`;
   await s3.send(new PutObjectCommand({
     Bucket: BUCKET, Key: key, Body: buffer, ContentType: 'audio/mpeg',
   }));
