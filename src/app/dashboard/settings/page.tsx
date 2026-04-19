@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { TREND_CATEGORIES } from '@/lib/youtube-trends';
 
-type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen' | 'perplexity' | 'google_places';
+type Provider = 'anthropic' | 'gemini' | 'minimax' | 'elevenlabs' | 'kling' | 'fal' | 'qwen' | 'openai' | 'perplexity' | 'google_places';
 
 const inputCls = 'flex-1 bg-black/20 text-white/80 border border-white/10 rounded-lg focus:border-white/30 focus:outline-none text-[12px] font-mono placeholder:text-white/18 px-3 py-1.5 transition-colors';
 const saveBtnCls = 'cf-filter-btn px-4 py-1.5 bg-transparent border border-white/12 text-white/60 font-medium text-[12px] font-mono rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap';
@@ -25,6 +25,7 @@ function SingleKeySection({
     elevenlabs: 'elevenlabs',
     'fal.ai': 'fal',
     'dashscope': 'qwen',
+    'openai': 'openai',
     'perplexity': 'perplexity',
     'google_places': 'google_places',
   };
@@ -235,7 +236,7 @@ function BlogPlatformSection() {
   );
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex gap-6 items-start px-6">
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 px-4 py-2 rounded-xl text-white/75 text-[12px] font-mono z-50">{toast}</div>
       )}
@@ -772,8 +773,8 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; dot: string }[] = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('api');
   const [keys, setKeys] = useState({
-    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false, hasPerplexity: false, hasGooglePlaces: false,
-    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '', perplexity: '', googlePlaces: ''
+    hasAnthropic: false, hasGemini: false, hasMinimax: false, hasElevenlabs: false, hasKling: false, hasFal: false, hasQwen: false, hasOpenAI: false, hasPerplexity: false, hasGooglePlaces: false,
+    anthropic: '', gemini: '', minimax: '', minimaxGroup: '', elevenlabs: '', klingAccess: '', klingSecret: '', fal: '', qwen: '', openai: '', perplexity: '', googlePlaces: ''
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -873,6 +874,7 @@ export default function SettingsPage() {
             <p className="text-[10px] text-white/25 uppercase tracking-widest mb-3">연결 현황</p>
             {[
               { label: 'Claude',      has: keys.hasAnthropic, color: '#E4572E' },
+              { label: 'OpenAI',      has: keys.hasOpenAI,    color: '#10a37f' },
               { label: 'Gemini',      has: keys.hasGemini,    color: '#17BEBB' },
               { label: 'MiniMax',     has: keys.hasMinimax,   color: '#ff7e33' },
               { label: 'ElevenLabs',  has: keys.hasElevenlabs,color: '#27ae60' },
@@ -904,6 +906,14 @@ export default function SettingsPage() {
                   placeholder="sk-ant-..."
                   docsUrl="https://console.anthropic.com/settings/keys"
                   hasKey={keys.hasAnthropic} maskedKey={keys.anthropic}
+                  onSave={handleSave} onDelete={handleDelete}
+                />
+                <SingleKeySection
+                  name="OpenAI" label="GPT-5.4 · GPT-4o · TTS · 이미지" color="#10a37f"
+                  models={['GPT-5.4', 'GPT-5.4 Mini', 'GPT-4o', 'gpt-image-1.5', 'TTS']}
+                  placeholder="sk-..."
+                  docsUrl="https://platform.openai.com/api-keys"
+                  hasKey={keys.hasOpenAI} maskedKey={keys.openai}
                   onSave={handleSave} onDelete={handleDelete}
                 />
                 <SingleKeySection

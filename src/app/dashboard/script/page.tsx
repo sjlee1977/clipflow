@@ -8,6 +8,11 @@ const SCRIPT_LLM_MODELS = [
   { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
   { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'gpt-5.4',                   name: 'GPT-5.4',             provider: 'OpenAI',    price: '고성능' },
+  { id: 'gpt-5.4-mini',              name: 'GPT-5.4 Mini',        provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-5.4-nano',              name: 'GPT-5.4 Nano',        provider: 'OpenAI',    price: '초저가·빠름' },
+  { id: 'gpt-4o',                    name: 'GPT-4o',              provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-4.1',                   name: 'GPT-4.1',             provider: 'OpenAI',    price: '빠름' },
   { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
   { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
   { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
@@ -78,6 +83,7 @@ function PanelAccordion({ label, value, open, onToggle, children }: {
 // ── Shared AI Model Selector (unified with prompt page) ──────────────────────
 const AI_PROVIDER_META: Record<string, { color: string }> = {
   Anthropic: { color: '#E4572E' },
+  OpenAI:    { color: '#10a37f' },
   Google:    { color: '#17BEBB' },
   Alibaba:   { color: '#6366f1' },
   'fal.ai':  { color: '#f97316' },
@@ -90,6 +96,7 @@ const PRICE_TIER: Record<string, { color: string; bg: string }> = {
   '고품질':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
   '최고품질':    { color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
   '최고 가성비': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '고성능':      { color: '#10a37f', bg: 'rgba(16,163,127,0.10)' },
   '신규·고지능': { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
   '합리적·지능': { color: '#38bdf8', bg: 'rgba(56,189,248,0.10)' },
 };
@@ -223,13 +230,14 @@ const THUMB_STYLES: { value: ThumbStyle; label: string }[] = [
 ];
 
 const THUMB_IMAGE_MODELS = [
+  { id: 'openai/gpt-image-1.5',            name: 'gpt-image-1.5 (OpenAI)',    provider: 'OpenAI', price: '고성능' },
   { id: 'google/gemini-2.5-flash-image',   name: 'Gemini 2.5 Flash (이미지)', provider: 'Google', price: '균형' },
   { id: 'fal/z-image-turbo',               name: 'Z-Image Turbo (fal.ai)',    provider: 'fal.ai', price: '빠름' },
   { id: 'fal/z-image-base',                name: 'Z-Image Base (fal.ai)',     provider: 'fal.ai', price: '고품질' },
   { id: 'qwen/qwen-image-2.0',             name: 'Qwen Image 2.0 (Qwen)',     provider: 'Qwen',   price: '가성비' },
   { id: 'qwen/qwen-image-edit-max',        name: 'Qwen Image Edit Max (Qwen)', provider: 'Qwen',  price: '고품질' },
 ];
-const THUMB_IMAGE_PROVIDERS = ['Google', 'fal.ai', 'Qwen'] as const;
+const THUMB_IMAGE_PROVIDERS = ['OpenAI', 'Google', 'fal.ai', 'Qwen'] as const;
 
 function ThumbnailPanel({ script, topic, imageModel, llmModelId }: { script: string; topic: string; imageModel: string; llmModelId: string }) {
   const [thumbStatus, setThumbStatus] = useState<ThumbStatus>('idle');
@@ -754,7 +762,7 @@ function ScriptPageInner() {
   const selectedTone = TONES.find(t => t.id === tone);
 
   return (
-    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
+    <div className="flex gap-0 -my-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
       {/* ─── 좌측: 입력 / 대본 ─── */}
       <div className="flex-1 min-w-0 p-6 overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
 
@@ -765,7 +773,7 @@ function ScriptPageInner() {
               <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
                 <PenLine size={13} strokeWidth={1.8} />
               </span>
-              <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>대본 만들기</span>
+              <span className="text-[19px] font-semibold text-white leading-none translate-y-px" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>대본 만들기</span>
             </div>
             {/* 모드 토글 */}
             <div className="flex items-center gap-1">
@@ -1155,7 +1163,7 @@ function ScriptPageInner() {
                 <div className="px-3 py-3">
                   <AiModelSelector
                     models={SCRIPT_LLM_MODELS}
-                    providers={['Anthropic', 'Google', 'Alibaba']}
+                    providers={['Anthropic', 'OpenAI', 'Google', 'Alibaba']}
                     selected={llmModelId}
                     onSelect={id => setLlmModelId(id)}
                   />

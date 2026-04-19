@@ -1,21 +1,138 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Zap, Play, CheckCircle2, XCircle, Clock, SkipForward,
   Loader2, TrendingUp, Search, Globe, FileText, Send,
   ChevronDown, ChevronUp, BarChart2, Tag, ExternalLink,
   RefreshCw, Settings, CalendarDays, ListOrdered, Sparkles,
-  Trash2, Eye, Upload, AlertCircle, Check,
+  Trash2, Upload, AlertCircle, Check, Bot,
 } from 'lucide-react';
 
 import { toDatetimeLocal } from '@/lib/date';
 
+// ─── AI 모델 ──────────────────────────────────────────────────────────────────
+const AUTO_LLM_MODELS = [
+  { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
+  { id: 'gemini-3.0-flash',          name: 'Gemini 3.0 Flash',    provider: 'Google',    price: '균형' },
+  { id: 'gemini-3.0-pro',            name: 'Gemini 3.0 Pro',      provider: 'Google',    price: '고품질' },
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
+  { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
+  { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'gpt-5.4',                   name: 'GPT-5.4',             provider: 'OpenAI',    price: '고성능' },
+  { id: 'gpt-5.4-mini',              name: 'GPT-5.4 Mini',        provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-5.4-nano',              name: 'GPT-5.4 Nano',        provider: 'OpenAI',    price: '초저가·빠름' },
+  { id: 'gpt-4o',                    name: 'GPT-4o',              provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-4.1',                   name: 'GPT-4.1',             provider: 'OpenAI',    price: '빠름' },
+  { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가' },
+  { id: 'qwen3.5-plus',              name: 'Qwen 3.5 Plus',       provider: 'Alibaba',   price: '합리적' },
+  { id: 'qwen3.6-plus',              name: 'Qwen 3.6 Plus',       provider: 'Alibaba',   price: '고지능' },
+];
+const AUTO_LLM_PROVIDERS = ['Google', 'Anthropic', 'OpenAI', 'Alibaba'] as const;
+const AI_PROVIDER_META: Record<string, { color: string }> = {
+  Anthropic: { color: '#E4572E' },
+  OpenAI:    { color: '#10a37f' },
+  Google:    { color: '#17BEBB' },
+  Alibaba:   { color: '#6366f1' },
+};
+const PRICE_TIER: Record<string, { color: string; bg: string }> = {
+  '빠름':        { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '초저가':      { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '균형':        { color: '#38bdf8', bg: 'rgba(56,189,248,0.10)' },
+  '합리적':      { color: '#38bdf8', bg: 'rgba(56,189,248,0.10)' },
+  '고품질':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
+  '고지능':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
+  '최고품질':    { color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
+  '최고 가성비': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '고성능':      { color: '#10a37f', bg: 'rgba(16,163,127,0.10)' },
+  '초저가·빠름': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+};
+function AiPriceBadge({ price }: { price?: string }) {
+  if (!price) return null;
+  const tier = PRICE_TIER[price];
+  if (!tier) return <span className="text-[10px] px-1.5 py-0.5 rounded-md text-white/35 bg-white/5">{price}</span>;
+  return <span className="text-[10px] px-1.5 py-0.5 rounded-md whitespace-nowrap" style={{ color: tier.color, background: tier.bg }}>{price}</span>;
+}
+function AiModelItem({ active, onClick, name, price, providerColor }: {
+  active: boolean; onClick: () => void; name: string; price?: string; providerColor: string;
+}) {
+  return (
+    <button onClick={onClick}
+      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-all duration-150"
+      style={{ background: active ? 'rgba(255,255,255,0.055)' : 'transparent' }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{
+        backgroundColor: active ? providerColor : 'rgba(255,255,255,0.15)',
+        boxShadow: active ? `0 0 5px ${providerColor}80` : 'none',
+      }} />
+      <span className="flex-1 text-left text-[12px]" style={{ color: active ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.42)' }}>{name}</span>
+      <AiPriceBadge price={price} />
+    </button>
+  );
+}
+function AiModelSelector({ models, providers, selected, onSelect }: {
+  models: { id: string; name: string; provider: string; price?: string }[];
+  providers: readonly string[];
+  selected: string;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  const selectedModel = models.find(m => m.id === selected);
+  const provMeta = AI_PROVIDER_META[selectedModel?.provider ?? ''] ?? { color: '#4f8ef7' };
+  return (
+    <div ref={ref}>
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150"
+        style={{ background: open ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: provMeta.color, boxShadow: `0 0 6px ${provMeta.color}80` }} />
+        <span className="flex-1 text-left text-[11.5px] text-white/70 truncate">{selectedModel?.name ?? '자동 선택'}</span>
+        <span className="text-[10px] text-white/25 mr-0.5">{selectedModel?.provider}</span>
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`shrink-0 text-white/25 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-0.5">
+          {providers.map(provider => {
+            const pm = AI_PROVIDER_META[provider] ?? { color: '#fff' };
+            const list = models.filter(m => m.provider === provider);
+            if (!list.length) return null;
+            return (
+              <div key={provider}>
+                <div className="flex items-center gap-1.5 px-2.5 pt-2 pb-1">
+                  <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: pm.color }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.22)' }}>{provider}</span>
+                </div>
+                {list.map(m => (
+                  <AiModelItem key={m.id} active={selected === m.id}
+                    onClick={() => { onSelect(m.id); setOpen(false); }}
+                    name={m.name} price={m.price} providerColor={pm.color} />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 type StepStatus   = 'pending' | 'running' | 'done' | 'skipped' | 'error';
 type SeoPlatform  = 'naver' | 'google';
-type Tone         = 'friendly' | 'professional' | 'casual' | 'educational';
+type Tone         = 'friendly' | 'professional' | 'storytelling' | 'empathetic' | 'educational' | 'casual';
+type SpeechLevel  = 'formal' | 'casual';
 type PostStatus   = 'pending' | 'generating' | 'ready' | 'published' | 'failed';
 
 interface PipelineStep {
@@ -58,14 +175,19 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
   write: <FileText size={13} />, publish: <Send size={13} />,
 };
 const GEO_OPTIONS  = [{ v: 'KR', l: '한국' }, { v: 'US', l: '미국' }, { v: 'JP', l: '일본' }];
-const TONE_OPTIONS: { value: Tone; label: string }[] = [
-  { value: 'friendly', label: '친근한' }, { value: 'professional', label: '전문적인' },
-  { value: 'casual',   label: '자유로운' }, { value: 'educational', label: '교육적인' },
+const TONE_OPTIONS: { value: Tone; label: string; sub: string }[] = [
+  { value: 'friendly',     label: '친근한',    sub: '대화체·편안함'  },
+  { value: 'professional', label: '전문적인',  sub: '권위·신뢰감'   },
+  { value: 'storytelling', label: '스토리텔링', sub: '서사·경험담'   },
+  { value: 'empathetic',   label: '공감형',    sub: '위로·독자중심'  },
+  { value: 'educational',  label: '실용적',    sub: '단계별·행동지침' },
+  { value: 'casual',       label: '자유로운',  sub: '솔직·캐주얼'   },
 ];
 const LENGTH_OPTIONS = [
-  { value: 800, label: '짧게', desc: '~800자' },
-  { value: 1500, label: '보통', desc: '~1500자' },
-  { value: 2500, label: '길게', desc: '~2500자' },
+  { value: 800,  label: '짧게',     desc: '1,000자 미만'  },
+  { value: 2000, label: '보통',     desc: '2,000~3,000자' },
+  { value: 3000, label: '길게',     desc: '3,000~5,000자' },
+  { value: 5000, label: '아주 길게', desc: '5,000~7,000자' },
 ];
 const STATUS_META: Record<PostStatus, { label: string; color: string; bg: string }> = {
   pending:    { label: '대기중',    color: '#a1a1aa', bg: 'rgba(161,161,170,0.1)' },
@@ -119,65 +241,27 @@ function MetaLine({ label, value, maxLen }: { label: string; value: string; maxL
 
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function AutoBlogPage() {
-  const router   = useRouter();
+  const router = useRouter();
   const [tab, setTab] = useState<'auto' | 'schedule'>('auto');
 
-  return (
-    <div>
-      {/* 헤더 */}
-      <div className="flex items-center gap-3 mb-5 mt-4">
-        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
-          style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
-          <Zap size={13} strokeWidth={1.8} />
-        </span>
-        <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>자동 블로그 생성</span>
-      </div>
-
-      {/* 탭 */}
-      <div className="flex gap-1 mb-6 border-b border-white/6">
-        {([
-          { key: 'auto',     icon: <Zap size={12} />,          label: '자동 생성' },
-          { key: 'schedule', icon: <CalendarDays size={12} />,  label: '스케줄 관리' },
-        ] as { key: 'auto' | 'schedule'; icon: React.ReactNode; label: string }[]).map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-bold border-b-2 transition-colors -mb-px ${
-              tab === t.key
-                ? 'border-[#4f8ef7] text-white'
-                : 'border-transparent text-white/30 hover:text-white/60'
-            }`}>
-            {t.icon}{t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'auto'     && <AutoTab router={router} />}
-      {tab === 'schedule' && <ScheduleTab />}
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ── 자동 생성 탭 (기존 로직 그대로) ──────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════════════════════
-function AutoTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  // AutoTab 상태를 페이지 레벨로 끌어올림 (사이드바 공유)
   const [geo,             setGeo]             = useState('KR');
   const [seoPlatform,     setSeoPlatform]     = useState<SeoPlatform>('naver');
+  const [llmModel,        setLlmModel]        = useState(AUTO_LLM_MODELS[0].id);
   const [tone,            setTone]            = useState<Tone>('friendly');
-  const [minLength,       setMinLength]       = useState(1500);
+  const [speechLevel,     setSpeechLevel]     = useState<SpeechLevel>('formal');
+  const [minLength,       setMinLength]       = useState(2000);
   const [autoPublish,     setAutoPublish]     = useState(false);
   const [publishPlatform, setPublishPlatform] = useState('wordpress');
   const [running,         setRunning]         = useState(false);
   const [result,          setResult]          = useState<RunResult | null>(null);
-  const [expanded,        setExpanded]        = useState<Record<string, boolean>>({});
-
-  function toggleExpand(id: string) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
 
   async function handleRun() {
     setRunning(true); setResult(null);
     try {
-      const res  = await fetch('/api/auto-blog/run', {
+      const res = await fetch('/api/auto-blog/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geo, seoPlatform, tone, minLength, autoPublish, publishPlatform }),
+        body: JSON.stringify({ geo, seoPlatform, tone, speechLevel, minLength, autoPublish, publishPlatform, llmModel }),
       });
       setResult(await res.json() as RunResult);
     } catch (err) {
@@ -185,232 +269,419 @@ function AutoTab({ router }: { router: ReturnType<typeof useRouter> }) {
     } finally { setRunning(false); }
   }
 
+  const pageHeader = (
+    <div className="shrink-0 px-4 pt-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="flex items-center gap-3 mt-4 mb-4">
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
+          style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+          <Zap size={13} strokeWidth={1.8} />
+        </span>
+        <span className="text-[19px] font-semibold text-white leading-none translate-y-px" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>자동 블로그 생성</span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {([
+          { key: 'auto',     icon: <Zap size={12} />,         label: '자동 생성',  rgb: '79,142,247' },
+          { key: 'schedule', icon: <CalendarDays size={12} />, label: '스케줄 관리', rgb: '163,230,53' },
+        ] as { key: 'auto' | 'schedule'; icon: React.ReactNode; label: string; rgb: string }[]).map(t => {
+          const isActive = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className="cf-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium tracking-wide transition-all duration-200 whitespace-nowrap"
+              style={{
+                color:      isActive ? `rgb(${t.rgb})`                : 'rgba(255,255,255,0.28)',
+                background: isActive ? `rgba(${t.rgb},0.1)`           : 'transparent',
+                border:     isActive ? `1px solid rgba(${t.rgb},0.3)` : '1px solid transparent',
+                ['--tab-rgb' as string]: t.rgb,
+              }}
+              onMouseEnter={e => { if (!isActive) { const el = e.currentTarget; el.style.color = `rgba(${t.rgb},0.8)`; el.style.background = `rgba(${t.rgb},0.07)`; el.style.borderColor = `rgba(${t.rgb},0.25)`; } }}
+              onMouseLeave={e => { if (!isActive) { const el = e.currentTarget; el.style.color = 'rgba(255,255,255,0.28)'; el.style.background = 'transparent'; el.style.borderColor = 'transparent'; } }}
+            >
+              <span>{t.icon}</span>{t.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex gap-0 -my-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
+
+      {tab === 'auto' ? (
+        /* ─── 자동 생성: 4:6 분할 ─── */
+        <div className="flex-1 min-w-0 flex overflow-hidden">
+
+          {/* LEFT 40%: 헤더 + 탭 + 파이프라인 */}
+          <div className="w-2/5 shrink-0 flex flex-col overflow-hidden" style={{ borderRight: '1px solid var(--border)' }}>
+            {pageHeader}
+            <div className="flex-1 overflow-y-auto p-6">
+              <AutoTabSteps running={running} result={result} />
+            </div>
+          </div>
+
+          {/* RIGHT 60%: 결과 */}
+          <div className="flex-1 min-w-0 overflow-y-auto p-6">
+            <AutoTabResult router={router} running={running} result={result} onRun={handleRun} />
+          </div>
+
+        </div>
+      ) : (
+        /* ─── 스케줄 관리: 전체 너비 ─── */
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {pageHeader}
+          <div className="flex-1 overflow-y-auto p-6">
+            <ScheduleTab />
+          </div>
+        </div>
+      )}
+
+      {/* ─── 우측 사이드바 (항상 표시) ─── */}
+      <aside className="w-96 shrink-0 flex flex-col overflow-y-auto" style={{ borderLeft: '1px solid var(--border)', background: 'var(--sidebar)' }}>
+          <div className="px-3 py-4 space-y-3">
+
+            {/* AI 모델 카드 */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+              <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ background: 'rgba(79,142,247,0.04)' }}>
+                <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' }}>
+                  <Bot size={9} style={{ color: '#4f8ef7' }} />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>AI 모델</span>
+              </div>
+              <div className="px-3 py-3">
+                <AiModelSelector models={AUTO_LLM_MODELS} providers={AUTO_LLM_PROVIDERS} selected={llmModel} onSelect={setLlmModel} />
+              </div>
+            </div>
+
+            {/* 파이프라인 설정 카드 */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+              <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <Zap size={9} className="text-white/50" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>파이프라인 설정</span>
+              </div>
+              <div className="px-4 py-3 space-y-4">
+                <div>
+                  <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>트렌드 지역</p>
+                  <div className="flex gap-1.5">
+                    {GEO_OPTIONS.map(o => (
+                      <button key={o.v} onClick={() => setGeo(o.v)}
+                        className={`cf-filter-btn flex-1 text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${geo === o.v ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'}`}>
+                        {o.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>SEO 최적화</p>
+                  <div className="flex gap-1.5">
+                    {(['naver', 'google'] as SeoPlatform[]).map(p => (
+                      <button key={p} onClick={() => setSeoPlatform(p)}
+                        className={`cf-filter-btn flex-1 py-1.5 rounded-lg border text-[11px] font-mono transition-colors ${seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'}`}>
+                        {p === 'naver' ? '네이버' : '구글'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 작성 설정 카드 */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+              <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <Settings size={9} className="text-white/50" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>작성 설정</span>
+              </div>
+              <div className="px-4 py-3 space-y-4">
+                <div>
+                  <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>문체</p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {TONE_OPTIONS.map(o => (
+                      <button key={o.value} onClick={() => setTone(o.value)}
+                        className={`flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border transition-colors ${tone === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'}`}>
+                        <span className="text-[11px] font-mono">{o.label}</span>
+                        <span className="text-[9px] opacity-50">{o.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>말투</p>
+                  <div className="flex gap-1.5">
+                    {([['formal', '존댓말', '~입니다·해요'], ['casual', '반말', '~야·거든']] as const).map(([val, label, sub]) => (
+                      <button key={val} onClick={() => setSpeechLevel(val)}
+                        className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border transition-colors ${speechLevel === val ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'}`}>
+                        <span className="text-[11px] font-mono">{label}</span>
+                        <span className="text-[9px] opacity-50">{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>길이</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {LENGTH_OPTIONS.map(o => (
+                      <button key={o.value} onClick={() => setMinLength(o.value)}
+                        className={`flex flex-col items-center text-center py-2 rounded-lg border transition-colors ${minLength === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'}`}>
+                        <span className="text-[11px] font-medium block leading-tight">{o.label}</span>
+                        <span className="text-[9px] text-white/25 leading-tight mt-0.5">{o.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={handleRun} disabled={running}
+                  className="cf-filter-btn sidebar-btn w-full flex items-center justify-center gap-2 border border-white/8 text-white/40 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[12px] py-2.5 rounded-lg transition-colors">
+                  {running ? <><Loader2 size={14} className="animate-spin" /> 실행 중...</>
+                    : result ? <><RefreshCw size={14} /> 다시 실행</>
+                    : <><Play size={14} /> 자동 생성 시작</>}
+                </button>
+              </div>
+            </div>
+
+            {/* 발행 설정 카드 */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+              <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                <div className="w-5 h-5 flex items-center justify-center rounded-md shrink-0" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <Send size={9} className="text-white/50" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>발행 설정</span>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                <div className="flex gap-2">
+                  {[
+                    { key: 'wordpress', label: 'WordPress',   icon: 'W', color: '#21759b' },
+                    { key: 'naver',     label: '네이버 블로그', icon: 'N', color: '#03c75a' },
+                    { key: 'nextblog',  label: 'Next.js 블로그', icon: '▲', color: '#7c3aed' },
+                  ].map(p => {
+                    const isSelected = publishPlatform === p.key;
+                    return (
+                      <button key={p.key} onClick={() => setPublishPlatform(p.key)}
+                        className="relative flex-1 flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-200"
+                        style={{ borderColor: isSelected ? `${p.color}55` : 'rgba(255,255,255,0.06)', background: isSelected ? `${p.color}0f` : 'rgba(255,255,255,0.01)' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black text-white shrink-0 transition-all duration-200"
+                          style={{ backgroundColor: isSelected ? p.color : `${p.color}55` }}>
+                          {p.icon}
+                        </div>
+                        <span className="text-[11px] font-medium transition-colors duration-200 leading-tight text-center"
+                          style={{ color: isSelected ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' }}>
+                          {p.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <p className="text-[12px] font-bold text-white/60">자동 발행</p>
+                    <p className="text-[10px] text-white/25 mt-0.5">작성 후 초안 즉시 발행</p>
+                  </div>
+                  <button onClick={() => setAutoPublish(!autoPublish)}
+                    className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${autoPublish ? 'bg-[#4f8ef7]' : 'bg-white/15'}`}>
+                    <span className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform ${autoPublish ? 'translate-x-[18px]' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+      </aside>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── 자동 생성 탭 LEFT (40%): 파이프라인 단계 ─────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+function AutoTabSteps({ running, result }: { running: boolean; result: RunResult | null }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  function toggleExpand(id: string) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
+
+  return (
+    <div className="space-y-4">
+      {!result && !running && (
+        <div className="rounded-xl border border-white/6 bg-white/[0.01] p-4 space-y-2">
+          <p className="text-[12px] font-bold text-white/35 uppercase tracking-wider mb-3">실행 단계</p>
+          {[
+            { icon: <TrendingUp size={11} />, label: '구글 트렌드 급상승 키워드 수집' },
+            { icon: <Search     size={11} />, label: 'AI가 블로그 적합 주제 선별' },
+            { icon: <BarChart2  size={11} />, label: '네이버 검색량 + 경쟁도 분석' },
+            { icon: <Globe      size={11} />, label: '상위 경쟁 블로그 3개 크롤링' },
+            { icon: <FileText   size={11} />, label: 'SEO 최적화 블로그 글 작성' },
+            { icon: <Send       size={11} />, label: '플랫폼 자동 발행 (선택)' },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-white/35">{s.icon}</span>
+              <p className="text-[12px] font-mono text-white/40">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {(running || result) && (
+        <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/6">
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">파이프라인 진행</p>
+          </div>
+          <div className="divide-y divide-white/4">
+            {(result?.steps ?? generateLoadingSteps()).map((step) => (
+              <div key={step.id}>
+                <div className={`flex items-center gap-3 px-4 py-3 ${step.data ? 'cursor-pointer hover:bg-white/[0.02]' : ''}`}
+                  onClick={() => step.data && toggleExpand(step.id)}>
+                  <span className="text-white/30">{STEP_ICONS[step.id]}</span>
+                  <span className={`flex-1 text-[13px] font-bold ${
+                    step.status === 'done' ? 'text-white/80' : step.status === 'running' ? 'text-white' :
+                    step.status === 'error' ? 'text-red-400/80' : step.status === 'skipped' ? 'text-white/20' : 'text-white/30'
+                  }`}>{step.label}</span>
+                  <StatusIcon status={step.status} />
+                  {!!step.data && (expanded[step.id] ? <ChevronUp size={12} className="text-white/20" /> : <ChevronDown size={12} className="text-white/20" />)}
+                </div>
+                {!!step.data && expanded[step.id] && (
+                  <div className="px-4 pb-3 ml-5"><StepDetail id={step.id} data={step.data} /></div>
+                )}
+                {step.error && <p className="px-4 pb-2 ml-5 text-[11px] font-mono text-red-400/60">{step.error}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result?.competitors && result.competitors.length > 0 && (
+        <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/6">
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2"><Globe size={12} />분석한 경쟁 포스트</p>
+          </div>
+          <div className="divide-y divide-white/4">
+            {result.competitors.map((c, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="text-[10px] text-white/20 w-4 shrink-0">{i + 1}</span>
+                <p className="text-[12px] text-white/60 flex-1 min-w-0 truncate">{c.title || c.url}</p>
+                <span className="text-[10px] text-white/20 shrink-0">{c.length.toLocaleString()}자</span>
+                <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/60 transition-colors shrink-0"><ExternalLink size={11} /></a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result?.steps?.every(s => s.status === 'done' || s.status === 'skipped') && result?.post && (
+        <div className="rounded-xl border border-white/6 bg-white/[0.01] px-4 py-3">
+          <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider mb-2">다음 단계</p>
+          <div className="space-y-1">
+            <p className="text-[11px] font-mono text-white/30">1. 에디터에서 내용 검토 및 수정</p>
+            <p className="text-[11px] font-mono text-white/30">2. 이미지 추가 후 플랫폼 발행</p>
+            <p className="text-[11px] font-mono text-white/30">3. 발행 후 Google Search Console 등록</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── 자동 생성 탭 RIGHT (60%): 결과 ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+function AutoTabResult({ router, running, result, onRun }: {
+  router: ReturnType<typeof useRouter>;
+  running: boolean;
+  result: RunResult | null;
+  onRun: () => void;
+}) {
   function goToEdit() {
     if (!result?.post || !result?.topic) return;
     const p = new URLSearchParams({ keyword: result.topic.keyword, related: result.topic.relatedKeywords.join(','), volume: String(result.keywordData?.monthlyTotal ?? 0) });
     router.push(`/dashboard/blog?${p.toString()}`);
   }
 
-  const allDone = result?.steps?.every(s => s.status === 'done' || s.status === 'skipped');
+  if (!result && !running) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 text-center">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.15)' }}>
+          <FileText size={22} style={{ color: 'rgba(79,142,247,0.4)' }} />
+        </div>
+        <div>
+          <p className="text-[14px] text-white/35 font-medium">우측 설정 후 자동 생성을 시작하세요</p>
+          <p className="text-[12px] text-white/20 font-mono mt-1">생성된 블로그 글이 여기에 표시됩니다</p>
+        </div>
+        <button onClick={onRun}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-[13px] font-bold transition-colors"
+          style={{ background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)', color: '#4f8ef7' }}>
+          <Play size={13} />자동 생성 시작
+        </button>
+      </div>
+    );
+  }
+
+  if (running && !result?.post) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3">
+        <Loader2 size={28} className="animate-spin" style={{ color: 'rgba(79,142,247,0.5)' }} />
+        <p className="text-[13px] text-white/35 font-mono">AI가 블로그를 생성하고 있습니다...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={`${(running || result) ? 'grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5' : 'max-w-xl'}`}>
-      {/* 설정 패널 */}
-      <div className="space-y-4">
-        <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-          <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">파이프라인 설정</p>
-          <div>
-            <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">트렌드 지역</p>
-            <div className="flex gap-1.5">
-              {GEO_OPTIONS.map(o => (
-                <button key={o.v} onClick={() => setGeo(o.v)}
-                  className={`cf-filter-btn flex-1 text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${geo === o.v ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'}`}>
-                  {o.l}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">SEO 최적화</p>
-            <div className="flex gap-1.5">
-              {(['naver', 'google'] as SeoPlatform[]).map(p => (
-                <button key={p} onClick={() => setSeoPlatform(p)}
-                  className={`cf-filter-btn flex-1 py-1.5 rounded-lg border text-[12px] font-mono transition-colors ${seoPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'}`}>
-                  {p === 'naver' ? '네이버' : '구글'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">문체</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {TONE_OPTIONS.map(o => (
-                <button key={o.value} onClick={() => setTone(o.value)}
-                  className={`cf-filter-btn text-[12px] font-mono py-1.5 rounded-lg border transition-colors ${tone === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'}`}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">글 길이</p>
-            <div className="flex gap-1.5">
-              {LENGTH_OPTIONS.map(o => (
-                <button key={o.value} onClick={() => setMinLength(o.value)}
-                  className={`cf-filter-btn flex-1 text-center py-1.5 rounded-lg border transition-colors ${minLength === o.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'}`}>
-                  <span className="text-[12px] font-mono block">{o.label}</span>
-                  <span className="text-[9px] text-white/25">{o.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-2 border-t border-white/6">
-            <div>
-              <p className="text-[12px] font-bold text-white/60">자동 발행</p>
-              <p className="text-[10px] text-white/25">작성 후 초안으로 즉시 발행</p>
-            </div>
-            <button onClick={() => setAutoPublish(!autoPublish)}
-              className={`w-10 h-[22px] rounded-full transition-colors relative shrink-0 ${autoPublish ? 'bg-[#4f8ef7]' : 'bg-white/15'}`}>
-              <span className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform ${autoPublish ? 'translate-x-[18px]' : ''}`} />
-            </button>
-          </div>
-          {autoPublish && (
-            <div>
-              <p className="text-[10px] text-white/25 mb-2 uppercase tracking-wider">발행 플랫폼</p>
-              <div className="flex gap-1.5">
-                {['wordpress', 'naver', 'nextblog'].map(p => (
-                  <button key={p} onClick={() => setPublishPlatform(p)}
-                    className={`cf-filter-btn flex-1 text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${publishPlatform === p ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/30 hover:text-white/60'}`}>
-                    {p === 'wordpress' ? 'WP' : p === 'naver' ? 'Naver' : 'Next'}
-                  </button>
+    <div className="space-y-4">
+      {result?.post && (
+        <div className="rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/[0.03] overflow-hidden">
+          <div className="flex items-center gap-4 px-4 py-4 border-b border-white/6">
+            <SeoScoreRing score={result.post.seoScore} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-black text-white leading-snug">{result.post.title}</p>
+              <p className="text-[11px] font-mono text-white/30 mt-1">{result.post.content.length.toLocaleString()}자 · SEO {result.post.seoScore >= 80 ? '우수' : result.post.seoScore >= 60 ? '보통' : '미흡'} · {result.provider}</p>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {result.post.tags.slice(0, 5).map(tag => (
+                  <span key={tag} className="text-[10px] text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">#{tag}</span>
                 ))}
               </div>
             </div>
+          </div>
+          <div className="px-4 py-3 space-y-2 border-b border-white/6">
+            <MetaLine label="Meta Title" value={result.post.metaTitle} maxLen={60} />
+            <MetaLine label="Meta Description" value={result.post.metaDescription} maxLen={160} />
+            <MetaLine label="Slug" value={result.post.slug} />
+          </div>
+          {result.topic && (
+            <div className="px-4 py-3 border-b border-white/6">
+              <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Search size={10} />주제 선정 이유</p>
+              <p className="text-[12px] font-mono text-white/50">{result.topic.reason}</p>
+            </div>
           )}
+          {result.keywordData && (
+            <div className="px-4 py-3 border-b border-white/6 flex gap-4">
+              <MetricMini label="월 검색량" value={result.keywordData.monthlyTotal.toLocaleString()} />
+              <MetricMini label="경쟁도"   value={`${Math.round(result.keywordData.competition * 100)}%`} />
+              <MetricMini label="기회점수"  value={`${result.keywordData.opportunity}점`} />
+            </div>
+          )}
+          {result.publishResult?.success && (
+            <div className="px-4 py-3 border-b border-white/6 flex items-center gap-2">
+              <CheckCircle2 size={13} className="text-[#4f8ef7]" />
+              <p className="text-[12px] font-mono text-[#4f8ef7]/80 flex-1">초안 발행 완료</p>
+              {result.publishResult.link && (
+                <a href={result.publishResult.link} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors">
+                  <ExternalLink size={11} />보기
+                </a>
+              )}
+            </div>
+          )}
+          <div className="px-4 py-3 flex gap-2">
+            <button onClick={goToEdit}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] tracking-tight uppercase py-2 rounded-lg transition-colors">
+              <FileText size={13} />에디터에서 편집
+            </button>
+            <button onClick={onRun}
+              className="flex items-center gap-1.5 text-[11px] font-mono text-white/40 hover:text-white/70 border border-white/10 hover:border-white/20 px-3 py-2 rounded-lg transition-colors">
+              <RefreshCw size={12} />다시 실행
+            </button>
+          </div>
         </div>
-        <button onClick={handleRun} disabled={running}
-          className="cf-filter-btn w-full flex items-center justify-center gap-2 bg-transparent border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white/70 font-bold text-[14px] tracking-tight uppercase py-3 rounded-xl transition-colors">
-          {running ? <><Loader2 size={15} className="animate-spin" /> 파이프라인 실행 중...</>
-            : result ? <><RefreshCw size={15} /> 다시 실행</> : <><Play size={15} /> 자동 생성 시작</>}
-        </button>
-        {!result && !running && (
-          <div className="rounded-xl border border-white/6 bg-white/[0.01] p-4 space-y-2">
-            <p className="text-[11px] font-bold text-white/20 uppercase tracking-wider mb-3">실행 단계</p>
-            {[
-              { icon: <TrendingUp size={11} />, label: '구글 트렌드 급상승 키워드 수집' },
-              { icon: <Search     size={11} />, label: 'AI가 블로그 적합 주제 선별' },
-              { icon: <BarChart2  size={11} />, label: '네이버 검색량 + 경쟁도 분석' },
-              { icon: <Globe      size={11} />, label: '상위 경쟁 블로그 3개 크롤링' },
-              { icon: <FileText   size={11} />, label: 'SEO 최적화 블로그 글 작성' },
-              { icon: <Send       size={11} />, label: '플랫폼 자동 발행 (선택)' },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="text-white/20">{s.icon}</span>
-                <p className="text-[11px] font-mono text-white/25">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 우측: 결과 */}
-      <div className="space-y-4">
-        {(running || result) && (
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/6">
-              <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">파이프라인 진행</p>
-            </div>
-            <div className="divide-y divide-white/4">
-              {(result?.steps ?? generateLoadingSteps()).map((step) => (
-                <div key={step.id}>
-                  <div className={`flex items-center gap-3 px-4 py-3 ${step.data ? 'cursor-pointer hover:bg-white/[0.02]' : ''}`}
-                    onClick={() => step.data && toggleExpand(step.id)}>
-                    <span className="text-white/30">{STEP_ICONS[step.id]}</span>
-                    <span className={`flex-1 text-[13px] font-bold ${
-                      step.status === 'done' ? 'text-white/80' : step.status === 'running' ? 'text-white' :
-                      step.status === 'error' ? 'text-red-400/80' : step.status === 'skipped' ? 'text-white/20' : 'text-white/30'
-                    }`}>{step.label}</span>
-                    <StatusIcon status={step.status} />
-                    {!!step.data && (expanded[step.id] ? <ChevronUp size={12} className="text-white/20" /> : <ChevronDown size={12} className="text-white/20" />)}
-                  </div>
-                  {!!step.data && expanded[step.id] && (
-                    <div className="px-4 pb-3 ml-5"><StepDetail id={step.id} data={step.data} /></div>
-                  )}
-                  {step.error && <p className="px-4 pb-2 ml-5 text-[11px] font-mono text-red-400/60">{step.error}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {result?.post && (
-          <div className="rounded-xl border border-[#4f8ef7]/20 bg-[#4f8ef7]/[0.03] overflow-hidden">
-            <div className="flex items-center gap-4 px-4 py-4 border-b border-white/6">
-              <SeoScoreRing score={result.post.seoScore} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-black text-white leading-snug">{result.post.title}</p>
-                <p className="text-[11px] font-mono text-white/30 mt-1">{result.post.content.length.toLocaleString()}자 · SEO {result.post.seoScore >= 80 ? '우수' : result.post.seoScore >= 60 ? '보통' : '미흡'} · {result.provider}</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {result.post.tags.slice(0, 5).map(tag => (
-                    <span key={tag} className="text-[10px] text-white/35 bg-white/5 border border-white/8 px-1.5 py-0.5 rounded">#{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="px-4 py-3 space-y-2 border-b border-white/6">
-              <MetaLine label="Meta Title" value={result.post.metaTitle} maxLen={60} />
-              <MetaLine label="Meta Description" value={result.post.metaDescription} maxLen={160} />
-              <MetaLine label="Slug" value={result.post.slug} />
-            </div>
-            {result.topic && (
-              <div className="px-4 py-3 border-b border-white/6">
-                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Search size={10} />주제 선정 이유</p>
-                <p className="text-[12px] font-mono text-white/50">{result.topic.reason}</p>
-              </div>
-            )}
-            {result.keywordData && (
-              <div className="px-4 py-3 border-b border-white/6 flex gap-4">
-                <MetricMini label="월 검색량" value={result.keywordData.monthlyTotal.toLocaleString()} />
-                <MetricMini label="경쟁도"   value={`${Math.round(result.keywordData.competition * 100)}%`} />
-                <MetricMini label="기회점수"  value={`${result.keywordData.opportunity}점`} />
-              </div>
-            )}
-            {result.publishResult?.success && (
-              <div className="px-4 py-3 border-b border-white/6 flex items-center gap-2">
-                <CheckCircle2 size={13} className="text-[#4f8ef7]" />
-                <p className="text-[12px] font-mono text-[#4f8ef7]/80 flex-1">초안 발행 완료</p>
-                {result.publishResult.link && (
-                  <a href={result.publishResult.link} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors">
-                    <ExternalLink size={11} />보기
-                  </a>
-                )}
-              </div>
-            )}
-            <div className="px-4 py-3 flex gap-2">
-              <button onClick={goToEdit}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] text-black font-black text-[12px] tracking-tight uppercase py-2 rounded-lg transition-colors">
-                <FileText size={13} />에디터에서 편집
-              </button>
-              <button onClick={() => router.push('/dashboard/settings')}
-                className="flex items-center gap-1.5 text-[11px] font-mono text-white/40 hover:text-white/70 border border-white/10 hover:border-white/20 px-3 py-2 rounded-lg transition-colors">
-                <Settings size={12} />설정
-              </button>
-            </div>
-          </div>
-        )}
-        {result?.error && !result.post && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
-            <p className="text-[12px] font-mono text-red-400/80">{result.error}</p>
-          </div>
-        )}
-        {result?.competitors && result.competitors.length > 0 && (
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/6">
-              <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2"><Globe size={12} />분석한 경쟁 포스트</p>
-            </div>
-            <div className="divide-y divide-white/4">
-              {result.competitors.map((c, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="text-[10px] text-white/20 w-4 shrink-0">{i + 1}</span>
-                  <p className="text-[12px] text-white/60 flex-1 min-w-0 truncate">{c.title || c.url}</p>
-                  <span className="text-[10px] text-white/20 shrink-0">{c.length.toLocaleString()}자</span>
-                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/60 transition-colors shrink-0"><ExternalLink size={11} /></a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {allDone && result?.post && (
-          <div className="rounded-xl border border-white/6 bg-white/[0.01] px-4 py-3">
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider mb-2">다음 단계</p>
-            <div className="space-y-1">
-              <p className="text-[11px] font-mono text-white/30">1. 에디터에서 내용 검토 및 수정</p>
-              <p className="text-[11px] font-mono text-white/30">2. 이미지 추가 후 플랫폼 발행</p>
-              <p className="text-[11px] font-mono text-white/30">3. 발행 후 Google Search Console 등록</p>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
+      {result?.error && !result.post && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <p className="text-[12px] font-mono text-red-400/80">{result.error}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/lib/useTheme';
 import ThemeToggle from '@/components/ThemeToggle';
-import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, Globe, Cpu, Layers, type LucideIcon } from 'lucide-react';
+import { FileText, PenLine, Video, TrendingUp, Zap, Film, ScrollText, Settings, Users, BarChart2, LayoutTemplate, BookOpen, CalendarDays, Repeat2, Image, Images, LayoutDashboard, Search, MessageSquare, Tv, ShieldCheck, Lock, Globe, Layers, type LucideIcon } from 'lucide-react';
 import type { Tier } from '@/lib/tier';
 import { TIER_LABELS, TIER_COLORS, canAccess, requiredTier } from '@/lib/tier';
 
@@ -267,8 +267,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="px-4 py-4 space-y-2"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-
-
           {/* 사용자 이름 + 배지 */}
           {userName && (
             <div className="flex items-center gap-2 px-1">
@@ -334,7 +332,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* 페이지 콘텐츠 */}
-        <div className="p-6">
+        <div className="py-6 px-0">
           {tier === null ? (
             <div className="flex items-center justify-center py-32">
               <div className="w-5 h-5 border border-white/20 border-t-white/60 rounded-full animate-spin" />

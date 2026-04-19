@@ -220,7 +220,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="px-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6 mt-4">
         <div className="flex items-center gap-3">

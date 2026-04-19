@@ -20,6 +20,7 @@ export default function CarouselLibraryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -36,39 +37,31 @@ export default function CarouselLibraryPage() {
 
   const selected = carousels.find(c => c.id === selectedId);
 
-  async function svgToPng(svgText: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const cv = document.createElement('canvas');
-        cv.width = 1080; cv.height = 1080;
-        cv.getContext('2d')!.drawImage(img, 0, 0, 1080, 1080);
-        URL.revokeObjectURL(img.src);
-        resolve(cv.toDataURL('image/png'));
-      };
-      img.onerror = reject;
-      img.src = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
-    });
-  }
-
   async function handleDownload(carousel: Carousel) {
     setDownloading(carousel.id);
+    setDownloadError(null);
     try {
       for (const card of carousel.cards) {
-        const res = await fetch('/api/carousel/export', {
+        const res = await fetch('/api/carousel/export-v2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ card, total: carousel.cards.length }),
         });
-        if (!res.ok) throw new Error(await res.text());
-        const svg = await res.text();
-        const png = await svgToPng(svg);
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`카드 ${card.index + 1} 실패: ${errText}`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = `${carousel.topic}_card${card.index + 1}.png`;
-        link.href = png;
+        link.href = url;
         link.click();
+        URL.revokeObjectURL(url);
         await new Promise(r => setTimeout(r, 300));
       }
+    } catch (e) {
+      setDownloadError((e as Error).message);
     } finally {
       setDownloading(null);
     }
@@ -87,50 +80,45 @@ export default function CarouselLibraryPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-8 mt-4">
-        <div className="flex items-center gap-3">
-          <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
-            <LayoutTemplate size={13} strokeWidth={1.8} />
-          </span>
-          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 캐러셀</span>
+    <div className="flex gap-0 -my-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
+      {/* 좌측 목록 사이드바 */}
+      <div className="w-64 shrink-0 p-6 overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-6 mt-4">
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
+              <LayoutTemplate size={13} strokeWidth={1.8} />
+            </span>
+            <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 캐러셀</span>
+          </div>
+          {!loading && carousels.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
+              <span className="text-[13px] font-black font-mono text-[#4f8ef7]">{carousels.length}</span>
+            </div>
+          )}
         </div>
-        {!loading && carousels.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-white/20 tracking-widest uppercase">Total</span>
-            <span className="text-[13px] font-black font-mono text-[#4f8ef7]">{carousels.length}</span>
+
+        {/* 로딩 */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-white/20">
+            <span className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" />
           </div>
         )}
-      </div>
 
-      {/* 로딩 */}
-      {loading && (
-        <div className="flex items-center justify-center py-32 gap-3 text-white/20">
-          <span className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" />
-          <span className="text-[12px] font-mono tracking-widest uppercase">Loading...</span>
-        </div>
-      )}
-
-      {/* 빈 상태 */}
-      {!loading && carousels.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 gap-5">
-          <div className="w-16 h-16 border border-white/8 rounded-2xl flex items-center justify-center">
-            <span className="text-2xl text-white/10">⊞</span>
+        {/* 빈 상태 */}
+        {!loading && carousels.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 gap-5">
+            <div className="w-12 h-12 border border-white/8 rounded-2xl flex items-center justify-center">
+              <span className="text-xl text-white/10">⊞</span>
+            </div>
+            <p className="text-[12px] text-white/30 font-mono text-center">저장된 캐러셀이 없습니다</p>
           </div>
-          <div className="text-center">
-            <p className="text-[13px] text-white/30 font-mono">저장된 캐러셀이 없습니다</p>
-            <a href="/dashboard/video" className="text-[12px] text-[#4f8ef7]/50 hover:text-[#4f8ef7] transition-colors mt-1 block font-mono">
-              영상 만들기에서 캐러셀을 생성해보세요 →
-            </a>
-          </div>
-        </div>
-      )}
+        )}
 
-      {!loading && carousels.length > 0 && (
-        <div className="flex gap-5">
-          {/* 좌측 목록 */}
-          <div className="w-64 shrink-0 space-y-1.5">
+        {/* 목록 */}
+        {!loading && carousels.length > 0 && (
+          <div className="space-y-1.5">
             {carousels.map(carousel => {
               const isActive = selectedId === carousel.id;
               const previewColors = carousel.cards.slice(0, 4).map(c => c.bgColor);
@@ -144,7 +132,6 @@ export default function CarouselLibraryPage() {
                       : 'border-white/6 hover:border-white/15 bg-white/[0.02] hover:bg-white/[0.04]'
                   }`}
                 >
-                  {/* 컬러 스트립 */}
                   <div className="flex h-1">
                     {previewColors.map((color, i) => (
                       <div key={i} className="flex-1" style={{ backgroundColor: color }} />
@@ -153,7 +140,6 @@ export default function CarouselLibraryPage() {
                       <div key={`empty-${i}`} className="flex-1 bg-white/5" />
                     ))}
                   </div>
-
                   <div className="flex items-center justify-between gap-2 px-3 py-2.5">
                     <div className="min-w-0 flex-1">
                       <p className={`text-[13px] font-medium truncate transition-colors ${isActive ? 'text-white' : 'text-white/70'}`}>
@@ -175,56 +161,61 @@ export default function CarouselLibraryPage() {
               );
             })}
           </div>
+        )}
+      </div>
 
-          {/* 우측 미리보기 */}
-          <div className="flex-1 min-w-0">
-            {!selected && (
-              <div className="flex items-center justify-center h-64 border border-white/6 rounded-xl text-white/15 text-[12px] font-mono tracking-widest uppercase">
-                Select a carousel
-              </div>
-            )}
-
-            {selected && (
-              <div>
-                {/* 상단 액션 바 */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-[14px] font-bold text-white leading-tight">{selected.topic}</p>
-                      <p className="text-[11px] font-mono text-white/25 tracking-widest uppercase mt-0.5">
-                        {selected.card_count} Cards · {new Date(selected.cards[0] ? selected.created_at : '').toLocaleDateString('ko-KR')}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDownload(selected)}
-                    disabled={downloading === selected.id}
-                    className="flex items-center gap-2 bg-[#4f8ef7] hover:bg-[#0284c7] disabled:opacity-40 text-black font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-md transition-colors"
-                  >
-                    {downloading === selected.id ? (
-                      <><span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> 다운로드 중</>
-                    ) : (
-                      <>↓ 전체 다운로드</>
-                    )}
-                  </button>
-                </div>
-
-                {/* 카드 그리드 */}
-                <div className="grid grid-cols-3 gap-3">
-                  {selected.cards.map(card => (
-                    <div
-                      key={card.index}
-                      ref={el => { cardRefs.current[`${selected.id}-${card.index}`] = el; }}
-                    >
-                      <CarouselCardPreview card={card} total={selected.cards.length} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* 우측 미리보기 영역 */}
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
+        {!selected && !loading && (
+          <div className="flex items-center justify-center h-64 text-white/15 text-[12px] font-mono tracking-widest uppercase mt-4">
+            Select a carousel
           </div>
-        </div>
-      )}
+        )}
+
+        {selected && (
+          <div className="mt-4">
+            {/* 상단 액션 바 */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[14px] font-bold text-white leading-tight">{selected.topic}</p>
+                <p className="text-[11px] font-mono text-white/25 tracking-widest uppercase mt-0.5">
+                  {selected.card_count} Cards · {new Date(selected.cards[0] ? selected.created_at : '').toLocaleDateString('ko-KR')}
+                </p>
+              </div>
+              <button
+                onClick={() => handleDownload(selected)}
+                disabled={downloading === selected.id}
+                className="cf-filter-btn flex items-center gap-2 border border-white/20 bg-white/5 text-white/60 disabled:opacity-40 font-black text-[12px] tracking-tight uppercase px-4 py-1.5 rounded-lg transition-all"
+              >
+                {downloading === selected.id ? (
+                  <><span className="w-3 h-3 border-2 border-[#4f8ef7]/30 border-t-[#4f8ef7] rounded-full animate-spin" /> 다운로드 중</>
+                ) : (
+                  <>↓ 전체 다운로드</>
+                )}
+              </button>
+            </div>
+
+            {/* 다운로드 에러 */}
+            {downloadError && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] font-mono break-all">
+                {downloadError}
+              </div>
+            )}
+
+            {/* 카드 그리드 */}
+            <div className="grid grid-cols-4 gap-3">
+              {selected.cards.map(card => (
+                <div
+                  key={card.index}
+                  ref={el => { cardRefs.current[`${selected.id}-${card.index}`] = el; }}
+                >
+                  <CarouselCardPreview card={card} total={selected.cards.length} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

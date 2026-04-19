@@ -341,15 +341,15 @@ export default function KeywordPage() {
   const isGoogle = activeTab === 'google';
 
   return (
-    <div className="h-full flex flex-col -m-6">
+    <div className="h-full flex flex-col -my-6">
       {/* ── 헤더 ── */}
-      <div className="shrink-0 px-8 pt-10 pb-5 border-b border-white/8">
-        <div className="flex items-end justify-between mb-5">
+      <div className="shrink-0 px-4 pt-6 pb-5 border-b border-white/8">
+        <div className="flex items-end justify-between mt-4 mb-5">
           <div className="flex items-center gap-3">
             <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
               <BarChart2 size={13} strokeWidth={1.8} />
             </span>
-            <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>키워드 리서치</span>
+            <span className="text-[19px] font-semibold text-white leading-none translate-y-px" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>키워드 리서치</span>
           </div>
         </div>
 

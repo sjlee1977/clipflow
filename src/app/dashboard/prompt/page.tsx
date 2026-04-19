@@ -144,6 +144,11 @@ const PROMPT_LLM_MODELS = [
   { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
   { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'gpt-5.4',                   name: 'GPT-5.4',             provider: 'OpenAI',    price: '고성능' },
+  { id: 'gpt-5.4-mini',              name: 'GPT-5.4 Mini',        provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-5.4-nano',              name: 'GPT-5.4 Nano',        provider: 'OpenAI',    price: '초저가·빠름' },
+  { id: 'gpt-4o',                    name: 'GPT-4o',              provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-4.1',                   name: 'GPT-4.1',             provider: 'OpenAI',    price: '빠름' },
   { id: 'gemini-2.5-flash',          name: 'Gemini 2.5 Flash',    provider: 'Google',    price: '최고 가성비' },
   { id: 'qwen3.6-plus',              name: 'Qwen 3.6 Plus',       provider: 'Alibaba',   price: '신규·고지능' },
   { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가·빠름' },
@@ -153,6 +158,7 @@ const PROMPT_LLM_MODELS = [
 // ── Shared AI Model Selector Components ──────────────────────────────────────
 const AI_PROVIDER_META: Record<string, { color: string; dot: string }> = {
   Anthropic: { color: '#E4572E', dot: 'rgba(228,87,46,0.7)' },
+  OpenAI:    { color: '#10a37f', dot: 'rgba(16,163,127,0.7)' },
   Google:    { color: '#17BEBB', dot: 'rgba(23,190,187,0.7)' },
   Alibaba:   { color: '#6366f1', dot: 'rgba(99,102,241,0.7)' },
   'fal.ai':  { color: '#f97316', dot: 'rgba(249,115,22,0.7)' },
@@ -166,6 +172,7 @@ const PRICE_TIER: Record<string, { color: string; bg: string }> = {
   '고품질':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
   '최고품질':    { color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
   '최고 가성비': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '고성능':      { color: '#10a37f', bg: 'rgba(16,163,127,0.10)' },
   '신규·고지능': { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
   '합리적·지능': { color: '#38bdf8', bg: 'rgba(56,189,248,0.10)' },
 };
@@ -465,6 +472,7 @@ const resetAll = () => {
     if (g('differentiation')) { lines.push('[이 영상만의 차별점]'); lines.push(g('differentiation')); lines.push(''); }
     if (g('analogy')) lines.push(`[비유 방향] ${g('analogy')}`);
     if (g('tone')) lines.push(`[영상 톤 & 강조 포인트] ${g('tone')}`);
+    if (g('closing')) lines.push(`[클로징 방향] ${g('closing')}`);
     lines.push('');
 
     if (activeCategory === 'general') {
@@ -553,7 +561,7 @@ const resetAll = () => {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
+    <div className="flex gap-0 -my-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ── 왼쪽 폼 영역 ── */}
       <div className="flex-1 min-w-0 p-6 overflow-y-auto" style={{ borderRight: '1px solid var(--border)' }}>
@@ -677,27 +685,25 @@ const resetAll = () => {
                 </FieldCard>
 
                 {/* 도입 훅 방향 */}
-                {activeCategory === 'general' && (
-                  <FieldCard optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택" accentColor="rgba(79,142,247,0.4)"
-                    inputContent={
-                      <>
-                        <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls}>
-                          <option value="">AI 자동 선택</option>
-                          <option value="A형 — 도발적 질문: &quot;[핵심 주제], 지금 제대로 알고 있어?&quot;">A형 — 도발적 질문형</option>
-                          <option value="B형 — 충격 수치: &quot;[충격적 수치나 사실], 이게 우리한테 무슨 의미인지 알아?&quot;">B형 — 충격 수치형</option>
-                          <option value="C형 — 착각 지적: &quot;지금 [상황]인데, 대부분이 완전히 잘못 보고 있어.&quot;">C형 — 착각 지적형</option>
-                        </select>
-                        {get('hookStyle') && (
-                          <div className="mt-2">
-                            <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
-                              placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
-                          </div>
-                        )}
-                      </>
-                    }>
-                    도입 훅 방향
-                  </FieldCard>
-                )}
+                <FieldCard optional sub="프롬프트에 저장된 3가지 훅 형식 중 선택 — 안 고르면 AI가 자동 선택" accentColor="rgba(79,142,247,0.4)"
+                  inputContent={
+                    <>
+                      <select value={get('hookStyle')} onChange={e => set('hookStyle', e.target.value)} className={sCls}>
+                        <option value="">AI 자동 선택</option>
+                        <option value="A형 — 도발적 질문: &quot;[핵심 주제], 지금 제대로 알고 있어?&quot;">A형 — 도발적 질문형</option>
+                        <option value="B형 — 충격 수치: &quot;[충격적 수치나 사실], 이게 우리한테 무슨 의미인지 알아?&quot;">B형 — 충격 수치형</option>
+                        <option value="C형 — 착각 지적: &quot;지금 [상황]인데, 대부분이 완전히 잘못 보고 있어.&quot;">C형 — 착각 지적형</option>
+                      </select>
+                      {get('hookStyle') && (
+                        <div className="mt-2">
+                          <input value={get('hookHint')} onChange={e => set('hookHint', e.target.value)}
+                            placeholder="첫 문장에 넣을 구체적인 소재나 수치 (선택) — 예: 나스닥 18,200 / 삼성전자 6만원" className={iCls} />
+                        </div>
+                      )}
+                    </>
+                  }>
+                  도입 훅 방향
+                </FieldCard>
 
                 {/* 경쟁 영상 차별점 */}
                 <FieldCard optional sub="유사 주제 영상들과 다른 이 영상만의 관점 — 클수록 4단계 인사이트가 날카로워집니다" accentColor="rgba(79,142,247,0.4)"
@@ -705,6 +711,12 @@ const resetAll = () => {
                     placeholder={`예:\n- 기존 영상들은 금리 인하 자체에 집중하지만, 이 영상은 '선반영 이후의 실망 매물' 타이밍에 집중\n- 단순 종목 추천이 아닌 수급 데이터 기반 근거 제시`}
                     className={iCls} />}>
                   경쟁 영상과의 차별점
+                </FieldCard>
+
+                {/* 클로징 방향 */}
+                <FieldCard optional sub="영상 마무리 방향 — 안 주면 AI가 일반적인 마무리로 처리" accentColor="rgba(79,142,247,0.4)"
+                  inputContent={<input value={get('closing')} onChange={e => set('closing', e.target.value)} placeholder="예: 메시지로 끝내기 / 행동 촉구로 마무리 / 여운 있게 질문으로 끝내기" className={iCls} />}>
+                  클로징 방향
                 </FieldCard>
               </div>{/* /p-4 */}
               </div>{/* /공통 필드 카드 */}
@@ -876,10 +888,6 @@ const resetAll = () => {
                       <textarea value={get('horrorFact')} onChange={e => set('horrorFact', e.target.value)} rows={3} placeholder="예: 2003년 단 하루 사이 78구 발견 / 매년 평균 30명 이상 / 일본 정부는 공식 집계 중단" className={iCls} />
                     </div>
 
-                    <div>
-                      <FieldLabel optional>영상 마무리 방향</FieldLabel>
-                      <input value={get('horrorEnding')} onChange={e => set('horrorEnding', e.target.value)} placeholder="예: 공포로 끝내지 말고 '왜 이런 장소가 생기는가'에 대한 사회적 메시지로 마무리" className={iCls} />
-                    </div>
                   </>
                 )}
 
@@ -960,7 +968,7 @@ const resetAll = () => {
             <div className="px-3 py-3">
               <AiModelSelector
                 models={PROMPT_LLM_MODELS}
-                providers={['Anthropic', 'Google', 'Alibaba']}
+                providers={['Anthropic', 'OpenAI', 'Google', 'Alibaba']}
                 selected={ytAnalysisModelId}
                 onSelect={id => setYtAnalysisModelId(id)}
               />

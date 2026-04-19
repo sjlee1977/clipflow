@@ -7,7 +7,7 @@ import type { RelatedKeyword, TitleSuggestion } from '@/app/api/blog/keyword-sug
 
 type Platform    = 'wordpress' | 'naver' | 'nextblog';
 type SeoPlatform = 'naver' | 'google';
-type Tone        = 'friendly' | 'professional' | 'casual' | 'educational';
+type Tone        = 'friendly' | 'professional' | 'storytelling' | 'empathetic' | 'educational' | 'casual';
 type Length      = 'short' | 'medium' | 'long' | 'xlarge';
 
 type SeoCheckItem = { item: string; pass: boolean; tip: string };
@@ -62,14 +62,20 @@ const BLOG_LLM_MODELS = [
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5',    provider: 'Anthropic', price: '빠름' },
   { id: 'claude-sonnet-4-6',         name: 'Claude Sonnet 4.6',   provider: 'Anthropic', price: '고품질' },
   { id: 'claude-opus-4-6',           name: 'Claude Opus 4.6',     provider: 'Anthropic', price: '최고품질' },
+  { id: 'gpt-5.4',                   name: 'GPT-5.4',             provider: 'OpenAI',    price: '고성능' },
+  { id: 'gpt-5.4-mini',              name: 'GPT-5.4 Mini',        provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-5.4-nano',              name: 'GPT-5.4 Nano',        provider: 'OpenAI',    price: '초저가·빠름' },
+  { id: 'gpt-4o',                    name: 'GPT-4o',              provider: 'OpenAI',    price: '고품질' },
+  { id: 'gpt-4.1',                   name: 'GPT-4.1',             provider: 'OpenAI',    price: '빠름' },
   { id: 'qwen3.5-flash',             name: 'Qwen 3.5 Flash',      provider: 'Alibaba',   price: '초저가' },
   { id: 'qwen3.5-plus',              name: 'Qwen 3.5 Plus',       provider: 'Alibaba',   price: '합리적' },
   { id: 'qwen3.6-plus',              name: 'Qwen 3.6 Plus',       provider: 'Alibaba',   price: '고지능' },
 ];
-const BLOG_LLM_PROVIDERS = ['Google', 'Anthropic', 'Alibaba'] as const;
+const BLOG_LLM_PROVIDERS = ['Google', 'Anthropic', 'OpenAI', 'Alibaba'] as const;
 
 const AI_PROVIDER_META: Record<string, { color: string }> = {
   Anthropic: { color: '#E4572E' },
+  OpenAI:    { color: '#10a37f' },
   Google:    { color: '#17BEBB' },
   Alibaba:   { color: '#6366f1' },
 };
@@ -82,6 +88,8 @@ const PRICE_TIER: Record<string, { color: string; bg: string }> = {
   '고지능':      { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
   '최고품질':    { color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
   '최고 가성비': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '고성능':      { color: '#10a37f', bg: 'rgba(16,163,127,0.10)' },
+  '초저가·빠름': { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
 };
 const HOOK_TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   '질문형': { bg: 'rgba(168,85,247,0.12)',  color: '#c084fc' },
@@ -195,11 +203,13 @@ const PLATFORM_INFO: Record<Platform, { label: string; color: string; icon: stri
   nextblog: { label: 'Next.js 블로그', color: '#7c3aed', icon: '▲', desc: 'Supabase' },
 };
 
-const TONE_OPTIONS: { value: Tone; label: string }[] = [
-  { value: 'friendly', label: '친근한' },
-  { value: 'professional', label: '전문적인' },
-  { value: 'casual', label: '자유로운' },
-  { value: 'educational', label: '교육적인' },
+const TONE_OPTIONS: { value: Tone; label: string; sub: string }[] = [
+  { value: 'friendly',     label: '친근한',    sub: '대화체·편안함' },
+  { value: 'professional', label: '전문적인',  sub: '권위·신뢰감' },
+  { value: 'storytelling', label: '스토리텔링', sub: '서사·경험담' },
+  { value: 'empathetic',   label: '공감형',    sub: '위로·독자중심' },
+  { value: 'educational',  label: '실용적',    sub: '단계별·행동지침' },
+  { value: 'casual',       label: '자유로운',  sub: '솔직·캐주얼' },
 ];
 
 const LENGTH_OPTIONS: { value: Length; label: string; desc: string }[] = [
@@ -245,6 +255,7 @@ function BlogPageInner() {
   const [kwError, setKwError]                 = useState('');
 
   const [tone, setTone] = useState<Tone>('friendly');
+  const [speechLevel, setSpeechLevel] = useState<'formal' | 'casual'>('formal');
   const [length, setLength] = useState<Length>('medium');
   const [customPrompt, setCustomPrompt] = useState('');
   const [writing, setWriting] = useState(false);
@@ -375,6 +386,7 @@ function BlogPageInner() {
             relatedKeywords: related,
             platform:        seoPlatform,
             tone,
+            koreanSpeechLevel: speechLevel,
             minLength:       length === 'short' ? 800 : length === 'medium' ? 2000 : length === 'long' ? 3000 : 5000,
             source:          crawlResult?.content || '',
             customPrompt:    customPrompt.trim() || undefined,
@@ -478,7 +490,7 @@ function BlogPageInner() {
   const anyConnected = Object.values(platformStatus).some(Boolean);
 
   return (
-    <div className="flex gap-0 -m-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
+    <div className="flex gap-0 -my-6" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ─── 좌측(40%) + 중앙(60%) 래퍼 ─── */}
       <div className="flex-1 min-w-0 flex overflow-hidden">
@@ -492,7 +504,7 @@ function BlogPageInner() {
             <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
               <FileText size={13} strokeWidth={1.8} />
             </span>
-            <span className="text-[19px] font-semibold text-white">블로그 작성</span>
+            <span className="text-[19px] font-semibold text-white leading-none translate-y-px">블로그 작성</span>
           </div>
 
           {/* URL 크롤링 */}
@@ -798,13 +810,31 @@ function BlogPageInner() {
             <div className="px-4 py-3 space-y-4">
               <div>
                 <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>문체</p>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {TONE_OPTIONS.map(opt => (
                     <button key={opt.value} onClick={() => setTone(opt.value)}
-                      className={`text-[11px] font-mono py-1.5 rounded-lg border transition-colors ${
-                        tone === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                      className={`flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border transition-colors ${
+                        tone === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                       }`}
-                    >{opt.label}</button>
+                    >
+                      <span className="text-[11px] font-mono">{opt.label}</span>
+                      <span className="text-[9px] opacity-50">{opt.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/25 mb-2 uppercase tracking-wider" style={{ fontFamily: "'Nanum Gothic', sans-serif" }}>말투</p>
+                <div className="flex gap-1.5">
+                  {([['formal', '존댓말', '~입니다·해요'], ['casual', '반말', '~야·거든']] as const).map(([val, label, sub]) => (
+                    <button key={val} onClick={() => setSpeechLevel(val)}
+                      className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border transition-colors ${
+                        speechLevel === val ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px] font-mono">{label}</span>
+                      <span className="text-[9px] opacity-50">{sub}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -814,7 +844,7 @@ function BlogPageInner() {
                   {LENGTH_OPTIONS.map(opt => (
                     <button key={opt.value} onClick={() => setLength(opt.value)}
                       className={`flex flex-col items-center text-center py-2 rounded-lg border transition-colors ${
-                        length === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-white' : 'border-white/8 text-white/40 hover:text-white/60'
+                        length === opt.value ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]' : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
                       <span className="text-[11px] font-medium block leading-tight">{opt.label}</span>

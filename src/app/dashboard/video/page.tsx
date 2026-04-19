@@ -1,14 +1,28 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { Video, Bot } from 'lucide-react';
+import { MINIMAX_VOICES } from '@/lib/minimax-tts';
+import { GOOGLE_VOICES } from '@/lib/google';
+import { ELEVENLABS_VOICES } from '@/lib/elevenlabs';
+import { createClient as createBrowserClient } from '@/lib/supabase-browser';
+import { KOREAN_FONTS, DEFAULT_FONT_ID } from '@/lib/fonts';
+import { TEMPLATES, DEFAULT_TEMPLATE_ID, TemplateId } from '@/lib/templates';
+
+const supabase = createBrowserClient();
+
 const LLM_MODELS = [
   { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google',  price: '균형' },
   { id: 'google/gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   provider: 'Google',  price: '고품질' },
+  { id: 'gpt-5.4',                 name: 'GPT-5.4',           provider: 'OpenAI',  price: '고성능' },
+  { id: 'gpt-5.4-mini',            name: 'GPT-5.4 Mini',      provider: 'OpenAI',  price: '고품질' },
+  { id: 'gpt-4o',                  name: 'GPT-4o',            provider: 'OpenAI',  price: '고품질' },
   { id: 'qwen-plus',               name: 'Qwen Plus',         provider: 'Alibaba', price: '가성비' },
   { id: 'qwen-max',                name: 'Qwen Max',          provider: 'Alibaba', price: '고품질' },
 ];
 
 const IMAGE_MODELS = [
+  { id: 'openai/gpt-image-1.5',          name: 'gpt-image-1.5',       provider: 'OpenAI',  price: '고성능' },
   { id: 'google/gemini-2.5-flash-image',  name: 'Gemini 2.5 Flash',   provider: 'Google',  price: '균형' },
   { id: 'fal/z-image-turbo',              name: 'Z-Image Turbo',       provider: 'fal.ai',  price: '빠름' },
   { id: 'fal/z-image-base',               name: 'Z-Image Base',        provider: 'fal.ai',  price: '고품질' },
@@ -24,14 +38,6 @@ const VIDEO_MODELS = [
   { id: 'kling-v1-6',        name: 'Kling v1.6',        provider: 'Kling',  price: '균형' },
   { id: 'fal-wan-v2.1',      name: 'WAN 2.1',           provider: 'fal.ai', price: '빠름' },
 ];
-import { Video, Bot, Cpu, Film } from 'lucide-react';
-import { MINIMAX_VOICES } from '@/lib/minimax-tts';
-import { GOOGLE_VOICES } from '@/lib/google';
-import { ELEVENLABS_VOICES } from '@/lib/elevenlabs';
-import { createClient as createBrowserClient } from '@/lib/supabase-browser';
-const supabase = createBrowserClient();
-import { KOREAN_FONTS, DEFAULT_FONT_ID } from '@/lib/fonts';
-import { TEMPLATES, DEFAULT_TEMPLATE_ID, TemplateId } from '@/lib/templates';
 
 type Status = 'idle' | 'previewing' | 'preview' | 'rendering' | 'done' | 'error';
 type Format = 'shorts' | 'landscape' | 'square';
@@ -176,6 +182,7 @@ function splitTextToSubtitles(text: string, maxChars = 30): { text: string; star
 // ── AI Model Selector (unified) ──────────────────────────────────────────────
 const AI_PROVIDER_META: Record<string, { color: string }> = {
   Google:  { color: '#17BEBB' },
+  OpenAI:  { color: '#10a37f' },
   Alibaba: { color: '#6366f1' },
   'fal.ai':{ color: '#f97316' },
   Kling:   { color: '#ec4899' },
@@ -183,6 +190,7 @@ const AI_PROVIDER_META: Record<string, { color: string }> = {
 const PRICE_TIER: Record<string, { color: string; bg: string }> = {
   '빠름':    { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
   '가성비':  { color: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+  '고성능':  { color: '#10a37f', bg: 'rgba(16,163,127,0.10)' },
   '균형':    { color: '#38bdf8', bg: 'rgba(56,189,248,0.10)' },
   '고품질':  { color: '#818cf8', bg: 'rgba(129,140,248,0.10)' },
   '최고품질':{ color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
@@ -1258,7 +1266,7 @@ export default function DashboardPage() {
 
   return (
     /* 전체: 왼쪽 콘텐츠 + 오른쪽 패널 (w-56) */
-    <div className="flex gap-0 -m-6 min-h-screen">
+    <div className="flex gap-0 -my-6 min-h-screen">
 
       {/* 라이트박스 */}
       {lightboxUrl && (
@@ -1292,7 +1300,7 @@ export default function DashboardPage() {
                 <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
                   <Video size={13} strokeWidth={1.8} />
                 </span>
-                <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>영상 만들기</span>
+                <span className="text-[19px] font-semibold text-white leading-none translate-y-px" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>영상 만들기</span>
               </div>
 
               <div className={`flex flex-col border rounded-xl transition-colors duration-200 bg-black ${
@@ -2115,12 +2123,12 @@ export default function DashboardPage() {
                 <div className="px-3 py-3 space-y-3">
                   <div>
                     <p className="text-[10px] text-white/25 uppercase tracking-widest mb-1.5 px-1">장면 AI</p>
-                    <AiModelSelector models={LLM_MODELS} providers={['Google', 'Alibaba']}
+                    <AiModelSelector models={LLM_MODELS} providers={['Google', 'OpenAI', 'Alibaba']}
                       selected={llmModelId} onSelect={id => { setLlmModelId(id); localStorage.setItem('clipflow_llmModelId', id); }} />
                   </div>
                   <div className={pptMode ? 'opacity-40 pointer-events-none select-none' : ''}>
                     <p className="text-[10px] text-white/25 uppercase tracking-widest mb-1.5 px-1">이미지 AI</p>
-                    <AiModelSelector models={IMAGE_MODELS} providers={['Google', 'fal.ai', 'Alibaba']}
+                    <AiModelSelector models={IMAGE_MODELS} providers={['OpenAI', 'Google', 'fal.ai', 'Alibaba']}
                       selected={imageModelId} onSelect={id => { setImageModelId(id); localStorage.setItem('clipflow_imageModelId', id); }} />
                     {pptMode && <p className="text-[10px] text-white/25 mt-1 px-1">PPT 모드 비활성화</p>}
                   </div>
@@ -2142,8 +2150,8 @@ export default function DashboardPage() {
                       disabled={isProcessing}
                       className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                         imageStyle === s.id
-                          ? 'border-[#4f8ef7]/60 text-white bg-[#4f8ef7]/10'
-                          : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
+                          ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]'
+                          : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
                       {s.label}
@@ -2154,8 +2162,8 @@ export default function DashboardPage() {
                     disabled={isProcessing}
                     className={`px-3 py-1.5 text-xs font-medium border rounded-xl transition-colors ${
                       imageStyle === 'none'
-                        ? 'border-[#4f8ef7]/60 text-white bg-[#4f8ef7]/10'
-                        : 'border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
+                        ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10 text-[#4f8ef7]'
+                        : 'border-white/8 text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/5'
                     }`}
                   >
                     선택 없음
@@ -2214,8 +2222,8 @@ export default function DashboardPage() {
                         { id: 'colorful', label: '컬러풀', desc: '그라디언트 · 화사' },
                       ] as const).map(t => (
                         <button key={t.id} onClick={() => setPptTheme(t.id)}
-                          className={`flex flex-col items-start px-3 py-2 border rounded-xl text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#4f8ef7]/60 bg-[#4f8ef7]/10' : 'border-white/8 hover:border-white/20'}`}>
-                          <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-white' : 'text-white/55'}`}>{t.label}</span>
+                          className={`flex flex-col items-start px-3 py-2 border rounded-xl text-left transition-colors flex-1 ${pptTheme === t.id ? 'border-[#4f8ef7]/40 bg-[#4f8ef7]/10' : 'border-white/8 hover:border-white/20 hover:bg-white/5'}`}>
+                          <span className={`text-xs font-semibold ${pptTheme === t.id ? 'text-[#4f8ef7]' : 'text-white/55'}`}>{t.label}</span>
                           <span className="text-[10px] text-white/30 mt-0.5">{t.desc}</span>
                         </button>
                       ))}

@@ -107,14 +107,14 @@ export default function MyScriptsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="px-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6 mt-4">
         <div className="flex items-center gap-3">
           <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0" style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
             <ScrollText size={13} strokeWidth={1.8} />
           </span>
-          <span className="text-[19px] font-semibold text-white" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 대본</span>
+          <span className="text-[19px] font-semibold text-white leading-none translate-y-px" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>내 대본</span>
         </div>
         <button
           onClick={() => router.push('/dashboard/script')}

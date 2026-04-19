@@ -99,15 +99,15 @@ export default function CompetitorPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6">
       {/* 헤더 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mt-4">
         <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
           style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
           <Search size={13} strokeWidth={1.8} />
         </span>
         <div>
-          <h1 className="text-[19px] font-semibold text-white">경쟁 영상 분석</h1>
+          <span className="text-[19px] font-semibold text-white leading-none translate-y-px">경쟁 영상 분석</span>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
             API 키 없이 자막 추출 · AI로 핵심 구조 분석
           </p>

@@ -204,7 +204,7 @@ function TravelTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6">
 
       {/* 통계 */}
       {posts.length > 0 && (

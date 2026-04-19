@@ -228,7 +228,7 @@ export default function MyChannelPage() {
   const ch = data?.channel;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -236,7 +236,7 @@ export default function MyChannelPage() {
             <img src={ch.thumbnail} alt={ch.name} className="w-9 h-9 rounded-full" />
           )}
           <div>
-            <h1 className="text-[19px] font-semibold text-white">{ch?.name ?? '내 채널'}</h1>
+            <span className="text-[19px] font-semibold text-white leading-none translate-y-px">{ch?.name ?? '내 채널'}</span>
             <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
               {data?.period?.startDate} ~ {data?.period?.endDate}
             </p>
@@ -396,13 +396,13 @@ export default function MyChannelPage() {
 
 function PageHeader() {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 mt-4">
       <span className="w-7 h-7 flex items-center justify-center rounded-lg shrink-0"
         style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.22)', color: '#4f8ef7' }}>
         <Tv size={13} strokeWidth={1.8} />
       </span>
       <div>
-        <h1 className="text-[19px] font-semibold text-white">내 채널</h1>
+        <span className="text-[19px] font-semibold text-white leading-none translate-y-px">내 채널</span>
         <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
           YouTube Analytics · 수익 · CPM · 유입 경로
         </p>

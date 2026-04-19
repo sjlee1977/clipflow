@@ -120,7 +120,7 @@ export default function OutliersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between mt-4">
         <div className="flex flex-col gap-1">
