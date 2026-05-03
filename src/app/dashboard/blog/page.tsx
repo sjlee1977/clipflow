@@ -266,7 +266,7 @@ function BlogPageInner() {
   const [writeResult, setWriteResult] = useState<WriteResult | null>(null);
 
   const [llmModelId, setLlmModelId] = useState('gemini-2.5-flash');
-  const [writeMode, setWriteMode] = useState<'standard' | 'agent'>('standard');
+  const [writeMode, setWriteMode] = useState<'standard' | 'agent' | 'pipeline'>('standard');
   const [evaluation, setEvaluation] = useState<{
     totalScore: number; grade: string; passed: boolean;
     suggestions: string[];
@@ -274,6 +274,8 @@ function BlogPageInner() {
   } | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [agentSteps, setAgentSteps] = useState<{ agent: string; status: string; summary: string }[]>([]);
+  const [pipelineStep, setPipelineStep] = useState<string | null>(null);
+  const [pipelineTitle, setPipelineTitle] = useState<{ title: string; score: number } | null>(null);
 
   const [copied, setCopied] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('wordpress');
@@ -366,6 +368,98 @@ function BlogPageInner() {
       setKwError(err instanceof Error ? err.message : '분석 실패');
     } finally {
       setKwAnalyzing(false);
+    }
+  }
+
+  async function handlePipelineWrite() {
+    if (!targetKeyword.trim()) return;
+    setWriting(true);
+    setWriteError('');
+    setBlogContent('');
+    setBlogTitle('');
+    setEvaluation(null);
+    setAgentSteps([]);
+    setPipelineStep('제목 생성');
+    setPipelineTitle(null);
+    try {
+      const related = relatedKeywords.split(',').map(s => s.trim()).filter(Boolean);
+      const competition = kwResult
+        ? kwResult.saturationRate > 70 ? '높음' : kwResult.saturationRate > 40 ? '중간' : '낮음'
+        : undefined;
+
+      // 1단계: 제목 생성
+      const titlesRes = await fetch('/api/blog/generate-titles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: targetKeyword.trim(),
+          seoPlatform,
+          searchVolume: kwResult?.searchVolume,
+          competition,
+          contentSaturation: kwResult?.contentSaturation,
+          relatedKeywords: related,
+          llmModelId,
+        }),
+      });
+      const titlesData = await titlesRes.json();
+      if (!titlesRes.ok) throw new Error(titlesData.error || '제목 생성 실패');
+      const titles: { title: string }[] = titlesData.titles ?? [];
+      if (titles.length === 0) throw new Error('제목 후보를 생성하지 못했습니다');
+
+      // 2단계: 제목 채점
+      setPipelineStep('제목 채점');
+      const scoreRes = await fetch('/api/blog/score-titles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titles: titles.map(t => t.title),
+          keyword: targetKeyword.trim(),
+          seoPlatform,
+          llmModelId,
+        }),
+      });
+      const scoreData = await scoreRes.json();
+      const scores: { title: string; totalScore: number }[] = scoreData.scores ?? [];
+
+      let bestTitle = titles[0].title;
+      let bestScore = 0;
+      if (scores.length > 0) {
+        const best = scores.reduce((a, b) => b.totalScore > a.totalScore ? b : a);
+        bestTitle = best.title;
+        bestScore = best.totalScore;
+      }
+      setPipelineTitle({ title: bestTitle, score: bestScore });
+
+      // 3단계: 글 작성 (80점 미달 시 자동 재시도 포함)
+      setPipelineStep('글 작성');
+      const writeRes = await fetch('/api/blog/write-pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: bestTitle,
+          keyword: targetKeyword.trim(),
+          seoPlatform,
+          searchVolume: kwResult?.searchVolume,
+          competition,
+          contentSaturation: kwResult?.contentSaturation,
+          relatedKeywords: related,
+          tone,
+          length,
+          llmModelId,
+        }),
+      });
+      const writeData = await writeRes.json();
+      if (!writeRes.ok) throw new Error(writeData.error || '글 작성 실패');
+
+      setBlogContent(writeData.content || '');
+      setBlogTitle(writeData.title || bestTitle);
+      if (writeData.evaluation) setEvaluation(writeData.evaluation);
+      if (writeData.steps) setAgentSteps(writeData.steps);
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : '파이프라인 실행 실패');
+    } finally {
+      setWriting(false);
+      setPipelineStep(null);
     }
   }
 
@@ -768,8 +862,9 @@ function BlogPageInner() {
               <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>AI 모델</span>
               <div className="flex items-center gap-1 ml-auto">
                 {([
-                  { id: 'standard', label: '표준',    rgb: '255,255,255', icon: <Wand2 size={9} /> },
-                  { id: 'agent',    label: '전문작가', rgb: '79,142,247',  icon: <Bot size={9} /> },
+                  { id: 'standard',  label: '표준',     rgb: '255,255,255', icon: <Wand2 size={9} /> },
+                  { id: 'agent',     label: '전문작가',  rgb: '79,142,247',  icon: <Bot size={9} /> },
+                  { id: 'pipeline',  label: '파이프라인', rgb: '168,85,247',  icon: <Zap size={9} /> },
                 ] as const).map(({ id, label, rgb, icon }) => {
                   const isActive = writeMode === id;
                   return (
@@ -794,6 +889,12 @@ function BlogPageInner() {
                 <div className="flex items-center gap-2 bg-[#4f8ef7]/5 border border-[#4f8ef7]/15 rounded-lg px-3 py-2">
                   <Sparkles size={11} className="text-[#4f8ef7]/60 shrink-0" />
                   <p className="text-[11px] text-white/40">리서처 → 작가 → 편집장 3단계 멀티에이전트</p>
+                </div>
+              )}
+              {writeMode === 'pipeline' && (
+                <div className="flex items-start gap-2 bg-purple-500/5 border border-purple-500/15 rounded-lg px-3 py-2">
+                  <Zap size={11} className="text-purple-400/60 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-white/40">제목 생성 → SEO 채점 → 최고점 자동 선택 → 6에이전트 작성 (80점 미달 시 재시도)</p>
                 </div>
               )}
             </div>
@@ -860,17 +961,54 @@ function BlogPageInner() {
                 )}
               </div>
               {writeError && <p className="text-red-400/80 text-[12px] font-mono">{writeError}</p>}
-              <button onClick={handleWrite} disabled={writing || (!crawlResult && !customPrompt.trim() && !targetKeyword.trim())}
+              <button
+                onClick={writeMode === 'pipeline' ? handlePipelineWrite : handleWrite}
+                disabled={writing || (writeMode === 'pipeline' ? !targetKeyword.trim() : (!crawlResult && !customPrompt.trim() && !targetKeyword.trim()))}
                 className="cf-filter-btn sidebar-btn w-full flex items-center justify-center gap-2 border border-white/8 text-white/40 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[12px] py-2.5 rounded-lg transition-colors"
+                style={writeMode === 'pipeline' && !writing ? { borderColor: 'rgba(168,85,247,0.3)', color: 'rgba(168,85,247,0.7)' } : undefined}
               >
                 {writing ? (
-                  <><Loader2 size={14} className="animate-spin" /> {writeMode === 'agent' ? '에이전트 작동 중...' : '작성 중...'}</>
+                  <><Loader2 size={14} className="animate-spin" />
+                    {writeMode === 'pipeline' ? `${pipelineStep} 중...` : writeMode === 'agent' ? '에이전트 작동 중...' : '작성 중...'}
+                  </>
                 ) : blogContent ? (
                   <><RefreshCw size={14} /> 다시 작성</>
                 ) : (
                   <><Wand2 size={14} /> AI 블로그 작성</>
                 )}
               </button>
+
+              {/* 파이프라인 진행 표시 */}
+              {writeMode === 'pipeline' && writing && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-white/25 uppercase tracking-wider">파이프라인 진행</p>
+                  <div className="space-y-1">
+                    {(['제목 생성', '제목 채점', '글 작성'] as const).map((step) => {
+                      const isDone = pipelineStep !== null && ['제목 생성', '제목 채점', '글 작성'].indexOf(step) < ['제목 생성', '제목 채점', '글 작성'].indexOf(pipelineStep);
+                      const isActive = pipelineStep === step;
+                      return (
+                        <div key={step} className="flex items-center gap-2 text-[11px] font-mono">
+                          {isDone
+                            ? <CheckCircle2 size={11} className="text-purple-400/70 shrink-0" />
+                            : isActive
+                            ? <Loader2 size={11} className="animate-spin text-purple-400/70 shrink-0" />
+                            : <span className="w-[11px] h-[11px] rounded-full border border-white/10 shrink-0 inline-block" />}
+                          <span className={isActive ? 'text-purple-300/80' : isDone ? 'text-white/40' : 'text-white/20'}>{step}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {pipelineTitle && (
+                    <div className="flex items-start gap-2 bg-purple-500/5 border border-purple-500/15 rounded-lg px-2.5 py-2 mt-1">
+                      <span className="text-purple-400/60 text-[10px] shrink-0 mt-0.5">선택</span>
+                      <span className="text-white/55 text-[10px] leading-snug flex-1">{pipelineTitle.title}</span>
+                      {pipelineTitle.score > 0 && <span className="text-purple-400/60 text-[10px] shrink-0">{pipelineTitle.score}점</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 에이전트 진행 표시 (agent / pipeline 완료 후) */}
               {((writing && writeMode === 'agent') || agentSteps.length > 0) && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] text-white/25 uppercase tracking-wider">에이전트 진행</p>

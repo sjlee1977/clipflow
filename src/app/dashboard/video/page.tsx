@@ -445,13 +445,6 @@ export default function DashboardPage() {
   const [prefetchStatus, setPrefetchStatus] = useState<'idle' | 'running' | 'ready'>('idle');
   const prefetchAbortRef = useRef<AbortController | null>(null);
 
-  // 캐러셀 상태
-  type CarouselCard = { index: number; cardType: 'title' | 'keypoint' | 'quote' | 'cta'; title: string; subtitle?: string; bullets?: string[]; emoji?: string; bgColor: string };
-  const [carouselCards, setCarouselCards] = useState<CarouselCard[] | null>(null);
-  const [carouselTopic, setCarouselTopic] = useState('');
-  const [carouselStatus, setCarouselStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-  const [showCarousel, setShowCarousel] = useState(false);
-
   // [모델 환경설정 복구] — localStorage는 클라이언트 마운트 후에만 읽을 수 있음 (SSR 우회)
   useEffect(() => {
     const savedImageModel = localStorage.getItem('clipflow_imageModelId');
@@ -720,71 +713,6 @@ export default function DashboardPage() {
 
   function updateSubCharacterName(index: number, name: string) {
     setSubCharacters(prev => prev.map((c, i) => i === index ? { ...c, name } : c));
-  }
-
-  async function handleGenerateCarousel() {
-    // script가 없으면 scenes의 텍스트를 대본 대용으로 사용
-    const scriptText = script.trim() || scenes.map(s => s.text).filter(Boolean).join('\n');
-    if (!scriptText) return;
-    setCarouselStatus('loading');
-    setShowCarousel(true);
-    try {
-      const res = await fetch('/api/generate-carousel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: scriptText, llmModelId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '캐러셀 생성 실패');
-      setCarouselCards(data.cards);
-      setCarouselTopic(data.topic);
-      setCarouselStatus('done');
-
-      // 자동 저장 (백그라운드, 실패해도 무시)
-      fetch('/api/carousels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: data.topic, cards: data.cards }),
-      }).catch(() => {});
-    } catch (e) {
-      setCarouselStatus('error');
-      setError(e instanceof Error ? e.message : '캐러셀 생성 중 오류가 발생했습니다');
-      console.error(e);
-    }
-  }
-
-  async function svgToPng(svgText: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const cv = document.createElement('canvas');
-        cv.width = 1080; cv.height = 1080;
-        cv.getContext('2d')!.drawImage(img, 0, 0, 1080, 1080);
-        URL.revokeObjectURL(img.src);
-        resolve(cv.toDataURL('image/png'));
-      };
-      img.onerror = reject;
-      img.src = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
-    });
-  }
-
-  async function handleDownloadCarousel() {
-    if (!carouselCards) return;
-    for (const card of carouselCards) {
-      const res = await fetch('/api/carousel/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card, total: carouselCards.length }),
-      });
-      if (!res.ok) { console.error(await res.text()); continue; }
-      const svg = await res.text();
-      const png = await svgToPng(svg);
-      const link = document.createElement('a');
-      link.download = `${carouselTopic || 'carousel'}_card${card.index + 1}.png`;
-      link.href = png;
-      link.click();
-      await new Promise(r => setTimeout(r, 300));
-    }
   }
 
   async function handlePreview(skipImages = false) {
@@ -1471,15 +1399,6 @@ export default function DashboardPage() {
                     className="text-[white]/40 hover:text-[white]/80 text-xs font-mono transition-colors"
                   >완성 영상 →</button>
                 )}
-                {status === 'preview' && script.trim() && (
-                  <button
-                    onClick={handleGenerateCarousel}
-                    disabled={carouselStatus === 'loading'}
-                    className="text-[#4f8ef7]/40 hover:text-[#4f8ef7]/80 text-xs font-bold transition-colors disabled:opacity-40"
-                  >
-                    {carouselStatus === 'loading' ? '⊞ 생성 중...' : '⊞ 캐러셀'}
-                  </button>
-                )}
                 {status === 'preview' && (
                   <button
                     onClick={() => {
@@ -1891,59 +1810,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 캐러셀 패널 (preview 단계) */}
-            {showCarousel && status === 'preview' && (
-              <div className="mt-6 border-t border-[rgba(79,142,247,0.12)] pt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
-                    <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
-                      캐러셀 {carouselTopic && `— ${carouselTopic}`}
-                    </span>
-                  </div>
-                  <button onClick={() => setShowCarousel(false)} className="text-white/20 hover:text-white/50 text-xs">✕</button>
-                </div>
-                {carouselStatus === 'loading' && (
-                  <div className="flex items-center justify-center py-10 text-white/30 text-sm gap-3">
-                    <span className="w-4 h-4 border border-white/30 border-t-transparent rounded-full animate-spin" />
-                    카드 생성 중...
-                  </div>
-                )}
-                {carouselStatus === 'done' && carouselCards && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {carouselCards.map((card) => (
-                      <div
-                        key={card.index}
-                        style={{ backgroundColor: card.bgColor }}
-                        className="relative aspect-square rounded-xl p-3 flex flex-col justify-between border border-white/8 overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-white/20 text-[10px]">{card.index + 1}</span>
-                          {card.emoji && <span className="text-lg">{card.emoji}</span>}
-                        </div>
-                        <div className="flex-1 flex flex-col justify-center items-center gap-1 py-1 text-center">
-                          <p className="font-bold text-white text-xs leading-tight">{card.title}</p>
-                          {card.subtitle && <p className="text-white/40 text-[10px] leading-snug">{card.subtitle}</p>}
-                          {card.bullets && (
-                            <ul className="space-y-0.5 mt-0.5 w-fit text-left">
-                              {card.bullets.slice(0, 2).map((b, bi) => (
-                                <li key={bi} className="text-white/60 text-[10px] flex items-start gap-1">
-                                  <span className="text-[#4f8ef7]">▸</span>{b}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-1 h-1 rounded-full bg-[#4f8ef7]" />
-                          <span className="text-white/15 text-[9px]">Clipflow</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
 
@@ -1998,15 +1864,6 @@ export default function DashboardPage() {
                 ↓ 다운로드
               </button>
               <button
-                onClick={handleGenerateCarousel}
-                disabled={carouselStatus === 'loading'}
-                className="flex items-center gap-2 border border-[#4f8ef7]/40 hover:border-[#4f8ef7]/80 text-[#4f8ef7]/70 hover:text-[#4f8ef7] text-[13px] font-bold tracking-widest uppercase px-4 py-1.5 transition-colors disabled:opacity-40"
-              >
-                {carouselStatus === 'loading' ? (
-                  <><span className="w-2.5 h-2.5 border border-[#4f8ef7] border-t-transparent rounded-full animate-spin inline-block" /> 캐러셀 생성 중</>
-                ) : '⊞ 캐러셀'}
-              </button>
-              <button
                 onClick={() => { setStatus('idle'); setScenes([]); setVideoUrl(''); setScript(''); }}
                 className="flex items-center gap-2 border border-white/15 hover:border-white/30 text-white/40 hover:text-white/70 text-[13px] font-mono tracking-widest uppercase px-4 py-1.5 transition-colors"
               >
@@ -2014,93 +1871,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* 캐러셀 미리보기 */}
-            {showCarousel && (
-              <div className={`w-full ${format === 'shorts' ? 'max-w-xs' : format === 'square' ? 'max-w-sm' : 'max-w-2xl'} mt-6`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-[#4f8ef7] rounded-full" />
-                    <span className="text-white/60 text-xs font-mono tracking-widest uppercase">
-                      캐러셀 — {carouselTopic}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {carouselStatus === 'done' && (
-                      <button onClick={handleDownloadCarousel} className="text-white/60 hover:text-white/70 text-xs flex items-center gap-1">
-                        ↓ 다운로드
-                      </button>
-                    )}
-                    <button onClick={() => setShowCarousel(false)} className="text-white/20 hover:text-white/50 text-xs">✕ 닫기</button>
-                  </div>
-                </div>
-
-                {carouselStatus === 'loading' && (
-                  <div className="flex items-center justify-center py-12 text-white/30 text-sm gap-3">
-                    <span className="w-4 h-4 border border-white/30 border-t-transparent rounded-full animate-spin" />
-                    카드 생성 중...
-                  </div>
-                )}
-
-                {carouselStatus === 'done' && carouselCards && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {carouselCards.map((card) => (
-                      <div
-                        id={`carousel-card-${card.index}`}
-                        key={card.index}
-                        style={{
-                          backgroundColor: card.bgColor,
-                          position: 'relative',
-                          aspectRatio: '1 / 1',
-                          borderRadius: '12px',
-                          padding: '20px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {/* 카드 번호 */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', fontFamily: 'monospace' }}>{card.index + 1}/{carouselCards.length}</span>
-                          {card.emoji && <span style={{ fontSize: '24px' }}>{card.emoji}</span>}
-                        </div>
-
-                        {/* 콘텐츠 */}
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '8px 0', textAlign: 'center' }}>
-                          <p style={{ fontWeight: 700, lineHeight: 1.3, color: 'white', fontSize: card.cardType === 'title' ? '16px' : '13px', margin: 0 }}>
-                            {card.title}
-                          </p>
-                          {card.subtitle && (
-                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', lineHeight: 1.6, margin: 0 }}>{card.subtitle}</p>
-                          )}
-                          {card.bullets && (
-                            <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                              {card.bullets.map((b, bi) => (
-                                <li key={bi} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                                  <span style={{ color: '#4f8ef7', marginTop: '1px' }}>▸</span>
-                                  {b}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        {/* 하단 브랜드 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#4f8ef7', display: 'inline-block' }} />
-                          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'monospace' }}>Clipflow</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {carouselStatus === 'error' && (
-                  <div className="text-red-400/70 text-sm text-center py-8">캐러셀 생성에 실패했습니다.</div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
